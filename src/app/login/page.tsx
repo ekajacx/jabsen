@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth, UserRole } from "@/context/auth-context";
+import { NeuralBackground } from "@/components/ui/neural-background";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -63,8 +64,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-b from-gray-50 via-white to-gray-100 py-8 px-4 sm:px-6 lg:px-8 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-gradient-to-b from-gray-50 via-brand-25/40 to-indigo-50/30 py-8 px-4 sm:px-6 lg:px-8 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+      {/* Interactive Brain Neural Network Animation Canvas */}
+      <NeuralBackground />
+
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="flex size-14 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-theme-md shadow-brand-500/20 mb-3 ring-4 ring-brand-100 dark:ring-brand-900/40">
@@ -79,7 +83,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <Card className="border border-gray-200/80 shadow-theme-lg dark:border-gray-800">
+        <Card className="border border-gray-200/80 bg-white/90 shadow-theme-xl backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/90">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
               Masuk ke Akun Anda

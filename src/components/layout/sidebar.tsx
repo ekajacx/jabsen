@@ -64,7 +64,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
       sectionTitle: "Absensi & Waktu",
       items: [
         {
-          title: "Absen Masuk/Pulang",
+          title: "Absen",
           href: "/absen",
           icon: Camera,
           badge: "Khusus HP",
