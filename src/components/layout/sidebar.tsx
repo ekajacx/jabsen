@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import Link from "next/navigation";
+import React, { useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -10,16 +10,18 @@ import {
   CalendarDays,
   FileCheck2,
   FileEdit,
-  Users,
   ScanFace,
   Activity,
-  ShieldAlert,
-  Sliders,
   FileSpreadsheet,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LogOut,
+  User as UserIcon,
+  Shield,
+  Settings as SettingsIcon,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, UserRole } from "@/context/auth-context";
@@ -48,6 +50,7 @@ interface MenuSection {
 export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [sistemOpen, setSistemOpen] = useState(true);
 
   const menuSections: MenuSection[] = [
     {
@@ -104,12 +107,6 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
       sectionTitle: "Manajemen Karyawan",
       items: [
         {
-          title: "Data Karyawan",
-          href: "/karyawan",
-          icon: Users,
-          allowedRoles: ["HRD", "GM", "CEO", "Admin IT"],
-        },
-        {
           title: "Review Wajah",
           href: "/enrollment-review",
           icon: ScanFace,
@@ -133,21 +130,43 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           icon: FileSpreadsheet,
           allowedRoles: ["HRD", "GM", "CEO", "Supervisor", "Admin IT"],
         },
-        {
-          title: "Hak Akses (RBAC)",
-          href: "/pengaturan/rbac",
-          icon: Sliders,
-          allowedRoles: ["Admin IT"],
-        },
-        {
-          title: "Audit Log WORM",
-          href: "/audit-log",
-          icon: ShieldAlert,
-          allowedRoles: ["Admin IT", "CEO"],
-        },
       ],
     },
   ];
+
+  // Menu SISTEM terstruktur rapi dengan tema & warna seragam (brand theme)
+  const sistemItems: MenuItem[] = [
+    {
+      title: "User Management",
+      href: "/karyawan",
+      icon: UserIcon,
+      badge: "8",
+      allowedRoles: ["Admin IT", "CEO", "HRD", "GM"],
+    },
+    {
+      title: "Izin Akses",
+      href: "/pengaturan/rbac",
+      icon: Shield,
+      allowedRoles: ["Admin IT", "CEO", "HRD"],
+    },
+    {
+      title: "Pengaturan",
+      href: "/pengaturan",
+      icon: SettingsIcon,
+      allowedRoles: ["Admin IT", "CEO", "HRD"],
+    },
+    {
+      title: "Audit Log",
+      href: "/audit-log",
+      icon: FileText,
+      badge: "7",
+      allowedRoles: ["Admin IT", "CEO"],
+    },
+  ];
+
+  const visibleSistemItems = sistemItems.filter(
+    (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
+  );
 
   return (
     <>
@@ -175,9 +194,9 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
             collapsed ? "justify-center px-2" : "justify-between px-4"
           )}
         >
-          {/* Logo J-Absen (Disembunyikan saat sidebar ditutup/collapsed agar tidak menabrak tombol panah) */}
+          {/* Logo J-Absen */}
           {!collapsed && (
-            <a href="/dashboard" className="flex items-center gap-3 overflow-hidden">
+            <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-theme-xs shadow-brand-500/25">
                 <ShieldCheck className="size-6" />
               </div>
@@ -189,7 +208,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                   EKA JACX &bull; v1.0
                 </span>
               </div>
-            </a>
+            </Link>
           )}
 
           {/* Collapse / Expand Toggle Button (Desktop Only) */}
@@ -208,7 +227,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
         </div>
 
         {/* Navigation Menus */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
           {menuSections.map((section, idx) => {
             const visibleItems = section.items.filter(
               (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
@@ -228,7 +247,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                   const isActive = pathname === item.href;
 
                   return (
-                    <a
+                    <Link
                       key={item.href}
                       href={item.href}
                       className={cn(
@@ -251,12 +270,97 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                           {item.badge}
                         </Badge>
                       )}
-                    </a>
+                    </Link>
                   );
                 })}
               </div>
             );
           })}
+
+          {/* Dedicated Section: SISTEM (Collapsible tree dengan ukuran font & icon setara) */}
+          {visibleSistemItems.length > 0 && (
+            <div className="space-y-1 pt-2 border-t border-gray-100 dark:border-gray-800">
+              {/* Header SISTEM dengan icon size-5 & font text-sm setara menu lainnya */}
+              <button
+                type="button"
+                onClick={() => setSistemOpen(!sistemOpen)}
+                className={cn(
+                  "group flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all select-none text-gray-600 hover:bg-gray-100/70 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
+                  collapsed && "justify-center px-2"
+                )}
+                title={collapsed ? "Sistem" : undefined}
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <SettingsIcon className="size-5 shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
+                  {!collapsed && (
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">
+                      Sistem
+                    </span>
+                  )}
+                </div>
+                {!collapsed && (
+                  <ChevronDown
+                    className={cn(
+                      "size-4 text-gray-400 transition-transform duration-200",
+                      sistemOpen ? "rotate-0" : "-rotate-90"
+                    )}
+                  />
+                )}
+              </button>
+
+              {/* Sub-items SISTEM dengan ukuran font text-sm & icon size-5 setara */}
+              {(sistemOpen || collapsed) && (
+                <div
+                  className={cn(
+                    !collapsed && "ml-5 pl-2.5 border-l border-gray-200 dark:border-gray-800 space-y-1 my-1"
+                  )}
+                >
+                  {visibleSistemItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all select-none",
+                          isActive
+                            ? "bg-brand-50 text-brand-600 font-semibold dark:bg-brand-950/40 dark:text-brand-400"
+                            : "text-gray-600 hover:bg-gray-100/70 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
+                          collapsed && "justify-center px-2"
+                        )}
+                        title={collapsed ? item.title : undefined}
+                      >
+                        <Icon
+                          className={cn(
+                            "size-5 shrink-0 transition-colors",
+                            isActive
+                              ? "text-brand-500"
+                              : "text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200"
+                          )}
+                        />
+                        {!collapsed && (
+                          <span className="flex-1 truncate">
+                            {item.title}
+                          </span>
+                        )}
+                        {!collapsed && item.badge && (
+                          <Badge
+                            variant="default"
+                            size="sm"
+                            className="font-semibold"
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* User Role Card & Logout */}

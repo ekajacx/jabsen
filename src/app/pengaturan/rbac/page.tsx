@@ -867,7 +867,7 @@ export default function RbacPage() {
   const { user } = useAuth();
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<"matriks" | "katalog" | "penugasan" | "special_p16">("matriks");
+  const [activeTab, setActiveTab] = useState<"matriks" | "penugasan" | "special_p16">("matriks");
 
   // State Matriks Permissions (41 Rules)
   const [permissions, setPermissions] = useState<PermissionRule[]>(INITIAL_PERMISSIONS);
@@ -1144,18 +1144,6 @@ export default function RbacPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("katalog")}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all ${
-              activeTab === "katalog"
-                ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-            }`}
-          >
-            <Shield className="size-3.5" />
-            Katalog Role & Cakupan Data
-          </button>
-
-          <button
             onClick={() => setActiveTab("special_p16")}
             className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all ${
               activeTab === "special_p16"
@@ -1240,7 +1228,7 @@ export default function RbacPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs table-fixed">
+                <table className="w-full text-left text-xs table-fixed min-w-[720px]">
                   <colgroup>
                     <col className="w-[4%]" />
                     <col className="w-[26%]" />
@@ -1369,7 +1357,7 @@ export default function RbacPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[620px]">
                   <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
                       <th className="px-5 py-3">Karyawan</th>
@@ -1448,119 +1436,7 @@ export default function RbacPage() {
           </div>
         )}
 
-        {/* TAB 3: KATALOG ROLE & DATA SCOPE */}
-        {activeTab === "katalog" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-gray-200 dark:border-gray-800">
-              <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-3">
-                <CardTitle className="text-base font-semibold">Katalog Role Baseline J-Absen</CardTitle>
-                <CardDescription className="text-xs">
-                  6 Role standar operasional sesuai PRD Bagian 3
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-3">
-                {[
-                  {
-                    name: "CEO",
-                    desc: "Pengawasan strategis perusahaan, dashboard eksekutif, dan pemegang hak approval grant (P-16).",
-                    badge: "warning",
-                  },
-                  {
-                    name: "GM (General Manager)",
-                    desc: "Monitoring operasional lintas departemen, laporan eskalasi, dan approval cuti/koreksi berjenjang.",
-                    badge: "info",
-                  },
-                  {
-                    name: "HR / Admin HR",
-                    desc: "Manajemen data karyawan, pendaftaran, review biometrik wajah, pengaturan saldo cuti, dan persetujuan koreksi.",
-                    badge: "success",
-                  },
-                  {
-                    name: "Supervisor",
-                    desc: "Monitoring kehadiran tim departemen, peninjauan jadwal tim, dan approval tahap 1 bawahannya.",
-                    badge: "secondary",
-                  },
-                  {
-                    name: "Staff",
-                    desc: "Absensi masuk/pulang mobile verifikasi biometrik 4 challenge, melihat jadwal dan riwayat mandiri.",
-                    badge: "secondary",
-                  },
-                  {
-                    name: "Admin IT",
-                    desc: "Pemegang penuh kewenangan administratif teknis sistem, keamanan, konfigurasi shift, geofence, dan RBAC (P-2).",
-                    badge: "destructive",
-                  },
-                ].map((role) => (
-                  <div
-                    key={role.name}
-                    className="rounded-xl border border-gray-200 p-3.5 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/40"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-gray-900 dark:text-white text-sm">{role.name}</span>
-                      <Badge variant={role.badge as any} size="sm">
-                        {role.name}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{role.desc}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
 
-            <Card className="border-gray-200 dark:border-gray-800">
-              <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-3">
-                <CardTitle className="text-base font-semibold">Cakupan Data (Data Scope Hierarchy)</CardTitle>
-                <CardDescription className="text-xs">
-                  Prinsip pembatasan akses data vertikal & horizontal
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-3">
-                {[
-                  {
-                    scope: "Own",
-                    label: "Milik Sendiri",
-                    desc: "Hanya dapat membaca dan memanipulasi rekaman data milik akun sendiri.",
-                  },
-                  {
-                    scope: "Subord",
-                    label: "Bawahan Langsung (Hierarki)",
-                    desc: "Akses ke data staf bawahan yang melapor langsung via garis pelaporan organisasi (reports_to).",
-                  },
-                  {
-                    scope: "Dept",
-                    label: "Departemen",
-                    desc: "Akses mencakup seluruh data karyawan dalam unit kerja atau divisi yang sama.",
-                  },
-                  {
-                    scope: "Org",
-                    label: "Organisasi Penuh",
-                    desc: "Akses mencakup seluruh data karyawan di seluruh kantor dan cabang perusahaan.",
-                  },
-                  {
-                    scope: "None / DENY",
-                    label: "Ditolak (Default)",
-                    desc: "Tidak memiliki hak akses; permintaan diblokir secara ketat oleh otorisasi server.",
-                  },
-                ].map((sc) => (
-                  <div
-                    key={sc.scope}
-                    className="rounded-xl border border-gray-200 p-3.5 dark:border-gray-800"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold font-mono text-brand-600 dark:text-brand-400 text-xs">
-                        {sc.scope}
-                      </span>
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        {sc.label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{sc.desc}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* TAB 4: CEO APPROVAL GRANT TO ADMIN IT (RESOLUSI P-16) */}
         {activeTab === "special_p16" && (

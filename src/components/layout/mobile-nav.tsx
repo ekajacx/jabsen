@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Camera, CalendarDays, FileCheck2, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ export function MobileNav({ onOpenSidebar }: MobileNavProps) {
 
         if (item.isCenter) {
           return (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               className="group flex flex-col items-center justify-center -mt-5"
@@ -38,12 +39,12 @@ export function MobileNav({ onOpenSidebar }: MobileNavProps) {
               <span className="text-[10px] font-semibold text-brand-600 mt-1 dark:text-brand-400">
                 {item.label}
               </span>
-            </a>
+            </Link>
           );
         }
 
         return (
-          <a
+          <Link
             key={item.href}
             href={item.href}
             className={cn(
@@ -55,7 +56,7 @@ export function MobileNav({ onOpenSidebar }: MobileNavProps) {
           >
             <Icon className="size-5" />
             <span className="text-[10px] font-medium mt-1">{item.label}</span>
-          </a>
+          </Link>
         );
       })}
 
