@@ -122,9 +122,9 @@ export const INITIAL_POSITIONS: PositionNode[] = [
     isConnected: true,
     holder: {
       nik: "DIR-001",
-      name: "Ir. Bambang Sutrisno, MM",
+      name: "Eka Jacx",
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-      email: "bambang.sutrisno@perusahaan.co.id",
+      email: "ceo.ekajacx@perusahaan.co.id",
       phone: "+62 811-1234-5678",
     },
     description: "Pucuk pimpinan strategis dan pengambil kebijakan tertinggi perusahaan",
@@ -215,6 +215,23 @@ export const INITIAL_POSITIONS: PositionNode[] = [
       phone: "+62 815-6789-0123",
     },
     description: "Dukungan operasional dan troubleshooting perangkat staf harian",
+  },
+  {
+    id: "pos-ti-admin",
+    code: "TI-05",
+    title: "Administrator Sistem & IT",
+    departmentId: "dept-ti",
+    parentId: "pos-ti-kepala",
+    level: 4,
+    isConnected: true,
+    holder: {
+      nik: "ADM-001",
+      name: "Rian Saputra",
+      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+      email: "admin.it@perusahaan.co.id",
+      phone: "+62 811-9988-7766",
+    },
+    description: "Pengelola hak akses RBAC, konfigurasi server, dan audit keamanan sistem",
   },
 
   // 2. Departemen Keuangan
@@ -601,7 +618,27 @@ export function getStoredPositions(): PositionNode[] {
       localStorage.setItem(STORAGE_POSITIONS_KEY, JSON.stringify(INITIAL_POSITIONS));
       return INITIAL_POSITIONS;
     }
-    return JSON.parse(raw);
+    const parsed: PositionNode[] = JSON.parse(raw);
+    let modified = false;
+    parsed.forEach((p) => {
+      if (p.id === "pos-dirut" && p.holder && p.holder.name.includes("Bambang Sutrisno")) {
+        p.holder.name = "Eka Jacx";
+        p.holder.email = "ceo.ekajacx@perusahaan.co.id";
+        modified = true;
+      }
+    });
+    // Ensure pos-ti-admin exists for 27 employees completeness
+    if (!parsed.some((p) => p.id === "pos-ti-admin")) {
+      const adminPos = INITIAL_POSITIONS.find((p) => p.id === "pos-ti-admin");
+      if (adminPos) {
+        parsed.push(adminPos);
+        modified = true;
+      }
+    }
+    if (modified) {
+      localStorage.setItem(STORAGE_POSITIONS_KEY, JSON.stringify(parsed));
+    }
+    return parsed;
   } catch {
     return INITIAL_POSITIONS;
   }
@@ -836,7 +873,9 @@ export function useOrgData() {
       let role = "Staff";
       if (pos.level === 1) role = "CEO";
       else if (pos.level === 2) role = "GM";
-      else if (pos.level === 3) role = "Kepala Departemen";
+      else if (pos.id === "pos-hrd-kepala" || pos.code === "HR-01") role = "HRD";
+      else if (pos.level === 3) role = "Supervisor";
+      else if (pos.id === "pos-ti-admin" || pos.code === "TI-05") role = "Admin IT";
 
       const holders = getNodeHolders(pos);
       holders.forEach((h, hIdx) => {

@@ -27,101 +27,22 @@ import {
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
-
-export interface LeaveRequest {
-  id: string;
-  applicantId: string;
-  applicantName: string;
-  applicantRole: UserRole;
-  department: string;
-  leaveType: "Cuti Tahunan" | "Cuti Sakit" | "Cuti Melahirkan" | "Cuti Alasan Penting";
-  startDate: string;
-  endDate: string;
-  durationDays: number;
-  reason: string;
-  attachmentName?: string;
-  status: "Menunggu Approval" | "Disetujui" | "Ditolak" | "Perlu Revisi";
-  currentApproverRole: UserRole;
-  approverNotes?: string;
-  submittedAt: string;
-  quotaImpact: boolean; // PRD P-10: true jika memotong saldo cuti tahunan
-}
-
-const INITIAL_LEAVE_DATA: LeaveRequest[] = [
-  {
-    id: "CUTI-202611-001",
-    applicantId: "EMP-001",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-11-24",
-    endDate: "2026-11-26",
-    durationDays: 3,
-    reason: "Keperluan acara keluarga dan pernikahan kerabat di luar kota",
-    status: "Menunggu Approval",
-    currentApproverRole: "Supervisor",
-    submittedAt: "18 Nov 2026, 09:30 WIB",
-    quotaImpact: true,
-  },
-  {
-    id: "CUTI-202611-002",
-    applicantId: "EMP-005",
-    applicantName: "Rian Hidayat",
-    applicantRole: "Staff",
-    department: "Operasional",
-    leaveType: "Cuti Sakit",
-    startDate: "2026-11-19",
-    endDate: "2026-11-20",
-    durationDays: 2,
-    reason: "Demam dan flu berat, istirahat rawat jalan sesuai anjuran dokter",
-    attachmentName: "Surat_Keterangan_Dokter_Klinik_Medika.pdf",
-    status: "Menunggu Approval",
-    currentApproverRole: "Supervisor",
-    submittedAt: "18 Nov 2026, 14:15 WIB",
-    quotaImpact: false,
-  },
-  {
-    id: "CUTI-202611-003",
-    applicantId: "EMP-002",
-    applicantName: "Siti Rahmawati",
-    applicantRole: "Supervisor",
-    department: "Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-12-01",
-    endDate: "2026-12-02",
-    durationDays: 2,
-    reason: "Pemeriksaan kesehatan berkala",
-    status: "Menunggu Approval",
-    currentApproverRole: "GM",
-    submittedAt: "17 Nov 2026, 11:20 WIB",
-    quotaImpact: true,
-  },
-  {
-    id: "CUTI-202610-004",
-    applicantId: "EMP-001",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-10-12",
-    endDate: "2026-10-13",
-    durationDays: 2,
-    reason: "Keperluan perpanjangan dokumen kependudukan",
-    status: "Disetujui",
-    currentApproverRole: "Supervisor",
-    approverNotes: "Disetujui. Pekerjaan telah didelegasikan sementara.",
-    submittedAt: "10 Okt 2026, 08:00 WIB",
-    quotaImpact: true,
-  },
-];
+import {
+  LeaveRequest,
+  getStoredLeaveRequests,
+  saveStoredLeaveRequests,
+} from "@/lib/leave-data";
 
 export default function ApprovalCutiPage() {
   const { user } = useAuth();
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_DATA);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"inbox" | "my_leaves">("inbox");
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    setLeaveRequests(getStoredLeaveRequests());
+  }, []);
 
   // Kuota Cuti Tahunan Pengguna (PRD P-10: default 12 hari)
   const [annualLeaveBalance, setAnnualLeaveBalance] = useState<number>(10); // Tersisa 10 hari
@@ -221,7 +142,9 @@ export default function ApprovalCutiPage() {
         quotaImpact: isAnnual,
       };
 
-      setLeaveRequests((prev) => [newReq, ...prev]);
+      const updated = [newReq, ...leaveRequests];
+      setLeaveRequests(updated);
+      saveStoredLeaveRequests(updated);
       setIsSubmitting(false);
       setShowApplyModal(false);
       // Reset form
@@ -240,17 +163,17 @@ export default function ApprovalCutiPage() {
 
     setIsProcessingApproval(true);
     setTimeout(() => {
-      setLeaveRequests((prev) =>
-        prev.map((req) =>
-          req.id === selectedRequest.id
-            ? {
-                ...req,
-                status: decision,
-                approverNotes: reviewNote || (decision === "Disetujui" ? "Disetujui tanpa catatan" : "Ditolak"),
-              }
-            : req
-        )
+      const updated = leaveRequests.map((req) =>
+        req.id === selectedRequest.id
+          ? {
+              ...req,
+              status: decision,
+              approverNotes: reviewNote || (decision === "Disetujui" ? "Disetujui tanpa catatan" : "Ditolak"),
+            }
+          : req
       );
+      setLeaveRequests(updated);
+      saveStoredLeaveRequests(updated);
 
       // Jika disetujui dan memotong kuota pelamar
       if (decision === "Disetujui" && selectedRequest.quotaImpact && selectedRequest.applicantId === user.id) {

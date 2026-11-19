@@ -23,6 +23,7 @@ import {
   Calendar,
   Sparkles,
   ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 export interface TeamMemberStatus {
@@ -47,7 +48,7 @@ const INITIAL_TEAM_MONITORING: TeamMemberStatus[] = [
     name: "Budi Santoso",
     jobTitle: "Staff Operasional Lapangan",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler Office (08:00 - 17:00)",
     checkInTime: "07:55 WIB",
     status: "Hadir Tepat Waktu",
@@ -61,7 +62,7 @@ const INITIAL_TEAM_MONITORING: TeamMemberStatus[] = [
     name: "Siti Rahmawati",
     jobTitle: "Supervisor Operasional",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler Office (08:00 - 17:00)",
     checkInTime: "07:50 WIB",
     status: "Hadir Tepat Waktu",
@@ -75,7 +76,7 @@ const INITIAL_TEAM_MONITORING: TeamMemberStatus[] = [
     name: "Dewi Lestari",
     jobTitle: "Head of HRD",
     department: "HRD & Personalia",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler Office (08:00 - 17:00)",
     checkInTime: "08:05 WIB",
     status: "Hadir Tepat Waktu",
@@ -89,7 +90,7 @@ const INITIAL_TEAM_MONITORING: TeamMemberStatus[] = [
     name: "Hendra Gunawan",
     jobTitle: "General Manager",
     department: "Direksi Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler Office (08:00 - 17:00)",
     checkInTime: "08:10 WIB",
     status: "Hadir Tepat Waktu",
@@ -103,7 +104,7 @@ const INITIAL_TEAM_MONITORING: TeamMemberStatus[] = [
     name: "Rian Hidayat",
     jobTitle: "Junior Staff Lapangan",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler Office (08:00 - 17:00)",
     checkInTime: "08:35 WIB",
     status: "Terlambat",
@@ -177,6 +178,29 @@ export default function MonitoringPage() {
         return <Badge variant="secondary" size="sm">Belum Masuk</Badge>;
     }
   };
+
+  const isAuthorized = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Monitoring Tim Real-Time hanya dapat diakses oleh level Pimpinan Unit, Atasan Tim, HRD, dan Manajemen.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout pageTitle="Monitoring Tim Real-Time">

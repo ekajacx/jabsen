@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,10 +24,10 @@ import {
   ArrowRight,
   Briefcase,
   Save,
-  ExternalLink,
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
 import {
   useOrgData,
   Department,
@@ -38,6 +37,9 @@ import {
 } from "@/lib/org-data";
 
 export default function OrganisasiPage() {
+  const { user } = useAuth();
+  const canManageOrg = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
+
   // Sinkronisasi data real-time dengan modul Manajemen Departemen & Karyawan
   const {
     departments,
@@ -270,25 +272,6 @@ export default function OrganisasiPage() {
               </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/karyawan"
-              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
-            >
-              <Users className="size-3.5 text-brand-500" />
-              <span>Direktori Karyawan</span>
-              <ExternalLink className="size-3 text-gray-400" />
-            </Link>
-
-            <Link
-              href="/departemen"
-              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
-            >
-              <Building2 className="size-3.5 text-blue-500" />
-              <span>Departemen</span>
-            </Link>
-          </div>
         </div>
 
         {/* NOTIFIKASI TOAST */}
@@ -325,12 +308,9 @@ export default function OrganisasiPage() {
                 <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
                   {departments.length}
                 </p>
-                <Link
-                  href="/departemen"
-                  className="text-[10px] text-brand-600 font-semibold hover:underline dark:text-brand-400 inline-flex items-center gap-0.5 mt-0.5"
-                >
-                  Kelola Departemen &rarr;
-                </Link>
+                <span className="text-[10px] text-gray-400 block mt-0.5">
+                  Unit operasional perusahaan
+                </span>
               </div>
               <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
                 <Building2 className="size-5" />
@@ -362,12 +342,9 @@ export default function OrganisasiPage() {
                 <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
                   {allEmployees.length}
                 </p>
-                <Link
-                  href="/karyawan"
-                  className="text-[10px] text-brand-600 font-semibold hover:underline dark:text-brand-400 inline-flex items-center gap-0.5 mt-0.5"
-                >
-                  Lihat Direktori Karyawan &rarr;
-                </Link>
+                <span className="text-[10px] text-gray-400 block mt-0.5">
+                  Personel aktif terdaftar
+                </span>
               </div>
               <div className="flex size-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
                 <Users className="size-5" />
@@ -521,15 +498,17 @@ export default function OrganisasiPage() {
                       </div>
 
                       {/* Tombol Toggle Garis Hijau / Hitam */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleConnection(dirutNode.id)}
-                        title="Klik untuk beralih warna garis hijau / hitam"
-                        className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white hover:bg-white/30"
-                      >
-                        <span className={cn("size-1.5 rounded-full", dirutNode.isConnected ? "bg-emerald-400" : "bg-gray-300")} />
-                        {dirutNode.isConnected ? "Konek" : "Putus"}
-                      </button>
+                      {canManageOrg && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleConnection(dirutNode.id)}
+                          title="Klik untuk beralih warna garis hijau / hitam"
+                          className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white hover:bg-white/30"
+                        >
+                          <span className={cn("size-1.5 rounded-full", dirutNode.isConnected ? "bg-emerald-400" : "bg-gray-300")} />
+                          {dirutNode.isConnected ? "Konek" : "Putus"}
+                        </button>
+                      )}
                     </div>
 
                     {/* GARIS VERTIKAL DARI DIRUT KE MANAJER UMUM */}
@@ -571,15 +550,17 @@ export default function OrganisasiPage() {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleToggleConnection(gmNode.id)}
-                        title="Klik untuk beralih warna garis hijau / hitam"
-                        className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white hover:bg-white/30"
-                      >
-                        <span className={cn("size-1.5 rounded-full", gmNode.isConnected ? "bg-emerald-400" : "bg-gray-300")} />
-                        {gmNode.isConnected ? "Konek" : "Putus"}
-                      </button>
+                      {canManageOrg && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleConnection(gmNode.id)}
+                          title="Klik untuk beralih warna garis hijau / hitam"
+                          className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white hover:bg-white/30"
+                        >
+                          <span className={cn("size-1.5 rounded-full", gmNode.isConnected ? "bg-emerald-400" : "bg-gray-300")} />
+                          {gmNode.isConnected ? "Konek" : "Putus"}
+                        </button>
+                      )}
                     </div>
 
                     {/* GARIS VERTIKAL DARI GM TURUN KE JALUR DISTRIBUSI DEPARTEMEN */}
@@ -634,15 +615,17 @@ export default function OrganisasiPage() {
                             <div className="text-xs font-bold leading-tight flex-1 text-center" title={dept.name}>
                               {dept.name}
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddEmployeeModal(dept)}
-                              title={`Tambah Karyawan (Kepala/Staff) di ${dept.name}`}
-                              style={{ width: 22, height: 22, minWidth: 22, minHeight: 22 }}
-                              className="w-[22px] h-[22px] min-w-[22px] min-h-[22px] rounded-md bg-white/20 hover:bg-emerald-500 hover:scale-105 active:scale-95 text-white flex items-center justify-center transition-all shadow-xs border border-white/30 shrink-0"
-                            >
-                              <Plus className="size-3 stroke-[3]" />
-                            </button>
+                            {canManageOrg && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAddEmployeeModal(dept)}
+                                title={`Tambah Karyawan (Kepala/Staff) di ${dept.name}`}
+                                style={{ width: 22, height: 22, minWidth: 22, minHeight: 22 }}
+                                className="w-[22px] h-[22px] min-w-[22px] min-h-[22px] rounded-md bg-white/20 hover:bg-emerald-500 hover:scale-105 active:scale-95 text-white flex items-center justify-center transition-all shadow-xs border border-white/30 shrink-0"
+                              >
+                                <Plus className="size-3 stroke-[3]" />
+                              </button>
+                            )}
                           </div>
 
                           {/* Garis Turun dari Header Dept ke Kepala Departemen */}
@@ -661,17 +644,20 @@ export default function OrganisasiPage() {
                               onToggleConnect={() => handleToggleConnection(kepalaNode.id)}
                               onRemoveHolder={(idx) => removeHolderFromPosition(kepalaNode.id, idx)}
                               isHead
+                              canEdit={canManageOrg}
                             />
                           ) : (
                             <div className="w-full p-2.5 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-[10px] text-gray-400">
                               Belum ada Kepala Departemen.
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAddEmployeeModal(dept)}
-                                className="block mt-1 text-brand-600 dark:text-brand-400 font-semibold underline text-[10px] mx-auto hover:text-brand-500"
-                              >
-                                + Tambah Kepala
-                              </button>
+                              {canManageOrg && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAddEmployeeModal(dept)}
+                                  className="block mt-1 text-brand-600 dark:text-brand-400 font-semibold underline text-[10px] mx-auto hover:text-brand-500"
+                                >
+                                  + Tambah Kepala
+                                </button>
+                              )}
                             </div>
                           )}
 
@@ -692,6 +678,7 @@ export default function OrganisasiPage() {
                                 onEdit={() => handleOpenEditModal(staff)}
                                 onToggleConnect={() => handleToggleConnection(staff.id)}
                                 onRemoveHolder={(idx) => removeHolderFromPosition(staff.id, idx)}
+                                canEdit={canManageOrg}
                               />
                             </React.Fragment>
                           ))}
@@ -1098,6 +1085,7 @@ interface NodeCardProps {
   onToggleConnect: () => void;
   onRemoveHolder?: (holderIndex: number) => void;
   isHead?: boolean;
+  canEdit?: boolean;
 }
 
 function NodeCard({
@@ -1106,6 +1094,7 @@ function NodeCard({
   onToggleConnect,
   onRemoveHolder,
   isHead = false,
+  canEdit = true,
 }: NodeCardProps) {
   const holders = getNodeHolders(node);
 
@@ -1202,29 +1191,31 @@ function NodeCard({
         ))}
       </div>
 
-      <div className="absolute -top-2 right-1 hidden group-hover:flex items-center gap-1 bg-white/95 dark:bg-gray-900/95 rounded-full p-0.5 shadow-md border border-gray-200 dark:border-gray-700 z-10">
-        <button
-          type="button"
-          onClick={onToggleConnect}
-          title={`Garis saat ini: ${
-            node.isConnected ? "Hijau (Terkoneksi)" : "Hitam (Terputus)"
-          }. Klik untuk beralih.`}
-          className={cn(
-            "size-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white",
-            node.isConnected ? "bg-emerald-500" : "bg-black"
-          )}
-        >
-          {node.isConnected ? "✓" : "✕"}
-        </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          title="Edit Karyawan / Jabatan"
-          className="size-4 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
-        >
-          <Edit2 className="size-2.5" />
-        </button>
-      </div>
+      {canEdit && (
+        <div className="absolute -top-2 right-1 hidden group-hover:flex items-center gap-1 bg-white/95 dark:bg-gray-900/95 rounded-full p-0.5 shadow-md border border-gray-200 dark:border-gray-700 z-10">
+          <button
+            type="button"
+            onClick={onToggleConnect}
+            title={`Garis saat ini: ${
+              node.isConnected ? "Hijau (Terkoneksi)" : "Hitam (Terputus)"
+            }. Klik untuk beralih.`}
+            className={cn(
+              "size-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white",
+              node.isConnected ? "bg-emerald-500" : "bg-black"
+            )}
+          >
+            {node.isConnected ? "✓" : "✕"}
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            title="Edit Karyawan / Jabatan"
+            className="size-4 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+          >
+            <Edit2 className="size-2.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -24,10 +24,20 @@ import {
   FileText,
   Network,
   Building2,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, UserRole } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  CEO: "Direktur Utama",
+  GM: "Manajer Umum",
+  HRD: "Kepala HR",
+  Supervisor: "Kepala Departemen",
+  Staff: "Staf",
+  "Admin IT": "Admin IT",
+};
 
 interface SidebarProps {
   collapsed: boolean;
@@ -109,10 +119,15 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
       sectionTitle: "Manajemen Karyawan",
       items: [
         {
+          title: "Data Karyawan",
+          href: "/karyawan",
+          icon: Users,
+          allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
+        },
+        {
           title: "Struktur Organisasi",
           href: "/organisasi",
           icon: Network,
-          allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
         {
           title: "Departemen",
@@ -150,13 +165,6 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
 
   // Menu SISTEM terstruktur rapi dengan tema & warna seragam (brand theme)
   const sistemItems: MenuItem[] = [
-    {
-      title: "User Management",
-      href: "/karyawan",
-      icon: UserIcon,
-      badge: "8",
-      allowedRoles: ["Admin IT", "CEO", "HRD", "GM"],
-    },
     {
       title: "Izin Akses",
       href: "/pengaturan/rbac",
@@ -394,7 +402,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                   {user.name}
                 </span>
                 <span className="truncate text-[11px] text-gray-500 dark:text-gray-400">
-                  {user.role} &bull; {user.department}
+                  {ROLE_LABELS[user.role] || user.role} &bull; {user.department}
                 </span>
               </div>
             )}

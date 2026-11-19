@@ -13,24 +13,10 @@ export interface OfficeLocation {
 
 export const OFFICE_LOCATIONS: OfficeLocation[] = [
   {
-    id: "hq-jakarta",
-    name: "Kantor Pusat Jakarta",
-    latitude: -6.175392,
-    longitude: 106.827153,
-    radiusMeters: 100,
-  },
-  {
-    id: "branch-surabaya",
-    name: "Kantor Cabang Surabaya",
-    latitude: -7.257472,
-    longitude: 112.75209,
-    radiusMeters: 100,
-  },
-  {
-    id: "branch-bandung",
-    name: "Kantor Cabang Bandung",
-    latitude: -6.917464,
-    longitude: 107.619123,
+    id: "hq-bali",
+    name: "Kantor Pusat Bali",
+    latitude: -8.670458,
+    longitude: 115.212629,
     radiusMeters: 100,
   },
 ];

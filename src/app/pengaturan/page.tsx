@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/auth-context";
 import {
   Settings,
   Building2,
@@ -18,6 +19,7 @@ import {
   AlertTriangle,
   ExternalLink,
   Compass,
+  ShieldAlert,
 } from "lucide-react";
 
 // Initial Data Profil Perusahaan untuk Kop Surat
@@ -40,10 +42,10 @@ const DEFAULT_COMPANY: CompanyProfile = {
   name: "PT ANTIGRAVITY INOVASI DIGITAL",
   legalEntity: "Perseroan Terbatas (PT)",
   tagline: "Enterprise Biometric Attendance & Workforce Management Solution",
-  address: "Gedung Cyber 2 Tower Lt. 15, Jl. H.R. Rasuna Said Blok X-5 No. 13, Kuningan Timur, Setiabudi",
-  city: "Jakarta Selatan, DKI Jakarta",
-  postalCode: "12950",
-  phone: "(021) 5290-8800",
+  address: "Jl. Sunset Road No. 88, Kuta, Badung",
+  city: "Denpasar / Badung, Bali",
+  postalCode: "80361",
+  phone: "(0361) 849-8800",
   whatsapp: "+62 812-9988-7766",
   email: "corporate@antigravity.co.id",
   website: "https://www.antigravity.co.id",
@@ -51,9 +53,12 @@ const DEFAULT_COMPANY: CompanyProfile = {
   nib: "9120009876543",
 };
 
-export default function PengaturanPage() {
+function PengaturanContent() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") || "perusahaan";
+
+  const isAuthorized = ["Admin IT", "CEO", "HRD"].includes(user?.role || "");
 
   // Tab Utama: "perusahaan" | "lokasi"
   const [activeTab, setActiveTab] = useState<string>(
@@ -93,9 +98,9 @@ export default function PengaturanPage() {
   // ==========================================
   // TAB 2: STATE LOKASI & GEOFENCE KANTOR
   // ==========================================
-  const [officeName, setOfficeName] = useState("Kantor Pusat Jakarta (Gedung Cyber 2)");
-  const [latitude, setLatitude] = useState(-6.175392);
-  const [longitude, setLongitude] = useState(106.827153);
+  const [officeName, setOfficeName] = useState("Kantor Pusat Bali");
+  const [latitude, setLatitude] = useState(-8.670458);
+  const [longitude, setLongitude] = useState(115.212629);
   const [radiusMeters, setRadiusMeters] = useState(100);
   const [isGettingGps, setIsGettingGps] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
@@ -138,6 +143,27 @@ export default function PengaturanPage() {
       `Lokasi kantor '${officeName}' dengan radius ${radiusMeters}m berhasil diperbarui dan aktif untuk geofencing absensi.`
     );
   };
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Halaman Pengaturan Umum & Geofence Lokasi hanya dapat dikelola oleh akun dengan wewenang Direktur Utama, Kepala HR, atau Admin IT.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout pageTitle="Pengaturan Sistem">
@@ -525,7 +551,7 @@ export default function PengaturanPage() {
                     <Input
                       value={officeName}
                       onChange={(e) => setOfficeName(e.target.value)}
-                      placeholder="Contoh: Kantor Pusat Jakarta"
+                      placeholder="Contoh: Kantor Pusat Bali"
                       className="text-xs"
                     />
                   </div>
@@ -656,5 +682,13 @@ export default function PengaturanPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+export default function PengaturanPage() {
+  return (
+    <Suspense fallback={null}>
+      <PengaturanContent />
+    </Suspense>
   );
 }

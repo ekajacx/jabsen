@@ -368,6 +368,29 @@ export default function AuditLogPage() {
     XLSX.writeFile(workbook, `Audit_Log_WORM_J-Absen_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const isAuthorized = ["Admin IT", "CEO"].includes(user?.role || "");
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Jejak Forensik & Audit Log Keamanan Sistem hanya dapat diakses oleh Admin IT dan Direktur Utama.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">

@@ -58,6 +58,43 @@ export interface PermissionRule {
   note?: string;
 }
 
+// Konfigurasi Nama Jabatan Riil Organisasi untuk Role Akses
+const ROLE_DISPLAY_CONFIG: Record<
+  "CEO" | "GM" | "HRD" | "Supervisor" | "Staff" | "Admin IT",
+  { title: string; subtitle: string; fullTitle: string }
+> = {
+  CEO: {
+    title: "Direktur Utama",
+    subtitle: "CEO",
+    fullTitle: "Direktur Utama (CEO)",
+  },
+  GM: {
+    title: "Manajer Umum",
+    subtitle: "GM",
+    fullTitle: "Manajer Umum (GM)",
+  },
+  HRD: {
+    title: "Kepala HR",
+    subtitle: "HRD",
+    fullTitle: "Kepala HR (HRD)",
+  },
+  Supervisor: {
+    title: "Kepala Departemen",
+    subtitle: "Supervisor",
+    fullTitle: "Kepala Departemen (Supervisor)",
+  },
+  Staff: {
+    title: "Staf",
+    subtitle: "Staff",
+    fullTitle: "Staf (Staff)",
+  },
+  "Admin IT": {
+    title: "Admin IT",
+    subtitle: "Administrator",
+    fullTitle: "Admin IT (Administrator)",
+  },
+};
+
 // 41 Baseline Permissions sesuai Matriks_Hak_Akses_Baseline_Final.md
 const INITIAL_PERMISSIONS: PermissionRule[] = [
   // A. Autentikasi & Akun Pribadi
@@ -472,16 +509,69 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.assign",
     name: "Tetapkan Shift Karyawan",
-    description: "Penugasan roster shift pada staf karyawan",
+    description: "Penugasan roster shift pada staf karyawan atau tim",
     isCritical: false,
     roles: {
-      CEO: { allowed: false, scope: "None" },
-      GM: { allowed: false, scope: "None" },
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
       HRD: { allowed: true, scope: "Org" },
-      Supervisor: { allowed: false, scope: "None" },
+      Supervisor: { allowed: true, scope: "Dept" },
       Staff: { allowed: false, scope: "None" },
       "Admin IT": { allowed: true, scope: "Org" },
     },
+  },
+  {
+    id: 46,
+    categoryCode: "F",
+    categoryName: "Jadwal Kerja & Geofence",
+    code: "schedule.create",
+    name: "Buat Jadwal Kerja Mingguan",
+    description: "Membuat penugasan roster shift mingguan untuk karyawan atau tim bawahan",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+    note: "Atasan departemen (Supervisor) membuat jadwal untuk staf bawahannya, GM membuat untuk Kepala Dept, HRD/CEO untuk seluruh organisasi",
+  },
+  {
+    id: 47,
+    categoryCode: "F",
+    categoryName: "Jadwal Kerja & Geofence",
+    code: "schedule.update",
+    name: "Edit Jadwal Kerja Mingguan",
+    description: "Mengubah shift hari kerja atau jam roster mingguan yang telah dibuat",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 48,
+    categoryCode: "F",
+    categoryName: "Jadwal Kerja & Geofence",
+    code: "schedule.delete",
+    name: "Hapus Jadwal Kerja Mingguan",
+    description: "Membatalkan atau menghapus jadwal kerja mingguan yang telah diterbitkan",
+    isCritical: true,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+    note: "Tindakan Kritis [CRITICAL]: Menghapus jadwal kerja akan memengaruhi perhitungan keterlambatan dan absensi",
   },
   {
     id: 25,
@@ -784,6 +874,76 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
       "Admin IT": { allowed: true, scope: "Org" },
     },
   },
+  // K. Manajemen Departemen & Struktur
+  {
+    id: 42,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.view",
+    name: "Lihat Daftar Departemen",
+    description: "Melihat daftar unit kerja dan struktur departemen perusahaan",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 43,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.create",
+    name: "Tambah Departemen Baru",
+    description: "Mendaftarkan unit departemen operasional baru ke organisasi",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 44,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.update",
+    name: "Ubah Data Departemen",
+    description: "Memperbarui kode, nama, dan deskripsi unit departemen",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 45,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.delete",
+    name: "Hapus Departemen",
+    description: "Menghapus unit departemen beserta relasi hierarki di organisasi",
+    isCritical: true,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: false, scope: "None" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+    note: "Tindakan Kritis [CRITICAL]: Menghapus unit departemen dapat memengaruhi hierarki jabatan",
+  },
 ];
 
 // Data Pengguna untuk Tab Penugasan Role
@@ -820,7 +980,7 @@ const INITIAL_ASSIGNMENTS: UserRoleAssignment[] = [
     id: "EMP-003",
     name: "Dewi Lestari",
     email: "dewi.lestari@perusahaan.co.id",
-    department: "HRD",
+    department: "HR",
     role: "HRD",
     isActive: true,
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
@@ -836,8 +996,8 @@ const INITIAL_ASSIGNMENTS: UserRoleAssignment[] = [
   },
   {
     id: "EMP-005",
-    name: "Bambang Sutrisno",
-    email: "bambang.sutrisno@perusahaan.co.id",
+    name: "Eka Jacx",
+    email: "ceo.ekajacx@perusahaan.co.id",
     department: "Direksi",
     role: "CEO",
     isActive: true,
@@ -845,9 +1005,9 @@ const INITIAL_ASSIGNMENTS: UserRoleAssignment[] = [
   },
   {
     id: "EMP-006",
-    name: "Eka Jacx (Primary IT)",
+    name: "Rian Saputra (Primary IT)",
     email: "admin.it@perusahaan.co.id",
-    department: "IT & Security",
+    department: "Teknologi Informasi",
     role: "Admin IT",
     isActive: true,
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
@@ -1062,6 +1222,29 @@ export default function RbacPage() {
     setEditingAssignment(null);
   };
 
+  const isAuthorized = ["Admin IT", "CEO", "HRD"].includes(user?.role || "");
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Konfigurasi Matriks Hak Akses (RBAC) hanya dapat dikelola oleh akun dengan peran Direktur Utama, Kepala HR, atau Admin IT.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -1077,7 +1260,7 @@ export default function RbacPage() {
                   Pengaturan Hak Akses (Configurable RBAC)
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                  Matriks otorisasi dinamis 41 permission granular, deny-by-default, pembatasan scope, dan anti-lockout.
+                  Matriks otorisasi dinamis {permissions.length} permission granular, deny-by-default, pembatasan scope, dan anti-lockout.
                 </p>
               </div>
             </div>
@@ -1128,7 +1311,7 @@ export default function RbacPage() {
             }`}
           >
             <Sliders className="size-3.5" />
-            Matriks 41 Hak Akses
+            Matriks {permissions.length} Hak Akses
           </button>
 
           <button
@@ -1156,7 +1339,7 @@ export default function RbacPage() {
           </button>
         </div>
 
-        {/* TAB 1: MATRIKS 41 PERMISSIONS */}
+        {/* TAB 1: MATRIKS PERMISSIONS */}
         {activeTab === "matriks" && (
           <div className="space-y-4">
             {/* Filter Modul & Search Bar */}
@@ -1165,9 +1348,10 @@ export default function RbacPage() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">Modul:</span>
                   {[
-                    { code: "Semua", label: "Semua Fitur (41)" },
+                    { code: "Semua", label: `Semua Fitur (${permissions.length})` },
                     { code: "A", label: "Autentikasi" },
                     { code: "B", label: "Karyawan" },
+                    { code: "K", label: "Departemen" },
                     { code: "C", label: "Akun & RBAC" },
                     { code: "D", label: "Biometrik" },
                     { code: "E", label: "Absensi" },
@@ -1228,27 +1412,45 @@ export default function RbacPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs table-fixed min-w-[720px]">
+                <table className="w-full text-left text-xs table-fixed min-w-[860px]">
                   <colgroup>
                     <col className="w-[4%]" />
-                    <col className="w-[26%]" />
-                    <col className="w-[11.5%]" />
-                    <col className="w-[11.5%]" />
-                    <col className="w-[11.5%]" />
-                    <col className="w-[11.5%]" />
-                    <col className="w-[11.5%]" />
-                    <col className="w-[12.5%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[13%]" />
                   </colgroup>
-                  <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
+                  <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
                       <th className="px-3 py-3 text-center">No</th>
                       <th className="px-4 py-3">Nama Menu & Hak Akses</th>
-                      <th className="px-3 py-3 text-center">CEO</th>
-                      <th className="px-3 py-3 text-center">GM</th>
-                      <th className="px-3 py-3 text-center">HRD</th>
-                      <th className="px-3 py-3 text-center">Supervisor</th>
-                      <th className="px-3 py-3 text-center">Staff</th>
-                      <th className="px-3 py-3 text-center bg-brand-50/50 dark:bg-brand-950/20">Admin IT</th>
+                      <th className="px-2 py-3 text-center">
+                        <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Direktur Utama</div>
+                        <div className="text-[10px] text-gray-400 font-normal uppercase">CEO</div>
+                      </th>
+                      <th className="px-2 py-3 text-center">
+                        <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Manajer Umum</div>
+                        <div className="text-[10px] text-gray-400 font-normal uppercase">GM</div>
+                      </th>
+                      <th className="px-2 py-3 text-center">
+                        <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Kepala HR</div>
+                        <div className="text-[10px] text-gray-400 font-normal uppercase">HRD</div>
+                      </th>
+                      <th className="px-2 py-3 text-center">
+                        <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Kepala Dept</div>
+                        <div className="text-[10px] text-gray-400 font-normal uppercase">Supervisor</div>
+                      </th>
+                      <th className="px-2 py-3 text-center">
+                        <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Staf</div>
+                        <div className="text-[10px] text-gray-400 font-normal uppercase">Staff</div>
+                      </th>
+                      <th className="px-2 py-3 text-center bg-brand-50/50 dark:bg-brand-950/20">
+                        <div className="font-bold text-brand-700 dark:text-brand-300 text-xs leading-tight">Admin IT</div>
+                        <div className="text-[10px] text-brand-500/80 font-normal uppercase">Sistem</div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1407,9 +1609,13 @@ export default function RbacPage() {
                                   : "secondary"
                               }
                               size="sm"
+                              className="font-semibold"
                             >
-                              {emp.role}
+                              {ROLE_DISPLAY_CONFIG[emp.role]?.title || emp.role}
                             </Badge>
+                            <span className="block text-[10px] text-gray-400 font-mono mt-0.5">
+                              {emp.role}
+                            </span>
                           </td>
                           <td className="px-5 py-3.5">
                             <Badge variant="success" size="sm">
@@ -1498,9 +1704,9 @@ export default function RbacPage() {
                 </div>
                 <div className="text-gray-500 mt-1">{editingCell.permission.description}</div>
                 <div className="mt-3 flex items-center gap-2">
-                  <span className="text-gray-500 font-semibold">Target Role:</span>
+                  <span className="text-gray-500 font-semibold">Target Jabatan / Role:</span>
                   <Badge variant="info" size="sm">
-                    {editingCell.role}
+                    {ROLE_DISPLAY_CONFIG[editingCell.role]?.fullTitle || editingCell.role}
                   </Badge>
                   {editingCell.permission.isCritical && (
                     <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
@@ -1663,12 +1869,12 @@ export default function RbacPage() {
                   onChange={(e) => setNewRoleForUser(e.target.value as UserRole)}
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
-                  <option value="Staff">Staff</option>
-                  <option value="Supervisor">Supervisor</option>
-                  <option value="HRD">HRD</option>
-                  <option value="GM">GM</option>
-                  <option value="CEO">CEO</option>
-                  <option value="Admin IT">Admin IT</option>
+                  <option value="CEO">Direktur Utama (CEO)</option>
+                  <option value="GM">Manajer Umum (GM)</option>
+                  <option value="HRD">Kepala HR (HRD)</option>
+                  <option value="Supervisor">Kepala Departemen (Supervisor)</option>
+                  <option value="Staff">Staf (Staff)</option>
+                  <option value="Admin IT">Admin IT (Administrator)</option>
                 </select>
               </div>
 

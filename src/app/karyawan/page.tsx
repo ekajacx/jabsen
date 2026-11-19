@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +12,6 @@ import {
   UserPlus,
   Search,
   Building2,
-  Network,
-  ExternalLink,
   Edit2,
   Trash2,
   Power,
@@ -27,9 +24,12 @@ import {
   Briefcase,
   Save,
   Shield,
+  ShieldAlert,
   SlidersHorizontal,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
 import {
   useOrgData,
   FullEmployeeRecord,
@@ -38,6 +38,9 @@ import {
 } from "@/lib/org-data";
 
 export default function KaryawanPage() {
+  const { user } = useAuth();
+  const canManageEmployees = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
+
   const {
     departments,
     positions,
@@ -258,6 +261,29 @@ export default function KaryawanPage() {
   const resignCount = allEmployees.filter((e) => e.status === "Nonaktif").length;
   const tetapCount = allEmployees.filter((e) => e.employmentStatus === "Tetap").length;
 
+  const isAuthorized = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Direktori Karyawan hanya dapat diakses oleh akun Supervisor, General Manager, HRD, Direktur Utama, atau Admin IT.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout pageTitle="Data Karyawan">
       <div className="space-y-6">
@@ -279,33 +305,18 @@ export default function KaryawanPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/organisasi"
-              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
-            >
-              <Network className="size-3.5 text-emerald-500" />
-              <span>Bagan Struktur Organisasi</span>
-              <ExternalLink className="size-3 text-gray-400" />
-            </Link>
-
-            <Link
-              href="/departemen"
-              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
-            >
-              <Building2 className="size-3.5 text-blue-500" />
-              <span>Departemen</span>
-            </Link>
-
-            <Button
-              onClick={handleOpenAdd}
-              size="sm"
-              className="rounded-full px-4 text-xs font-semibold shadow-sm"
-            >
-              <UserPlus className="size-3.5 mr-1" />
-              Tambah Karyawan
-            </Button>
-          </div>
+          {canManageEmployees && (
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleOpenAdd}
+                size="sm"
+                className="rounded-full px-4 text-xs font-semibold shadow-sm"
+              >
+                <UserPlus className="size-3.5 mr-1" />
+                Tambah Karyawan
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* NOTIFIKASI TOAST */}
@@ -621,47 +632,50 @@ export default function KaryawanPage() {
                           )}
                         </td>
 
-                        {/* Aksi: Edit Pensil, Nonaktif Resign, Hapus Sampah */}
+                        {/* Aksi: Edit Pensil (atau Lihat Detail), Nonaktif Resign, Hapus Sampah */}
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {/* Tombol Edit Pensil */}
+                            {/* Tombol Edit Pensil / Lihat Detail */}
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(emp)}
                               className="size-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/50 dark:hover:text-brand-400 transition-colors border border-gray-200 dark:border-gray-700"
-                              title="Edit Lengkap Informasi Karyawan"
+                              title={canManageEmployees ? "Edit Lengkap Informasi Karyawan" : "Lihat Detail Karyawan"}
                             >
-                              <Edit2 className="size-3.5" />
+                              {canManageEmployees ? <Edit2 className="size-3.5" /> : <Eye className="size-3.5" />}
                             </button>
 
-                            {/* Tombol Nonaktifkan jika Resign */}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleResign(emp)}
-                              className={cn(
-                                "size-7 rounded-lg flex items-center justify-center transition-colors border",
-                                emp.status === "Aktif"
-                                  ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/40"
-                                  : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40"
-                              )}
-                              title={
-                                emp.status === "Aktif"
-                                  ? "Tandai Karyawan Telah Resign (Nonaktif)"
-                                  : "Aktifkan Kembali Karyawan"
-                              }
-                            >
-                              <Power className="size-3.5" />
-                            </button>
+                            {/* Tombol Nonaktifkan jika Resign & Hapus hanya untuk wewenang manajerial/HR/IT */}
+                            {canManageEmployees && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleResign(emp)}
+                                  className={cn(
+                                    "size-7 rounded-lg flex items-center justify-center transition-colors border",
+                                    emp.status === "Aktif"
+                                      ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/40"
+                                      : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40"
+                                  )}
+                                  title={
+                                    emp.status === "Aktif"
+                                      ? "Tandai Karyawan Telah Resign (Nonaktif)"
+                                      : "Aktifkan Kembali Karyawan"
+                                  }
+                                >
+                                  <Power className="size-3.5" />
+                                </button>
 
-                            {/* Tombol Hapus Sampah */}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteEmployee(emp)}
-                              className="size-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition-colors border border-gray-200 dark:border-gray-700"
-                              title="Hapus Karyawan"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteEmployee(emp)}
+                                  className="size-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition-colors border border-gray-200 dark:border-gray-700"
+                                  title="Hapus Karyawan"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -679,8 +693,12 @@ export default function KaryawanPage() {
         <Dialog
           open={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title={`Edit Informasi Lengkap Karyawan`}
-          description={`Ubah data profil lengkap ${editingEmp?.name || "karyawan"}, tanggal lahir, status kerja, dan status keaktifan.`}
+          title={canManageEmployees ? "Edit Informasi Lengkap Karyawan" : "Detail Informasi Karyawan"}
+          description={
+            canManageEmployees
+              ? `Ubah data profil lengkap ${editingEmp?.name || "karyawan"}, tanggal lahir, status kerja, dan status keaktifan.`
+              : `Rincian data identitas, kontak, dan penempatan kerja ${editingEmp?.name || "karyawan"}.`
+          }
           className="max-w-xl text-xs"
         >
           <form onSubmit={handleSaveEdit} className="space-y-4 pt-2 max-h-[78vh] overflow-y-auto px-0.5">
@@ -930,12 +948,14 @@ export default function KaryawanPage() {
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-xs"
               >
-                Batal
+                {canManageEmployees ? "Batal" : "Tutup"}
               </Button>
-              <Button type="submit" size="sm" className="text-xs font-semibold">
-                <Save className="size-3.5 mr-1" />
-                Simpan Perubahan Data
-              </Button>
+              {canManageEmployees && (
+                <Button type="submit" size="sm" className="text-xs font-semibold">
+                  <Save className="size-3.5 mr-1" />
+                  Simpan Perubahan Data
+                </Button>
+              )}
             </div>
           </form>
         </Dialog>

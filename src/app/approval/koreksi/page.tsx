@@ -21,6 +21,7 @@ import {
   ArrowRight,
   User,
   History,
+  ShieldAlert,
 } from "lucide-react";
 
 export interface CorrectionRequest {
@@ -222,6 +223,29 @@ export default function ApprovalKoreksiPage() {
       alert(`Permohonan koreksi ${selectedReq.id} telah ditolak.`);
     }, 600);
   };
+
+  const isAuthorized = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Modul Approval Koreksi Absensi hanya dapat diakses oleh level Atasan / Pimpinan Unit, Kepala HR, dan Manajemen.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout pageTitle="Persetujuan Koreksi Absensi">

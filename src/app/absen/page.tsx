@@ -133,7 +133,7 @@ export default function AbsenPage() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
 
   // State Lokasi & Geofence
-  const targetOffice = OFFICE_LOCATIONS[0]; // Kantor Pusat Jakarta
+  const targetOffice = OFFICE_LOCATIONS[0]; // Kantor Pusat Bali
   const [currentLat, setCurrentLat] = useState<number>(targetOffice.latitude + 0.00015); // ~17m default di kantor
   const [currentLng, setCurrentLng] = useState<number>(targetOffice.longitude + 0.0001);
   const [gpsAccuracy, setGpsAccuracy] = useState<number>(12); // meter

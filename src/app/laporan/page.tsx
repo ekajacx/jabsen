@@ -26,6 +26,7 @@ import {
   FileCheck2,
   CalendarDays,
   Check,
+  ShieldAlert,
 } from "lucide-react";
 
 interface AttendanceReportItem {
@@ -55,7 +56,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-001",
     name: "Budi Santoso",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "07:54:12",
     clockOut: "17:05:30",
@@ -73,7 +74,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-002",
     name: "Siti Rahmawati",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "07:48:02",
     clockOut: "17:15:00",
@@ -91,7 +92,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-003",
     name: "Dewi Lestari",
     department: "HRD & GA",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "08:24:19",
     clockOut: "17:30:10",
@@ -110,7 +111,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-005",
     name: "Rizky Pratama",
     department: "IT & Engineering",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Shift 1 Pagi (06:00 - 14:00)",
     clockIn: "05:50:33",
     clockOut: "14:10:45",
@@ -147,7 +148,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-001",
     name: "Budi Santoso",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "07:58:20",
     clockOut: "17:02:11",
@@ -165,7 +166,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-002",
     name: "Siti Rahmawati",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "07:50:11",
     clockOut: "17:12:00",
@@ -183,7 +184,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-003",
     name: "Dewi Lestari",
     department: "HRD & GA",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "07:55:40",
     clockOut: "17:00:25",
@@ -201,7 +202,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-007",
     name: "Dimas Anggara",
     department: "Finance & Accounting",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "08:18:05",
     clockOut: "17:45:00",
@@ -220,7 +221,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-001",
     name: "Budi Santoso",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "07:52:14",
     clockOut: "17:08:44",
@@ -238,7 +239,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-008",
     name: "Ratna Sari",
     department: "Marketing & Sales",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: null,
     clockOut: null,
@@ -275,7 +276,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-005",
     name: "Rizky Pratama",
     department: "IT & Engineering",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Shift 2 Siang (14:00 - 22:00)",
     clockIn: "13:50:00",
     clockOut: "22:15:30",
@@ -293,7 +294,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
     employeeId: "EMP-001",
     name: "Budi Santoso",
     department: "Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
+    officeLocation: "Kantor Pusat Bali",
     shift: "Reguler (08:00 - 17:00)",
     clockIn: "08:21:40",
     clockOut: "17:10:00",
@@ -533,6 +534,29 @@ export default function LaporanPage() {
     }
   };
 
+  const isAuthorized = ["HRD", "GM", "CEO", "Supervisor", "Admin IT"].includes(user?.role || "");
+
+  if (!isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Laporan Rekapitulasi & Ekspor Data hanya dapat diakses oleh Manajemen, Pimpinan Unit, dan HRD. Staf dapat melihat riwayat presensi pribadi pada menu Riwayat Absensi.
+            </p>
+          </div>
+          <Button onClick={() => (window.location.href = "/riwayat")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Buka Riwayat Absensi Saya
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -713,9 +737,7 @@ export default function LaporanPage() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
                   <option value="Semua">Semua Lokasi Kantor</option>
-                  <option value="Kantor Pusat Jakarta">Kantor Pusat Jakarta</option>
-                  <option value="Kantor Operasional Surabaya">Kantor Operasional Surabaya</option>
-                  <option value="Gudang Logistik Cakung">Gudang Logistik Cakung</option>
+                  <option value="Kantor Pusat Bali">Kantor Pusat Bali</option>
                 </select>
               </div>
 
