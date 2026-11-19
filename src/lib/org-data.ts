@@ -723,7 +723,7 @@ export function useOrgData() {
   };
 
   // Tambah Karyawan Lewat Halaman Hirarki (Mendukung Kepala & Staf, serta multiple karyawan per kotak)
-  const addEmployeeToDepartment = (params: AddEmployeeParams) => {
+  const addEmployeeToDepartment = (params: AddEmployeeParams): EmployeeHolder => {
     const currentPositions = getStoredPositions();
     const currentDepts = getStoredDepartments();
     const dept = currentDepts.find((d) => d.id === params.departmentId);
@@ -796,7 +796,7 @@ export function useOrgData() {
               : p
           );
           saveStoredPositions(updatedPositions);
-          return;
+          return newHolder;
         }
       }
 
@@ -818,6 +818,8 @@ export function useOrgData() {
       };
       saveStoredPositions([...currentPositions, newStaffPos]);
     }
+
+    return newHolder;
   };
 
   // Hapus Karyawan dari suatu Kotak Jabatan (jika lebih dari 1)

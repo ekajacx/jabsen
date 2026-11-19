@@ -25,6 +25,7 @@ import {
   Network,
   Building2,
   Users,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, UserRole } from "@/context/auth-context";
@@ -59,10 +60,16 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+// In-memory module cache to instantly retain sidebar state during SPA route changes
+let cachedSidebarScroll = 0;
+
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: SidebarProps) {
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [sistemOpen, setSistemOpen] = useState(true);
 
   const menuSections: MenuSection[] = [
     {
@@ -166,6 +173,12 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
   // Menu SISTEM terstruktur rapi dengan tema & warna seragam (brand theme)
   const sistemItems: MenuItem[] = [
     {
+      title: "Akun Pengguna",
+      href: "/pengaturan/users",
+      icon: KeyRound,
+      allowedRoles: ["Admin IT", "CEO", "HRD"],
+    },
+    {
       title: "Izin Akses",
       href: "/pengaturan/rbac",
       icon: Shield,
@@ -189,6 +202,86 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
   const visibleSistemItems = sistemItems.filter(
     (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
   );
+
+  // Cek apakah halaman yang sedang aktif berada di dalam grup SISTEM
+  const isSistemActive = visibleSistemItems.some((item) => pathname === item.href);
+
+  const [sistemOpen, setSistemOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("sidebar_sistem_open");
+        if (saved !== null) return saved === "true";
+      } catch {}
+    }
+    return true;
+  });
+
+  // Buka grup SISTEM secara otomatis jika menu aktif adalah salah satu submenu sistem
+  React.useEffect(() => {
+    if (isSistemActive) {
+      setSistemOpen(true);
+    }
+  }, [isSistemActive]);
+
+  const toggleSistem = () => {
+    setSistemOpen((prev) => {
+      const next = !prev;
+      try {
+        sessionStorage.setItem("sidebar_sistem_open", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Simpan posisi scroll sidebar secara realtime
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop;
+    cachedSidebarScroll = top;
+    try {
+      sessionStorage.setItem("sidebar_scroll_top", String(top));
+    } catch {}
+  };
+
+  // Simpan posisi scroll saat link menu diklik sebelum navigasi halaman
+  const handleMenuClick = () => {
+    if (scrollContainerRef.current) {
+      const top = scrollContainerRef.current.scrollTop;
+      cachedSidebarScroll = top;
+      try {
+        sessionStorage.setItem("sidebar_scroll_top", String(top));
+      } catch {}
+    }
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+  };
+
+  // Pulihkan posisi scroll secara instan sebelum browser paint (useIsomorphicLayoutEffect)
+  useIsomorphicLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const restore = () => {
+      const savedScroll = cachedSidebarScroll || Number(sessionStorage.getItem("sidebar_scroll_top") || 0);
+      if (savedScroll > 0) {
+        container.scrollTop = savedScroll;
+      }
+
+      // Pastikan item menu yang aktif berada dalam area pandang (viewport sidebar)
+      const activeEl = container.querySelector<HTMLElement>("[data-active='true']");
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+        if (activeRect.bottom > containerRect.bottom || activeRect.top < containerRect.top) {
+          activeEl.scrollIntoView({ block: "nearest", behavior: "auto" });
+        }
+      }
+    };
+
+    restore();
+    const rafId = requestAnimationFrame(restore);
+    return () => cancelAnimationFrame(rafId);
+  }, [pathname]);
 
   return (
     <>
@@ -218,7 +311,11 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
         >
           {/* Logo J-Absen */}
           {!collapsed && (
-            <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
+            <Link
+              href="/dashboard"
+              onClick={handleMenuClick}
+              className="flex items-center gap-3 overflow-hidden"
+            >
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-theme-xs shadow-brand-500/25">
                 <ShieldCheck className="size-6" />
               </div>
@@ -248,8 +345,12 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           </button>
         </div>
 
-        {/* Navigation Menus */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {/* Navigation Menus with Independent Scroll Restoration */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-3 py-4 space-y-5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 hover:[&::-webkit-scrollbar-thumb]:bg-gray-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-gray-600"
+        >
           {menuSections.map((section, idx) => {
             const visibleItems = section.items.filter(
               (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
@@ -272,6 +373,8 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={handleMenuClick}
+                      data-active={isActive ? "true" : undefined}
                       className={cn(
                         "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all select-none",
                         isActive
@@ -305,7 +408,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
               {/* Header SISTEM dengan icon size-5 & font text-sm setara menu lainnya */}
               <button
                 type="button"
-                onClick={() => setSistemOpen(!sistemOpen)}
+                onClick={toggleSistem}
                 className={cn(
                   "group flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all select-none text-gray-600 hover:bg-gray-100/70 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
                   collapsed && "justify-center px-2"
@@ -345,6 +448,8 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={handleMenuClick}
+                        data-active={isActive ? "true" : undefined}
                         className={cn(
                           "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all select-none",
                           isActive

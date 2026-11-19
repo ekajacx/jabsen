@@ -132,10 +132,44 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
       "Admin IT": { allowed: true, scope: "Own" },
     },
   },
+  {
+    id: 3,
+    categoryCode: "A",
+    categoryName: "Autentikasi & Akun Pribadi",
+    code: "auth.multi_device",
+    name: "Akses Multi-Device (Laptop / PC)",
+    description: "Izin masuk dari komputer/laptop kantor selain HP pribadi untuk mengelola data",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 4,
+    categoryCode: "A",
+    categoryName: "Autentikasi & Akun Pribadi",
+    code: "auth.reset_device",
+    name: "Reset Ikatan Perangkat HP (Device Binding)",
+    description: "Wewenang melepas ikatan HP karyawan untuk mendaftarkan ponsel baru resmi",
+    isCritical: true,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: false, scope: "None" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
 
   // B. Manajemen Karyawan (Employee)
   {
-    id: 3,
+    id: 5,
     categoryCode: "B",
     categoryName: "Manajemen Karyawan",
     code: "employee.view",
@@ -152,7 +186,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 4,
+    id: 6,
     categoryCode: "B",
     categoryName: "Manajemen Karyawan",
     code: "employee.create",
@@ -169,7 +203,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 5,
+    id: 7,
     categoryCode: "B",
     categoryName: "Manajemen Karyawan",
     code: "employee.update",
@@ -186,7 +220,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 6,
+    id: 8,
     categoryCode: "B",
     categoryName: "Manajemen Karyawan",
     code: "employee.deactivate",
@@ -204,7 +238,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Tindakan Kritis [CRITICAL] untuk Admin IT",
   },
   {
-    id: 7,
+    id: 9,
     categoryCode: "B",
     categoryName: "Manajemen Karyawan",
     code: "employee.assign_org",
@@ -223,7 +257,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // C. Akun Login & Hak Akses (RBAC)
   {
-    id: 8,
+    id: 10,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "account.create_activate",
@@ -240,7 +274,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 9,
+    id: 11,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "account.reset_credential",
@@ -257,7 +291,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 10,
+    id: 12,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "account.deactivate",
@@ -275,7 +309,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Dilindungi Aturan Anti-Lockout Admin IT (P-14)",
   },
   {
-    id: 11,
+    id: 13,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "rbac.manage_roles",
@@ -292,7 +326,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 12,
+    id: 14,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "rbac.assign_user_role",
@@ -309,7 +343,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 13,
+    id: 15,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "rbac.grant_admin_it_approval",
@@ -329,7 +363,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // D. Enrollment & Biometrik Wajah
   {
-    id: 14,
+    id: 16,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.register_self",
@@ -346,7 +380,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 15,
+    id: 17,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.view_status",
@@ -363,7 +397,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 16,
+    id: 18,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.review_approval",
@@ -381,7 +415,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-19",
   },
   {
-    id: 17,
+    id: 19,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.reset_template",
@@ -400,7 +434,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // E. Absensi & Verifikasi Kehadiran
   {
-    id: 18,
+    id: 20,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.check_in_out",
@@ -417,7 +451,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 19,
+    id: 21,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.view_own_history",
@@ -434,7 +468,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 20,
+    id: 22,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.monitoring",
@@ -451,7 +485,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 21,
+    id: 23,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.manual_correction",
@@ -470,7 +504,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // F. Jadwal Kerja, Shift & Geofence
   {
-    id: 22,
+    id: 24,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.view_own",
@@ -487,7 +521,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 23,
+    id: 25,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.view_team",
@@ -504,7 +538,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 24,
+    id: 26,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.assign",
@@ -521,7 +555,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 46,
+    id: 27,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.create",
@@ -539,7 +573,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Atasan departemen (Supervisor) membuat jadwal untuk staf bawahannya, GM membuat untuk Kepala Dept, HRD/CEO untuk seluruh organisasi",
   },
   {
-    id: 47,
+    id: 28,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.update",
@@ -556,7 +590,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 48,
+    id: 29,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.delete",
@@ -574,7 +608,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Tindakan Kritis [CRITICAL]: Menghapus jadwal kerja akan memengaruhi perhitungan keterlambatan dan absensi",
   },
   {
-    id: 25,
+    id: 30,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "config.work_rule_shift",
@@ -591,7 +625,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 26,
+    id: 31,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "config.office_geofence",
@@ -610,7 +644,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // G. Pengajuan & Approval Cuti
   {
-    id: 27,
+    id: 32,
     categoryCode: "G",
     categoryName: "Pengajuan & Approval Cuti",
     code: "leave.submit_own",
@@ -627,7 +661,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 28,
+    id: 33,
     categoryCode: "G",
     categoryName: "Pengajuan & Approval Cuti",
     code: "leave.approve_step1",
@@ -645,7 +679,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-13",
   },
   {
-    id: 29,
+    id: 34,
     categoryCode: "G",
     categoryName: "Pengajuan & Approval Cuti",
     code: "leave.manage_quota",
@@ -664,7 +698,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // H. Koreksi Absensi
   {
-    id: 30,
+    id: 35,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.submit_own",
@@ -681,7 +715,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 31,
+    id: 36,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.submit_behalf",
@@ -698,7 +732,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 32,
+    id: 37,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.approve_step1",
@@ -716,7 +750,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-13",
   },
   {
-    id: 33,
+    id: 38,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.approve_step2",
@@ -736,7 +770,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // I. Workflow & Exception Engine
   {
-    id: 34,
+    id: 39,
     categoryCode: "I",
     categoryName: "Workflow & Exception Engine",
     code: "workflow.configure",
@@ -753,7 +787,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 35,
+    id: 40,
     categoryCode: "I",
     categoryName: "Workflow & Exception Engine",
     code: "workflow.handle_exception",
@@ -772,7 +806,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
 
   // J. Dashboard, Laporan & Audit Log
   {
-    id: 36,
+    id: 41,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "dashboard.view_company",
@@ -789,7 +823,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 37,
+    id: 42,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "dashboard.view_department",
@@ -806,7 +840,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 38,
+    id: 43,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "report.view_attendance",
@@ -823,7 +857,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 39,
+    id: 44,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "report.export_excel",
@@ -840,7 +874,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 40,
+    id: 45,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "audit_log.view_all",
@@ -858,7 +892,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "CEO Memegang Hak Baca Pengawasan Independen atas Admin IT (P-15)",
   },
   {
-    id: 41,
+    id: 46,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "audit_log.export",
@@ -876,7 +910,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
   },
   // K. Manajemen Departemen & Struktur
   {
-    id: 42,
+    id: 47,
     categoryCode: "K",
     categoryName: "Manajemen Departemen",
     code: "department.view",
@@ -893,7 +927,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 43,
+    id: 48,
     categoryCode: "K",
     categoryName: "Manajemen Departemen",
     code: "department.create",
@@ -910,7 +944,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 44,
+    id: 49,
     categoryCode: "K",
     categoryName: "Manajemen Departemen",
     code: "department.update",
@@ -927,7 +961,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 45,
+    id: 50,
     categoryCode: "K",
     categoryName: "Manajemen Departemen",
     code: "department.delete",
@@ -1413,16 +1447,7 @@ export default function RbacPage() {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs table-fixed min-w-[860px]">
-                  <colgroup>
-                    <col className="w-[4%]" />
-                    <col className="w-[24%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[13%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[13%]" />
-                  </colgroup>
+                  <colgroup><col className="w-[4%]" /><col className="w-[24%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[11%]" /><col className="w-[13%]" /><col className="w-[11%]" /><col className="w-[13%]" /></colgroup>
                   <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
                       <th className="px-3 py-3 text-center">No</th>
@@ -1456,7 +1481,7 @@ export default function RbacPage() {
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {filteredPermissions.map((perm) => (
                       <tr
-                        key={perm.id}
+                        key={`rbac-perm-${perm.id}-${perm.code}`}
                         className="transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
                       >
                         {/* No */}

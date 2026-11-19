@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { getStoredUserAccounts, UserAccount } from "@/lib/user-account-data";
 
 export type UserRole = "Staff" | "Supervisor" | "HRD" | "GM" | "CEO" | "Admin IT";
 
@@ -440,10 +441,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile>(DEMO_PROFILES["Staff"]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
-  // Helper pencarian profil fleksibel
+  // Helper pencarian profil fleksibel (mendukung profil bawaan & akun karyawan baru)
   const findProfile = (identifier: string): UserProfile | undefined => {
     const clean = identifier.trim().toLowerCase();
-    return ALL_EMPLOYEE_PROFILES.find(
+    const staticMatch = ALL_EMPLOYEE_PROFILES.find(
       (p) =>
         p.id.toLowerCase() === clean ||
         p.nik.toLowerCase() === clean ||
@@ -457,6 +458,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (clean === "emp-005" && p.nik === "DIR-001") ||
         (clean === "emp-006" && p.nik === "ADM-001")
     );
+    if (staticMatch) return staticMatch;
+
+    // Cek juga pada daftar akun dinamis (LocalStorage)
+    try {
+      const storedAccounts = getStoredUserAccounts();
+      const dynamicMatch = storedAccounts.find(
+        (a) =>
+          a.employeeId.toLowerCase() === clean ||
+          a.username.toLowerCase() === clean ||
+          a.name.toLowerCase() === clean ||
+          a.id.toLowerCase() === clean
+      );
+      if (dynamicMatch) {
+        return {
+          id: dynamicMatch.employeeId,
+          nik: dynamicMatch.employeeId,
+          name: dynamicMatch.name,
+          username: dynamicMatch.username,
+          role: dynamicMatch.role,
+          department: dynamicMatch.departmentName,
+          departmentId: dynamicMatch.departmentId,
+          jobTitle: dynamicMatch.jobTitle,
+          avatar: dynamicMatch.avatar,
+          officeLocation: "Kantor Pusat Bali",
+          email: dynamicMatch.email,
+          phone: "+62 812-3456-7890",
+        };
+      }
+    } catch {}
+
+    return undefined;
   };
 
   useEffect(() => {
@@ -542,11 +574,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const mergedProfiles: UserProfile[] = useMemo(() => {
+    try {
+      const stored = getStoredUserAccounts();
+      const dynamicList: UserProfile[] = stored
+        .filter((acc) => !ALL_EMPLOYEE_PROFILES.some((p) => p.nik === acc.employeeId))
+        .map((acc) => ({
+          id: acc.employeeId,
+          nik: acc.employeeId,
+          name: acc.name,
+          username: acc.username,
+          role: acc.role,
+          department: acc.departmentName,
+          departmentId: acc.departmentId,
+          jobTitle: acc.jobTitle,
+          avatar: acc.avatar,
+          officeLocation: "Kantor Pusat Bali",
+          email: acc.email,
+          phone: "+62 812-3456-7890",
+        }));
+      return [...ALL_EMPLOYEE_PROFILES, ...dynamicList];
+    } catch {
+      return ALL_EMPLOYEE_PROFILES;
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
         user,
-        allProfiles: ALL_EMPLOYEE_PROFILES,
+        allProfiles: mergedProfiles,
         isAuthenticated,
         login,
         logout,

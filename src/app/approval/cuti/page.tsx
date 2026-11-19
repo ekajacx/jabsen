@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth, UserRole } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import {
   FileCheck2,
   CalendarDays,
@@ -26,7 +27,9 @@ import {
   ChevronRight,
   ShieldAlert,
   Sparkles,
+  Download,
 } from "lucide-react";
+import { exportLeaveRequestsToExcel } from "@/lib/excel-export";
 import {
   LeaveRequest,
   getStoredLeaveRequests,
@@ -35,6 +38,7 @@ import {
 
 export default function ApprovalCutiPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"inbox" | "my_leaves">("inbox");
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
@@ -93,26 +97,40 @@ export default function ApprovalCutiPage() {
     e.preventDefault();
 
     if (!newStartDate || !newEndDate) {
-      alert("Harap pilih tanggal mulai dan tanggal selesai cuti.");
+      showAlert({
+        title: "Pilihan Tanggal Belum Lengkap",
+        message: "Harap tentukan tanggal mulai dan tanggal selesai permohonan cuti Anda.",
+        type: "warning",
+      });
       return;
     }
 
     if (calculatedDays <= 0) {
-      alert("Tanggal selesai tidak boleh lebih awal dari tanggal mulai.");
+      showAlert({
+        title: "Rentang Tanggal Tidak Valid",
+        message: "Tanggal selesai cuti tidak boleh lebih awal dari tanggal mulai cuti.",
+        type: "warning",
+      });
       return;
     }
 
     if (!newReason.trim()) {
-      alert("Harap sertakan alasan pengajuan cuti.");
+      showAlert({
+        title: "Alasan Permohonan Wajib Diisi",
+        message: "Harap sertakan penjelasan keperluan cuti agar verifikator dapat meninjau permohonan Anda.",
+        type: "warning",
+      });
       return;
     }
 
     // Validasi Saldo Cuti (PRD Final P-10)
     const isAnnual = newLeaveType === "Cuti Tahunan";
     if (isAnnual && calculatedDays > annualLeaveBalance) {
-      alert(
-        `Pengajuan Ditolak Sistem (PRD P-10): Saldo cuti tahunan Anda tidak mencukupi!\n\nPermintaan: ${calculatedDays} hari\nSisa Saldo Anda: ${annualLeaveBalance} hari.\nPengajuan dengan saldo minus tidak diizinkan.`
-      );
+      showAlert({
+        title: "Saldo Cuti Tidak Mencukupi (PRD P-10)",
+        message: `Permintaan: ${calculatedDays} hari kerja.\nSisa Saldo Anda: ${annualLeaveBalance} hari.\nSistem menolak pengajuan dengan saldo negatif/minus.`,
+        type: "error",
+      });
       return;
     }
 
@@ -153,7 +171,11 @@ export default function ApprovalCutiPage() {
       setNewReason("");
       setNewAttachment("");
 
-      alert(`Pengajuan cuti berhasil dikirim! Menunggu persetujuan dari ${targetApprover}.`);
+      showAlert({
+        title: "Permohonan Cuti Terkirim",
+        message: `Pengajuan cuti (${newReq.durationDays} hari) berhasil diajukan ke antrean sistem dan menunggu persetujuan dari ${targetApprover}.`,
+        type: "success",
+      });
     }, 800);
   };
 
@@ -183,7 +205,12 @@ export default function ApprovalCutiPage() {
       setIsProcessingApproval(false);
       setShowReviewModal(false);
       setReviewNote("");
-      alert(`Permohonan cuti ${selectedRequest.id} telah diubah menjadi: ${decision}.`);
+
+      showAlert({
+        title: decision === "Disetujui" ? "Permohonan Cuti Disetujui" : decision === "Ditolak" ? "Permohonan Cuti Ditolak" : "Permohonan Cuti Dikembalikan",
+        message: `Permohonan cuti ${selectedRequest.id} atas nama ${selectedRequest.applicantName} telah diubah menjadi: ${decision}.`,
+        type: decision === "Disetujui" ? "success" : decision === "Ditolak" ? "error" : "warning",
+      });
     }, 600);
   };
 
@@ -236,7 +263,25 @@ export default function ApprovalCutiPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                exportLeaveRequestsToExcel(displayedRequests, {
+                  tabScope: activeTab === "my_leaves" ? "Pengajuan Saya" : "Inbox Persetujuan",
+                  statusFilter,
+                  departmentScope: user.role === "Staff" ? user.department : "Semua Departemen (Global)",
+                  currentUser: user ? { name: user.name, role: user.role } : undefined,
+                });
+              }}
+              className="bg-white/15 text-white hover:bg-white/25 font-bold border-white/25 text-xs gap-1.5 shadow-theme-xs backdrop-blur-md"
+            >
+              <Download className="size-4" />
+              Ekspor Cuti (.xlsx)
+            </Button>
+
             <Button
               type="button"
               variant="outline"
@@ -373,14 +418,7 @@ export default function ApprovalCutiPage() {
         {/* Tabel Data Cuti (Desktop View - Full Width & Fixed Columns) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup>
-              <col className="w-[18%]" /> {/* Karyawan */}
-              <col className="w-[15%]" /> {/* Tipe Cuti */}
-              <col className="w-[18%]" /> {/* Tanggal & Durasi */}
-              <col className="w-[23%]" /> {/* Alasan */}
-              <col className="w-[12%]" /> {/* Status */}
-              <col className="w-[14%]" /> {/* Aksi */}
-            </colgroup>
+            <colgroup><col className="w-[18%]" /><col className="w-[15%]" /><col className="w-[18%]" /><col className="w-[23%]" /><col className="w-[12%]" /><col className="w-[14%]" /></colgroup>
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-5 py-3.5">Karyawan</th>
@@ -704,7 +742,18 @@ export default function ApprovalCutiPage() {
                     <FileText className="size-4 text-blue-600" />
                     <span className="truncate">{selectedRequest.attachmentName}</span>
                   </div>
-                  <Button type="button" variant="outline" size="xs" onClick={() => alert("Membuka berkas: " + selectedRequest.attachmentName)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => {
+                      showAlert({
+                        title: "Lampiran Berkas",
+                        message: `Membuka berkas dokumen: ${selectedRequest.attachmentName}`,
+                        type: "info",
+                      });
+                    }}
+                  >
                     Unduh
                   </Button>
                 </div>

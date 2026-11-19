@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,38 +21,15 @@ import {
   ExternalLink,
   Compass,
   ShieldAlert,
+  KeyRound,
 } from "lucide-react";
 
-// Initial Data Profil Perusahaan untuk Kop Surat
-interface CompanyProfile {
-  name: string;
-  legalEntity: string;
-  tagline: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  phone: string;
-  whatsapp: string;
-  email: string;
-  website: string;
-  npwp: string;
-  nib: string;
-}
-
-const DEFAULT_COMPANY: CompanyProfile = {
-  name: "PT ANTIGRAVITY INOVASI DIGITAL",
-  legalEntity: "Perseroan Terbatas (PT)",
-  tagline: "Enterprise Biometric Attendance & Workforce Management Solution",
-  address: "Jl. Sunset Road No. 88, Kuta, Badung",
-  city: "Denpasar / Badung, Bali",
-  postalCode: "80361",
-  phone: "(0361) 849-8800",
-  whatsapp: "+62 812-9988-7766",
-  email: "corporate@antigravity.co.id",
-  website: "https://www.antigravity.co.id",
-  npwp: "01.234.567.8-012.000",
-  nib: "9120009876543",
-};
+import {
+  CompanyProfile,
+  getCompanyProfile,
+  saveCompanyProfile,
+  DEFAULT_COMPANY,
+} from "@/lib/company-profile";
 
 function PengaturanContent() {
   const { user } = useAuth();
@@ -83,12 +61,13 @@ function PengaturanContent() {
   // ==========================================
   // TAB 1: STATE DATA PERUSAHAAN & KOP SURAT
   // ==========================================
-  const [company, setCompany] = useState<CompanyProfile>(DEFAULT_COMPANY);
+  const [company, setCompany] = useState<CompanyProfile>(getCompanyProfile);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
   const handleSaveCompany = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingCompany(true);
+    saveCompanyProfile(company);
     setTimeout(() => {
       setIsSavingCompany(false);
       showToast("success", "Data identitas perusahaan & kop surat resmi berhasil disimpan.");
@@ -238,6 +217,14 @@ function PengaturanContent() {
             <MapPin className="size-3.5" />
             Koordinat & Peta Geofence
           </button>
+
+          <Link
+            href="/pengaturan/users"
+            className="flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-gray-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 transition-all sm:ml-auto"
+          >
+            <KeyRound className="size-3.5 text-amber-600 dark:text-amber-400" />
+            Manajemen Akun Pengguna &amp; Device &rarr;
+          </Link>
         </div>
 
         {/* ======================================================== */}

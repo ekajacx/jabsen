@@ -27,18 +27,32 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Eye,
+  Copy,
+  Check,
+  KeyRound,
+  Smartphone,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
+import { exportEmployeesToExcel } from "@/lib/excel-export";
 import {
   useOrgData,
   FullEmployeeRecord,
   Department,
   AddEmployeeParams,
 } from "@/lib/org-data";
+import {
+  createNewUserAccount,
+  generateWhatsAppAccountTemplate,
+  UserAccount,
+} from "@/lib/user-account-data";
 
 export default function KaryawanPage() {
   const { user } = useAuth();
+  const { showAlert, showConfirm } = useModal();
   const canManageEmployees = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
   const {
@@ -99,6 +113,14 @@ export default function KaryawanPage() {
   const [addTanggalMulai, setAddTanggalMulai] = useState("");
   const [addTanggalBerhenti, setAddTanggalBerhenti] = useState("");
 
+  // Modal Informasi Kredensial Akun Karyawan Baru (Password Acak Sementara)
+  const [createdAccountModal, setCreatedAccountModal] = useState<{
+    account: UserAccount;
+    tempPass: string;
+  } | null>(null);
+  const [hasCopiedWa, setHasCopiedWa] = useState(false);
+  const [hasCopiedPass, setHasCopiedPass] = useState(false);
+
   // Buka Modal Edit Karyawan (Klik Icon Pensil)
   const handleOpenEdit = (emp: FullEmployeeRecord) => {
     setEditingEmp(emp);
@@ -151,21 +173,35 @@ export default function KaryawanPage() {
   const handleToggleResign = (emp: FullEmployeeRecord) => {
     const isNowResign = emp.status === "Aktif";
     const actionText = isNowResign ? "menonaktifkan (karyawan resign)" : "mengaktifkan kembali";
-    if (confirm(`Apakah Anda yakin ingin ${actionText} karyawan '${emp.name}' (${emp.jobTitle})?`)) {
-      toggleEmployeeResignStatus(emp.positionId, emp.holderIndex);
-      showToast(
-        "success",
-        `Status '${emp.name}' berhasil diubah menjadi: ${isNowResign ? "🔴 Nonaktif (Resign)" : "🟢 Aktif"}.`
-      );
-    }
+    showConfirm({
+      title: isNowResign ? "Nonaktifkan Karyawan" : "Aktifkan Karyawan",
+      message: `Apakah Anda yakin ingin ${actionText} karyawan '${emp.name}' (${emp.jobTitle})?`,
+      type: isNowResign ? "warning" : "info",
+      confirmText: isNowResign ? "Ya, Nonaktifkan" : "Ya, Aktifkan",
+      cancelText: "Batal",
+      onConfirm: () => {
+        toggleEmployeeResignStatus(emp.positionId, emp.holderIndex);
+        showToast(
+          "success",
+          `Status '${emp.name}' berhasil diubah menjadi: ${isNowResign ? "🔴 Nonaktif (Resign)" : "🟢 Aktif"}.`
+        );
+      },
+    });
   };
 
   // Hapus Karyawan (Icon Sampah)
   const handleDeleteEmployee = (emp: FullEmployeeRecord) => {
-    if (confirm(`Apakah Anda yakin ingin MENGHAPUS karyawan '${emp.name}' (${emp.jobTitle}) dari sistem dan struktur organisasi?`)) {
-      deleteEmployeeFromDirectory(emp.positionId, emp.holderIndex);
-      showToast("success", `Karyawan '${emp.name}' berhasil dihapus.`);
-    }
+    showConfirm({
+      title: "Hapus Karyawan",
+      message: `Apakah Anda yakin ingin MENGHAPUS karyawan '${emp.name}' (${emp.jobTitle}) dari sistem dan struktur organisasi?`,
+      type: "danger",
+      confirmText: "Ya, Hapus Karyawan",
+      cancelText: "Batal",
+      onConfirm: () => {
+        deleteEmployeeFromDirectory(emp.positionId, emp.holderIndex);
+        showToast("success", `Karyawan '${emp.name}' berhasil dihapus.`);
+      },
+    });
   };
 
   // Buka Modal Tambah Karyawan Baru
@@ -186,15 +222,19 @@ export default function KaryawanPage() {
     setIsAddModalOpen(true);
   };
 
-  // Simpan Tambah Karyawan Baru
+  // Simpan Tambah Karyawan Baru & Otomatis Buat Akun Pengguna
   const handleSaveAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!addName.trim() || !addKtp.trim()) {
-      alert("Silakan lengkapi Nama Lengkap dan Nomor KTP.");
+      showAlert({
+        title: "Data Belum Lengkap",
+        message: "Silakan lengkapi Nama Lengkap dan Nomor KTP karyawan.",
+        type: "warning",
+      });
       return;
     }
 
-    addEmployeeToDepartment({
+    const createdHolder = addEmployeeToDepartment({
       departmentId: addDeptId,
       level: addLevel,
       customTitle: addJobTitle.trim() || undefined,
@@ -210,8 +250,34 @@ export default function KaryawanPage() {
       tanggalBerhenti: addEmploymentStatus !== "Tetap" ? addTanggalBerhenti : undefined,
     });
 
-    showToast("success", `Karyawan baru '${addName}' berhasil ditambahkan ke direktori dan struktur organisasi!`);
+    const selectedDept = departments.find((d) => d.id === addDeptId);
+    const cleanShortName = selectedDept ? selectedDept.name.replace("Departemen ", "") : "";
+    const computedJobTitle =
+      addJobTitle.trim() ||
+      (addLevel === "Kepala" ? `Kepala ${cleanShortName}` : `Staf ${cleanShortName}`);
+
+    // Otomatis Buat Akun Login dengan Password Acak Sementara 8 Karakter (Huruf Besar & Kecil)
+    const { account, temporaryPassword } = createNewUserAccount({
+      employeeId: createdHolder.nik,
+      name: createdHolder.name,
+      email: createdHolder.email,
+      role: addLevel === "Kepala" ? "Supervisor" : "Staff",
+      departmentId: addDeptId,
+      departmentName: selectedDept?.name || "Departemen",
+      jobTitle: computedJobTitle,
+      avatar: createdHolder.avatar,
+    });
+
+    showToast(
+      "success",
+      `Karyawan baru '${addName}' dan Akun Login (${createdHolder.nik}) berhasil dibuat!`
+    );
     setIsAddModalOpen(false);
+
+    // Tampilkan Modal Berisi Kredensial & Password Sementara
+    setCreatedAccountModal({ account, tempPass: temporaryPassword });
+    setHasCopiedWa(false);
+    setHasCopiedPass(false);
   };
 
   // Filter Data Karyawan
@@ -305,8 +371,27 @@ export default function KaryawanPage() {
             </div>
           </div>
 
-          {canManageEmployees && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                exportEmployeesToExcel(filteredEmployees, {
+                  departmentScope: deptFilter !== "Semua" ? deptFilter : "Semua Departemen (Global)",
+                  statusFilter,
+                  roleFilter: "Semua",
+                  searchQuery,
+                  currentUser: user ? { name: user.name, role: user.role } : undefined,
+                });
+              }}
+              className="rounded-full px-4 text-xs font-semibold shadow-sm gap-1.5"
+            >
+              <Download className="size-3.5" />
+              Ekspor Excel (.xlsx)
+            </Button>
+
+            {canManageEmployees && (
               <Button
                 onClick={handleOpenAdd}
                 size="sm"
@@ -315,8 +400,8 @@ export default function KaryawanPage() {
                 <UserPlus className="size-3.5 mr-1" />
                 Tambah Karyawan
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* NOTIFIKASI TOAST */}
@@ -1190,6 +1275,132 @@ export default function KaryawanPage() {
             </div>
           </form>
         </Dialog>
+
+        {/* ======================================================== */}
+        {/* MODAL KREDENSIAL AKUN KARYAWAN BARU (KATA SANDI SEMENTARA) */}
+        {/* ======================================================== */}
+        {createdAccountModal && (
+          <Dialog
+            open={Boolean(createdAccountModal)}
+            onClose={() => setCreatedAccountModal(null)}
+            title="Akun Karyawan Berhasil Dibuat"
+            description="Berikan informasi kredensial login berikut kepada karyawan baru untuk aktivasi pertama kali."
+            className="max-w-md text-xs"
+          >
+            <div className="space-y-4 pt-1">
+              {/* Profil Karyawan Ringkas */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200 dark:bg-gray-800/60 dark:border-gray-700">
+                <div className="flex size-11 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400 shrink-0 font-bold text-sm">
+                  {createdAccountModal.account.name.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                    {createdAccountModal.account.name}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    NIK: <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">{createdAccountModal.account.employeeId}</span> &bull; {createdAccountModal.account.jobTitle}
+                  </p>
+                  <p className="text-[11px] text-brand-600 dark:text-brand-400 font-medium">
+                    {createdAccountModal.account.departmentName}
+                  </p>
+                </div>
+              </div>
+
+              {/* Box KATA SANDI SEMENTARA (8 Karakter Huruf Besar-Kecil) */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 dark:border-amber-900/50 dark:bg-amber-950/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-semibold text-xs">
+                    <KeyRound className="size-4" />
+                    <span>Kata Sandi Sementara (8 Karakter):</span>
+                  </div>
+                  <Badge variant="warning" size="sm" className="text-[10px]">
+                    Wajib Ganti
+                  </Badge>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 border border-amber-200 shadow-xs dark:bg-gray-900 dark:border-amber-900/60">
+                  <span className="font-mono text-xl font-bold tracking-widest text-amber-900 dark:text-amber-200">
+                    {createdAccountModal.tempPass}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdAccountModal.tempPass);
+                      setHasCopiedPass(true);
+                      setTimeout(() => setHasCopiedPass(false), 2000);
+                    }}
+                    className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-950 transition-colors"
+                  >
+                    {hasCopiedPass ? (
+                      <>
+                        <Check className="size-3.5 text-emerald-600" />
+                        <span className="text-emerald-700">Tersalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-3.5" />
+                        <span>Salin Sandi</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Ketentuan Keamanan & Device Binding */}
+                <div className="mt-3 space-y-1.5 text-[11px] text-amber-900/80 dark:text-amber-300/80 leading-relaxed border-t border-amber-200/60 pt-2.5 dark:border-amber-900/40">
+                  <p className="flex items-start gap-1.5">
+                    <span className="font-bold shrink-0">1.</span>
+                    <span>Karyawan <strong>wajib mengganti kata sandi</strong> saat pertama kali masuk melalui layar login.</span>
+                  </p>
+                  <p className="flex items-start gap-1.5">
+                    <span className="font-bold shrink-0">2.</span>
+                    <span>Sistem akan secara otomatis <strong>mengikat HP pribadi</strong> karyawan saat login pertama untuk absensi wajah (anti-titip absen).</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Tombol Aksi Salin Pesan WA & Tutup */}
+              <div className="space-y-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const waText = generateWhatsAppAccountTemplate({
+                      name: createdAccountModal.account.name,
+                      nik: createdAccountModal.account.employeeId,
+                      jobTitle: createdAccountModal.account.jobTitle,
+                      departmentName: createdAccountModal.account.departmentName,
+                      temporaryPassword: createdAccountModal.tempPass,
+                    });
+                    navigator.clipboard.writeText(waText);
+                    setHasCopiedWa(true);
+                    setTimeout(() => setHasCopiedWa(false), 2500);
+                  }}
+                  className="w-full text-xs font-semibold border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40 py-2.5 h-auto justify-center"
+                >
+                  {hasCopiedWa ? (
+                    <>
+                      <Check className="size-4 text-emerald-600 mr-1.5" />
+                      Pesan WhatsApp Berhasil Disalin!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-4 mr-1.5" />
+                      Salin Info Akun (Template WhatsApp Siap Kirim)
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() => setCreatedAccountModal(null)}
+                  className="w-full text-xs font-semibold py-2.5 h-auto justify-center"
+                >
+                  Selesai &amp; Tutup
+                </Button>
+              </div>
+            </div>
+          </Dialog>
+        )}
       </div>
     </AppLayout>
   );

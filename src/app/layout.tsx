@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
+import { ModalProvider } from "@/context/modal-context";
 
 export const metadata: Metadata = {
   title: "J-Absen | Sistem Absensi Karyawan Berbasis Wajah & Geofence",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="min-h-screen font-sans bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ModalProvider>{children}</ModalProvider>
+        </AuthProvider>
       </body>
     </html>
   );

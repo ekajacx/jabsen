@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth, UserRole } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import {
   FileEdit,
   Clock,
@@ -22,7 +23,9 @@ import {
   User,
   History,
   ShieldAlert,
+  Download,
 } from "lucide-react";
+import { exportCorrectionsToExcel } from "@/lib/excel-export";
 
 export interface CorrectionRequest {
   id: string;
@@ -119,6 +122,7 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
 
 export default function ApprovalKoreksiPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const [corrections, setCorrections] = useState<CorrectionRequest[]>(INITIAL_CORRECTIONS);
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
@@ -201,7 +205,11 @@ export default function ApprovalKoreksiPage() {
       setIsProcessing(false);
       setShowReviewModal(false);
       setReviewNote("");
-      alert(`Permohonan koreksi ${selectedReq.id} telah disetujui!`);
+      showAlert({
+        title: "Koreksi Disetujui",
+        message: `Permohonan koreksi ${selectedReq.id} telah berhasil disetujui.`,
+        type: "success",
+      });
     }, 600);
   };
 
@@ -220,7 +228,11 @@ export default function ApprovalKoreksiPage() {
       setIsProcessing(false);
       setShowReviewModal(false);
       setReviewNote("");
-      alert(`Permohonan koreksi ${selectedReq.id} telah ditolak.`);
+      showAlert({
+        title: "Koreksi Ditolak",
+        message: `Permohonan koreksi ${selectedReq.id} telah ditolak.`,
+        type: "error",
+      });
     }, 600);
   };
 
@@ -261,6 +273,24 @@ export default function ApprovalKoreksiPage() {
               Sesuai PRD P-3: Tahap 1 Verifikasi Atasan (SPV) ➔ Tahap 2 Validasi & Eksekusi Data (HRD).
             </p>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                exportCorrectionsToExcel(filtered, {
+                  statusFilter,
+                  currentUser: user ? { name: user.name, role: user.role } : undefined,
+                });
+              }}
+              className="bg-white/15 text-white hover:bg-white/25 font-bold border-white/25 text-xs gap-1.5 shadow-theme-xs backdrop-blur-md"
+            >
+              <Download className="size-4" />
+              Ekspor Koreksi (.xlsx)
+            </Button>
+          </div>
         </div>
 
         {/* Filter Bar */}
@@ -299,14 +329,7 @@ export default function ApprovalKoreksiPage() {
         {/* Tabel Data Koreksi (Desktop View - Full Width & Fixed) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup>
-              <col className="w-[18%]" /> {/* Karyawan */}
-              <col className="w-[16%]" /> {/* Tanggal */}
-              <col className="w-[18%]" /> {/* Jam Awal vs Usulan */}
-              <col className="w-[22%]" /> {/* Alasan */}
-              <col className="w-[14%]" /> {/* Status & Tahap */}
-              <col className="w-[12%]" /> {/* Aksi */}
-            </colgroup>
+            <colgroup><col className="w-[18%]" /><col className="w-[16%]" /><col className="w-[18%]" /><col className="w-[22%]" /><col className="w-[14%]" /><col className="w-[12%]" /></colgroup>
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-5 py-3.5">Karyawan</th>

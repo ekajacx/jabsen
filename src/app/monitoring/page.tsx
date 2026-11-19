@@ -24,7 +24,9 @@ import {
   Sparkles,
   ShieldCheck,
   ShieldAlert,
+  Download,
 } from "lucide-react";
+import { exportRealtimeMonitoringToExcel } from "@/lib/excel-export";
 
 export interface TeamMemberStatus {
   id: string;
@@ -217,9 +219,27 @@ export default function MonitoringPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="flex size-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-xs font-semibold text-brand-100">Live Update 18 Nov 2026</span>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                exportRealtimeMonitoringToExcel(filtered, {
+                  departmentScope: deptFilter !== "Semua" ? deptFilter : "Semua Departemen (Global)",
+                  statusFilter,
+                  currentUser: user ? { name: user.name, role: user.role } : undefined,
+                });
+              }}
+              className="bg-white/15 text-white hover:bg-white/25 font-bold border-white/25 text-xs gap-1.5 shadow-theme-xs backdrop-blur-md"
+            >
+              <Download className="size-4" />
+              Ekspor Monitoring (.xlsx)
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="flex size-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-xs font-semibold text-brand-100">Live Update 18 Nov 2026</span>
+            </div>
           </div>
         </div>
 
@@ -322,14 +342,7 @@ export default function MonitoringPage() {
         {/* Tabel Live Monitoring (Desktop View - Full Width & Fixed) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup>
-              <col className="w-[24%]" /> {/* Karyawan */}
-              <col className="w-[18%]" /> {/* Departemen & Shift */}
-              <col className="w-[14%]" /> {/* Jam Masuk Aktual */}
-              <col className="w-[18%]" /> {/* Lokasi & Radius */}
-              <col className="w-[14%]" /> {/* Status */}
-              <col className="w-[12%]" /> {/* Aksi */}
-            </colgroup>
+            <colgroup><col className="w-[24%]" /><col className="w-[18%]" /><col className="w-[14%]" /><col className="w-[18%]" /><col className="w-[14%]" /><col className="w-[12%]" /></colgroup>
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-5 py-3.5">Anggota Tim</th>

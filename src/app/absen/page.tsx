@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import { OFFICE_LOCATIONS, checkGeofence } from "@/lib/geo";
 import { initFaceLandmarker, analyzeMovementFromLandmarks, DetectedMovement } from "@/lib/mediapipe";
 import {
@@ -30,7 +33,10 @@ import {
   Smile,
   Timer,
   RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
+import { getCurrentDevice, getStoredUserAccounts, SimulatedDeviceConfig, UserAccount } from "@/lib/user-account-data";
 
 type AttendanceType = "masuk" | "pulang";
 
@@ -104,6 +110,7 @@ interface AttendanceRecord {
 
 export default function AbsenPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -148,9 +155,29 @@ export default function AbsenPage() {
   // Hitung status Geofence
   const geofence = checkGeofence(currentLat, currentLng, targetOffice);
 
+  // Status Perangkat Aktif & Akun Pengguna
+  const [currentDev, setCurrentDev] = useState<SimulatedDeviceConfig>(getCurrentDevice());
+  const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
+
   // Deteksi Perangkat (Desktop vs Smartphone)
   useEffect(() => {
+    const dev = getCurrentDevice();
+    setCurrentDev(dev);
+    const accounts = getStoredUserAccounts();
+    const acc = accounts.find(
+      (a) =>
+        a.employeeId.toLowerCase() === user.nik?.toLowerCase() ||
+        a.username.toLowerCase() === user.username?.toLowerCase()
+    );
+    setUserAccount(acc || null);
+
     const detectDevice = () => {
+      const activeDev = getCurrentDevice();
+      setCurrentDev(activeDev);
+      if (!activeDev.isMobile) {
+        setIsMobileDevice(false);
+        return;
+      }
       const ua = navigator.userAgent.toLowerCase();
       const isMobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
       const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -160,8 +187,22 @@ export default function AbsenPage() {
 
     detectDevice();
     window.addEventListener("resize", detectDevice);
-    return () => window.removeEventListener("resize", detectDevice);
-  }, []);
+    window.addEventListener("device-switch", detectDevice);
+    window.addEventListener("storage", detectDevice);
+    return () => {
+      window.removeEventListener("resize", detectDevice);
+      window.removeEventListener("device-switch", detectDevice);
+      window.removeEventListener("storage", detectDevice);
+    };
+  }, [user]);
+
+  // Cek apakah perangkat HP saat ini tidak cocok dengan HP yang terikat
+  const isDeviceMismatch = Boolean(
+    isMobileDevice &&
+    userAccount &&
+    userAccount.boundDeviceId &&
+    userAccount.boundDeviceId !== currentDev.deviceId
+  );
 
   // Inisialisasi 4 Tantangan Acak saat pertama kali
   useEffect(() => {
@@ -339,7 +380,11 @@ export default function AbsenPage() {
   const fetchRealGpsLocation = () => {
     setIsLocationLoading(true);
     if (!navigator.geolocation) {
-      alert("Browser Anda tidak mendukung Geolocation.");
+      showAlert({
+        title: "Perangkat Tidak Mendukung",
+        message: "Browser Anda tidak mendukung Geolocation.",
+        type: "error",
+      });
       setIsLocationLoading(false);
       return;
     }
@@ -354,7 +399,11 @@ export default function AbsenPage() {
       },
       (err) => {
         console.warn("Gagal membaca GPS asli:", err);
-        alert("Tidak dapat mengambil GPS: " + err.message + ". Menggunakan koordinat simulasi.");
+        showAlert({
+          title: "Gagal Mengakses GPS",
+          message: "Tidak dapat mengambil sinyal GPS: " + err.message + ". Menggunakan koordinat kantor simulasi.",
+          type: "warning",
+        });
         setIsLocationLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -395,12 +444,20 @@ export default function AbsenPage() {
   // Eksekusi Simpan Presensi
   const handleSubmitAttendance = () => {
     if (!geofence.isWithinRadius) {
-      alert("Gagal Absen: Anda berada di luar radius kantor (" + geofence.distanceMeters + "m). Toleransi maks: " + targetOffice.radiusMeters + "m.");
+      showAlert({
+        title: "Di Luar Radius Kantor",
+        message: "Gagal Absen: Anda berada di luar radius kantor (" + geofence.distanceMeters + "m). Toleransi maks: " + targetOffice.radiusMeters + "m.",
+        type: "error",
+      });
       return;
     }
 
     if (livenessStatus !== "passed") {
-      alert("Gagal Absen: Wajib menyelesaikan seluruh 4 gerakan verifikasi wajah.");
+      showAlert({
+        title: "Verifikasi Gerakan Wajib",
+        message: "Gagal Absen: Wajib menyelesaikan seluruh 4 gerakan verifikasi wajah sebelum mengirim presensi.",
+        type: "warning",
+      });
       return;
     }
 
@@ -489,10 +546,10 @@ export default function AbsenPage() {
                 <Smartphone className="size-8 animate-bounce" />
               </div>
               <h2 className="text-xl font-bold sm:text-2xl">
-                Absen Wajah Khusus Perangkat Smartphone
+                Presensi Wajah Khusus HP Pribadi
               </h2>
-              <p className="mt-2 text-xs text-brand-100 sm:text-sm max-w-md mx-auto">
-                Sesuai PRD, verifikasi biometrik 4 gerakan acak dan geofencing GNSS wajib dilakukan melalui smartphone karyawan.
+              <p className="mt-2 text-xs text-brand-100 sm:text-sm max-w-lg mx-auto leading-relaxed">
+                Presensi kehadiran wajah hanya dapat dilakukan melalui HP pribadi terdaftar Anda demi keabsahan biometrik &amp; GPS. Gunakan Laptop/PC khusus untuk administrasi manajemen.
               </p>
             </div>
 
@@ -547,6 +604,58 @@ export default function AbsenPage() {
             </CardContent>
           </Card>
         </div>
+      ) : isDeviceMismatch ? (
+        /* ========================================================================= */
+        /* 2. LAYAR BLOKIR PERANGKAT TIDAK COCOK (ANTI TITIP ABSEN)                 */
+        /* ========================================================================= */
+        <div className="mx-auto max-w-xl py-8">
+          <Card className="border-red-200 shadow-theme-lg dark:border-red-900/60 overflow-hidden">
+            <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 p-6 text-white text-center">
+              <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-theme-md">
+                <ShieldAlert className="size-9 animate-pulse" />
+              </div>
+              <h2 className="text-xl font-bold sm:text-2xl">
+                Akses Presensi Wajah Ditolak
+              </h2>
+              <p className="mt-2 text-xs text-red-100 sm:text-sm max-w-md mx-auto">
+                Terdeteksi ketidakcocokan perangkat HP (Kebijakan Anti-Titip Absen)
+              </p>
+            </div>
+
+            <CardContent className="p-6 space-y-4">
+              <div className="rounded-xl border border-red-200 bg-red-50/70 p-4 text-xs text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 leading-relaxed space-y-2">
+                <p>
+                  Akun Anda (<strong>{user.name}</strong> - <code>{user.nik}</code>) telah terikat eksklusif pada perangkat:
+                </p>
+                <div className="rounded-lg bg-white p-2.5 border border-red-200 font-mono text-xs font-bold text-gray-800 dark:bg-gray-900 dark:border-red-900/60 dark:text-gray-200 flex items-center gap-2">
+                  <Smartphone className="size-4 text-emerald-600" />
+                  <span>{userAccount?.boundDeviceName || "HP Terdaftar Resmi"}</span>
+                </div>
+                <p>
+                  Perangkat yang Anda gunakan saat ini terdeteksi sebagai:
+                </p>
+                <div className="rounded-lg bg-red-100/70 p-2.5 border border-red-300 font-mono text-xs font-bold text-red-800 dark:bg-red-950/80 dark:border-red-800 dark:text-red-300 flex items-center gap-2">
+                  <ShieldAlert className="size-4 text-red-600" />
+                  <span>{currentDev.deviceName}</span>
+                </div>
+                <p className="text-[11px] text-gray-600 dark:text-gray-400 pt-1">
+                  Demi validitas presensi, sistem melarang 1 HP digunakan untuk bergantian akun. Silakan gunakan HP pribadi terdaftar Anda atau hubungi <strong>Admin IT / HRD</strong> untuk mengajukan reset ikatan perangkat jika Anda telah mengganti HP.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  className="w-full justify-center"
+                  onClick={() => (window.location.href = "/dashboard")}
+                >
+                  Kembali ke Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         /* ========================================================================= */
         /* 2. ANTARMUKA ABSENSI SMARTPHONE (RESPONSIF & 4 GERAKAN ACAK)             */
@@ -568,6 +677,19 @@ export default function AbsenPage() {
               </button>
             </div>
           )}
+
+          {/* Badge Status Verifikasi Perangkat HP Pribadi */}
+          <div className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
+            <div className="flex items-center gap-2 truncate">
+              <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">
+                Perangkat Terverifikasi: <strong>{userAccount?.boundDeviceName || currentDev.deviceName}</strong>
+              </span>
+            </div>
+            <Badge variant="success" size="sm" className="text-[10px] shrink-0">
+              Valid HP Pribadi
+            </Badge>
+          </div>
 
           {/* Selector Jenis Presensi: Masuk vs Pulang */}
           <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1.5 dark:bg-gray-800">

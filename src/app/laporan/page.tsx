@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import * as XLSX from "xlsx";
+import { exportAttendanceReportToExcel } from "@/lib/excel-export";
 import {
   FileSpreadsheet,
   Download,
@@ -311,6 +313,7 @@ const REPORT_DATA: AttendanceReportItem[] = [
 
 export default function LaporanPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
 
   // State Filter Periode
   const [periodPreset, setPeriodPreset] = useState<string>("bulan-ini");
@@ -424,111 +427,30 @@ export default function LaporanPage() {
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, currentPage]);
 
-  // Fungsi Ekspor Excel (.xlsx) sesuai PRD Bagian 5.13
+  // Fungsi Ekspor Excel (.xlsx) Standar Korporat dengan Kop & Metadata Resmi
   const handleExportExcel = () => {
     setIsExporting(true);
 
     try {
-      // 1. Susun Data AOA (Array of Arrays) dengan Kop dan Metadata
-      const rowsAOA: any[][] = [
-        ["LAPORAN REKAPITULASI KEHADIRAN KARYAWAN"],
-        ["SISTEM ABSENSI BIOMETRIK DAN GEOFENCING — J-ABSEN"],
-        [],
-        ["PARAMETER LAPORAN:", "", "", "INFORMASI PENCETAKAN:"],
-        ["Periode Tanggal:", `${startDate} s.d. ${endDate}`, "", "Tanggal Ekspor:", new Date().toLocaleString("id-ID")],
-        ["Departemen:", departmentFilter, "", "Dicetak Oleh:", `${user?.name || "Administrator"} (${user?.role || "Admin IT"})`],
-        ["Lokasi Kantor:", officeFilter, "", "Status Filter:", statusFilter],
-        ["Shift Kerja:", shiftFilter, "", "Total Catatan:", `${filteredData.length} baris data`],
-        [],
-        // Header Kolom Tabel
-        [
-          "No",
-          "Tanggal",
-          "NIK",
-          "Nama Karyawan",
-          "Departemen",
-          "Lokasi Kantor",
-          "Shift Kerja",
-          "Jam Masuk",
-          "Jam Pulang",
-          "Durasi Kerja",
-          "Keterlambatan",
-          "Status Kehadiran",
-          "Lokasi Absensi",
-          "Status Geofence",
-          "Audit Trail (WORM)",
-          "Catatan",
-        ],
-      ];
-
-      // 2. Baris Data Rekapitulasi
-      filteredData.forEach((item, index) => {
-        rowsAOA.push([
-          index + 1,
-          item.date,
-          item.employeeId,
-          item.name,
-          item.department,
-          item.officeLocation,
-          item.shift,
-          item.clockIn || "-",
-          item.clockOut || "-",
-          item.workHours,
-          item.lateMinutes > 0 ? `${item.lateMinutes} menit` : "0 menit",
-          item.status,
-          item.location,
-          item.inGeofence ? "Valid (Dalam Radius)" : "Luar Radius",
-          item.wormHashValid ? "Terverifikasi (Valid)" : "Tidak Valid",
-          item.notes || "-",
-        ]);
+      exportAttendanceReportToExcel(filteredData, stats, {
+        startDate,
+        endDate,
+        departmentScope: departmentFilter,
+        officeScope: officeFilter,
+        statusFilter,
+        shiftFilter,
+        currentUser: user ? { name: user.name, role: user.role } : undefined,
       });
 
-      // 3. Ringkasan Agregasi di Bawah Tabel
-      rowsAOA.push([]);
-      rowsAOA.push(["RINGKASAN & AGREGASI PERIODE LAPORAN"]);
-      rowsAOA.push(["Total Kehadiran:", `${stats.onTime + stats.late} record`]);
-      rowsAOA.push(["- Hadir Tepat Waktu:", `${stats.onTime} record`]);
-      rowsAOA.push(["- Hadir Terlambat:", `${stats.late} record`]);
-      rowsAOA.push(["Total Izin / Cuti:", `${stats.leave} record`]);
-      rowsAOA.push(["Total Alpha / Tanpa Ket:", `${stats.absent} record`]);
-      rowsAOA.push(["Total Akumulasi Keterlambatan:", `${stats.totalLateMinutes} menit`]);
-      rowsAOA.push(["Tingkat Kehadiran Keseluruhan:", `${stats.onTimeRate}%`]);
-
-      // 4. Generate Worksheet & Workbook
-      const worksheet = XLSX.utils.aoa_to_sheet(rowsAOA);
-
-      // Konfigurasi Lebar Kolom agar Rapi & Siap Cetak
-      worksheet["!cols"] = [
-        { wch: 5 },  // No
-        { wch: 12 }, // Tanggal
-        { wch: 12 }, // NIK
-        { wch: 22 }, // Nama Karyawan
-        { wch: 18 }, // Departemen
-        { wch: 22 }, // Lokasi Kantor
-        { wch: 22 }, // Shift
-        { wch: 12 }, // Jam Masuk
-        { wch: 12 }, // Jam Pulang
-        { wch: 13 }, // Durasi Kerja
-        { wch: 15 }, // Keterlambatan
-        { wch: 16 }, // Status
-        { wch: 24 }, // Lokasi
-        { wch: 20 }, // Geofence
-        { wch: 20 }, // WORM
-        { wch: 25 }, // Catatan
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Kehadiran");
-
-      // 5. Unduh File .xlsx
-      const fileName = `Laporan_Absensi_J-Absen_${startDate}_sd_${endDate}.xlsx`;
-      XLSX.writeFile(workbook, fileName);
-
-      setExportSuccessMsg(`File "${fileName}" berhasil dibuat dan diunduh.`);
+      setExportSuccessMsg("Laporan Absensi berhasil diekspor dengan format resmi Excel (.xlsx).");
       setTimeout(() => setExportSuccessMsg(null), 5000);
     } catch (err) {
       console.error("Gagal mengekspor laporan Excel:", err);
-      alert("Terjadi kendala saat mengekspor laporan ke file Excel.");
+      showAlert({
+        title: "Gagal Ekspor",
+        message: "Terjadi kendala saat mengekspor laporan ke file Excel.",
+        type: "error",
+      });
     } finally {
       setIsExporting(false);
     }
@@ -886,15 +808,7 @@ export default function LaporanPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs table-fixed">
-              <colgroup>
-                <col className="w-[12%]" />
-                <col className="w-[20%]" />
-                <col className="w-[15%]" />
-                <col className="w-[13%]" />
-                <col className="w-[13%]" />
-                <col className="w-[13%]" />
-                <col className="w-[14%]" />
-              </colgroup>
+              <colgroup><col className="w-[12%]" /><col className="w-[20%]" /><col className="w-[15%]" /><col className="w-[13%]" /><col className="w-[13%]" /><col className="w-[13%]" /><col className="w-[14%]" /></colgroup>
               <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
                 <tr>
                   <th className="px-4 py-3">Tanggal</th>

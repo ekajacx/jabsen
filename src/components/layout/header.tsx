@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Menu,
   Bell,
@@ -14,11 +14,37 @@ import {
   Briefcase,
   X,
   Filter,
+  Smartphone,
+  Laptop,
+  ShieldAlert,
+  CheckCheck,
+  Trash2,
+  Inbox,
+  FileCheck2,
+  Clock,
+  Camera,
+  CalendarDays,
+  ScanFace,
 } from "lucide-react";
 import { useAuth, UserRole, UserProfile } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  getCurrentDevice,
+  setSimulatedDevice,
+  DeviceType,
+  SimulatedDeviceConfig,
+  PRESET_DEVICES,
+} from "@/lib/user-account-data";
+import {
+  NotificationItem,
+  NotificationCategory,
+  getNotificationsForUser,
+  markNotificationAsRead,
+  markAllNotificationsForUserAsRead,
+  clearAllNotificationsForUser,
+} from "@/lib/notification-data";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   CEO: "Direktur Utama",
@@ -38,6 +64,46 @@ const ROLE_BADGE_STYLES: Record<UserRole, string> = {
   "Admin IT": "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
 };
 
+function getCategoryIcon(cat: NotificationCategory) {
+  switch (cat) {
+    case "cuti":
+      return FileCheck2;
+    case "koreksi":
+      return Clock;
+    case "presensi":
+      return Camera;
+    case "jadwal":
+      return CalendarDays;
+    case "biometrik":
+      return ScanFace;
+    case "keamanan":
+      return ShieldCheck;
+    case "sistem":
+    default:
+      return Sparkles;
+  }
+}
+
+function getCategoryColor(cat: NotificationCategory) {
+  switch (cat) {
+    case "cuti":
+      return "border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400";
+    case "koreksi":
+      return "border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-400";
+    case "presensi":
+      return "border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-400";
+    case "jadwal":
+      return "border-purple-200 bg-purple-50 text-purple-600 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-400";
+    case "biometrik":
+      return "border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-400";
+    case "keamanan":
+      return "border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-400";
+    case "sistem":
+    default:
+      return "border-cyan-200 bg-cyan-50 text-cyan-600 dark:border-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-400";
+  }
+}
+
 interface HeaderProps {
   onMenuClick: () => void;
   pageTitle?: string;
@@ -50,6 +116,89 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("ALL");
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Status Perangkat Simulasi untuk Testing Device Binding
+  const [activeDevice, setActiveDevice] = useState<SimulatedDeviceConfig>(PRESET_DEVICES.mobile_registered);
+  const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
+
+  // State Notifikasi Popover & POV Filter
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifFilterTab, setNotifFilterTab] = useState<"all" | "unread">("all");
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const loadNotifications = useCallback(() => {
+    setNotifications(getNotificationsForUser(user));
+  }, [user]);
+
+  useEffect(() => {
+    loadNotifications();
+    const handleUpdate = () => loadNotifications();
+    window.addEventListener("notifications-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("notifications-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [loadNotifications]);
+
+  // Click outside listener to close notification popover
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    if (isNotifOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isNotifOpen]);
+
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.isRead).length;
+  }, [notifications]);
+
+  const displayedNotifications = useMemo(() => {
+    if (notifFilterTab === "unread") {
+      return notifications.filter((n) => !n.isRead);
+    }
+    return notifications;
+  }, [notifications, notifFilterTab]);
+
+  const handleMarkAllRead = () => {
+    markAllNotificationsForUserAsRead(user);
+    loadNotifications();
+    showToast("Seluruh notifikasi ditandai telah dibaca.");
+  };
+
+  const handleClearAllNotifs = () => {
+    clearAllNotificationsForUser(user);
+    loadNotifications();
+    showToast("Semua notifikasi berhasil dibersihkan.");
+  };
+
+  const handleNotificationClick = (notif: NotificationItem) => {
+    markNotificationAsRead(notif.id);
+    loadNotifications();
+    setIsNotifOpen(false);
+    if (notif.targetUrl) {
+      window.location.href = notif.targetUrl;
+    }
+  };
+
+  useEffect(() => {
+    setActiveDevice(getCurrentDevice());
+  }, []);
+
+  const handleSwitchDevice = (preset: DeviceType) => {
+    setSimulatedDevice(preset);
+    setActiveDevice(getCurrentDevice());
+    setIsDeviceModalOpen(false);
+    showToast(`Beralih ke Perangkat: ${PRESET_DEVICES[preset].deviceName}`);
+  };
 
   const showToast = (text: string) => {
     setToastMessage(text);
@@ -133,8 +282,27 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
           </div>
         </div>
 
-        {/* Right: POV Switcher & Notifications */}
+        {/* Right: Device Switcher, POV Switcher & Notifications */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Device Simulator Switcher Pill */}
+          <button
+            type="button"
+            onClick={() => setIsDeviceModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50/90 hover:bg-gray-100 px-2.5 py-1.5 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 shadow-2xs transition-colors"
+            title="Klik untuk beralih simulasi perangkat (HP Terdaftar / HP Pinjaman / Laptop PC)"
+          >
+            {activeDevice.type === "desktop_pc" ? (
+              <Laptop className="size-3.5 text-blue-600 dark:text-blue-400" />
+            ) : activeDevice.type === "mobile_foreign" ? (
+              <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
+            ) : (
+              <Smartphone className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            )}
+            <span className="font-semibold text-[11px] hidden sm:inline-block">
+              {activeDevice.type === "desktop_pc" ? "Laptop / PC" : activeDevice.type === "mobile_foreign" ? "HP Pinjaman" : "HP Terdaftar"}
+            </span>
+          </button>
+
           {/* POV Switcher Button */}
           <button
             type="button"
@@ -168,16 +336,193 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
             <ChevronDown className="size-3.5 text-indigo-500 group-hover:translate-y-0.5 transition-transform shrink-0" />
           </button>
 
-          {/* Notifications Icon with Badge */}
-          <button
-            type="button"
-            className="relative flex size-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-            title="Notifikasi Masuk"
-            onClick={() => alert("Notifikasi sistem: Semua layanan verifikasi wajah dan geofence beroperasi normal.")}
-          >
-            <Bell className="size-4" />
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-red-500" />
-          </button>
+          {/* Notifications Icon with Badge & Interactive Popover */}
+          <div ref={notifRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsNotifOpen((prev) => !prev)}
+              className={cn(
+                "relative flex size-9 items-center justify-center rounded-lg border transition-all",
+                isNotifOpen
+                  ? "border-brand-500 bg-brand-50 text-brand-600 dark:border-brand-500/80 dark:bg-brand-950/40 dark:text-brand-400"
+                  : "border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+              )}
+              title="Pusat Pemberitahuan Sistem"
+              aria-label="Pusat Pemberitahuan Sistem"
+            >
+              <Bell className="size-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-xs animate-pulse">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : (
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+              )}
+            </button>
+
+            {/* Notification Popover Dropdown */}
+            {isNotifOpen && (
+              <div className="absolute right-0 top-11 z-50 w-80 sm:w-96 rounded-2xl border border-gray-200 bg-white shadow-theme-xl dark:border-gray-800 dark:bg-gray-900 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Header Dropdown */}
+                <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/40">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-gray-900 dark:text-white">
+                      Pemberitahuan
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                        {unreadCount} Baru
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 transition-colors"
+                        title="Tandai semua telah dibaca"
+                      >
+                        <CheckCheck className="size-3.5" />
+                        <span>Baca Semua</span>
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllNotifs}
+                        className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                        title="Bersihkan Semua Notifikasi"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex border-b border-gray-100 px-3 pt-2 pb-1 gap-2 dark:border-gray-800 bg-white dark:bg-gray-900">
+                  <button
+                    type="button"
+                    onClick={() => setNotifFilterTab("all")}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-xs font-semibold transition-all",
+                      notifFilterTab === "all"
+                        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+                        : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                    )}
+                  >
+                    Semua ({notifications.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotifFilterTab("unread")}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-xs font-semibold transition-all",
+                      notifFilterTab === "unread"
+                        ? "bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-400"
+                        : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                    )}
+                  >
+                    Belum Dibaca ({unreadCount})
+                  </button>
+                </div>
+
+                {/* List Notifikasi */}
+                <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                  {displayedNotifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                      <div className="flex size-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-gray-800">
+                        <Inbox className="size-5" />
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Tidak ada pemberitahuan
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {notifFilterTab === "unread"
+                          ? "Semua notifikasi telah Anda baca."
+                          : "Kotak masuk notifikasi Anda saat ini kosong."}
+                      </p>
+                    </div>
+                  ) : (
+                    displayedNotifications.map((item) => {
+                      const Icon = getCategoryIcon(item.category);
+                      const colorClass = getCategoryColor(item.category);
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleNotificationClick(item)}
+                          className={cn(
+                            "group flex items-start gap-3 p-3.5 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60",
+                            !item.isRead && "bg-brand-50/20 dark:bg-brand-950/20"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex size-8 shrink-0 items-center justify-center rounded-xl border mt-0.5",
+                              colorClass
+                            )}
+                          >
+                            <Icon className="size-4" />
+                          </div>
+
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4
+                                className={cn(
+                                  "text-xs truncate",
+                                  !item.isRead
+                                    ? "font-bold text-gray-900 dark:text-white"
+                                    : "font-semibold text-gray-700 dark:text-gray-300"
+                                )}
+                              >
+                                {item.title}
+                              </h4>
+                              {!item.isRead && (
+                                <span className="size-2 rounded-full bg-brand-500 shrink-0" />
+                              )}
+                            </div>
+
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                              {item.message}
+                            </p>
+
+                            <div className="flex items-center justify-between pt-0.5">
+                              <span className="text-[10px] text-gray-400">
+                                {item.createdAt}
+                              </span>
+                              <span className="text-[10px] font-medium text-brand-600 dark:text-brand-400 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                                Buka Menu &rarr;
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer POV Banner */}
+                <div className="border-t border-gray-100 bg-gray-50/80 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-800/60 flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
+                  <span className="truncate">
+                    POV Aktif: <strong>{ROLE_LABELS[user.role] || user.role}</strong> &bull; {user.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotifOpen(false);
+                      setIsPovModalOpen(true);
+                    }}
+                    className="font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 shrink-0 ml-2"
+                  >
+                    Ganti POV
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -397,6 +742,122 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
           <button
             type="button"
             onClick={() => setIsPovModalOpen(false)}
+            className="rounded-lg px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 font-medium transition-colors dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          >
+            Tutup
+          </button>
+        </div>
+      </Dialog>
+
+      {/* ======================================================== */}
+      {/* MODAL SIMULATOR PERANGKAT (DEVICE BINDING TESTING)       */}
+      {/* ======================================================== */}
+      <Dialog
+        open={isDeviceModalOpen}
+        onClose={() => setIsDeviceModalOpen(false)}
+        title="Simulasi Perangkat Akses (Device Binding)"
+        description="Pilih jenis perangkat yang digunakan saat ini untuk menguji kebijakan anti-titip absen dan proteksi laptop/PC."
+        className="max-w-md text-xs"
+      >
+        <div className="space-y-3 pt-2">
+          {/* Opsi 1: HP Terdaftar */}
+          <button
+            type="button"
+            onClick={() => handleSwitchDevice("mobile_registered")}
+            className={cn(
+              "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
+              activeDevice.type === "mobile_registered"
+                ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-700 ring-2 ring-emerald-500/20"
+                : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+            )}
+          >
+            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 shrink-0 mt-0.5">
+              <Smartphone className="size-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-gray-900 dark:text-white">
+                  📱 HP Terdaftar (Samsung Galaxy A54)
+                </span>
+                {activeDevice.type === "mobile_registered" && (
+                  <Badge variant="success" size="sm" className="text-[9px]">
+                    Aktif
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                Simulasi ponsel pribadi resmi karyawan. Diizinkan melakukan verifikasi presensi wajah dan login normal.
+              </p>
+            </div>
+          </button>
+
+          {/* Opsi 2: HP Lain / Pinjaman */}
+          <button
+            type="button"
+            onClick={() => handleSwitchDevice("mobile_foreign")}
+            className={cn(
+              "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
+              activeDevice.type === "mobile_foreign"
+                ? "border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 dark:border-amber-700 ring-2 ring-amber-500/20"
+                : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+            )}
+          >
+            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 shrink-0 mt-0.5">
+              <ShieldAlert className="size-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-gray-900 dark:text-white">
+                  📱 HP Lain / Pinjaman (Xiaomi Redmi 13)
+                </span>
+                {activeDevice.type === "mobile_foreign" && (
+                  <Badge variant="warning" size="sm" className="text-[9px]">
+                    Aktif
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                Simulasi HP rekan kerja / perangkat asing (Titip Absen). Sistem otomatis <strong>menolak presensi</strong> dan login jika akun sudah terikat HP lain.
+              </p>
+            </div>
+          </button>
+
+          {/* Opsi 3: Komputer / Laptop Desktop */}
+          <button
+            type="button"
+            onClick={() => handleSwitchDevice("desktop_pc")}
+            className={cn(
+              "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
+              activeDevice.type === "desktop_pc"
+                ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 dark:border-blue-700 ring-2 ring-blue-500/20"
+                : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+            )}
+          >
+            <div className="flex size-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 shrink-0 mt-0.5">
+              <Laptop className="size-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-gray-900 dark:text-white">
+                  💻 Komputer PC / Laptop Desktop
+                </span>
+                {activeDevice.type === "desktop_pc" && (
+                  <Badge variant="info" size="sm" className="text-[9px]">
+                    Aktif
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                Simulasi akses kantor melalui laptop/PC. Diizinkan khusus untuk Atasan (CEO, GM, SPV, HRD, Admin IT) untuk manajemen data, namun <strong>kamera absensi wajah dinonaktifkan</strong>.
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end dark:border-gray-800">
+          <button
+            type="button"
+            onClick={() => setIsDeviceModalOpen(false)}
             className="rounded-lg px-3 py-1.5 border border-gray-200 bg-white hover:bg-gray-100 text-gray-700 font-medium transition-colors dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             Tutup

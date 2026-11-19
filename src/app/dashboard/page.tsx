@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Clock,
@@ -25,6 +26,7 @@ import { useAuth } from "@/context/auth-context";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
   const metrics = [
     {
@@ -159,7 +161,7 @@ export default function DashboardPage() {
                 variant="default"
                 size="lg"
                 className="bg-white text-brand-600 hover:bg-brand-50 shadow-theme-md font-semibold"
-                onClick={() => alert("Membuka kamera absensi masuk...")}
+                onClick={() => router.push("/absen")}
               >
                 <Camera className="size-5" />
                 Absen Masuk Sekarang
@@ -209,7 +211,7 @@ export default function DashboardPage() {
                     Pencatatan check-in real-time hari ini dengan validasi MediaPipe &amp; GPS.
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => alert("Membuka log lengkap...")}>
+                <Button variant="outline" size="sm" onClick={() => router.push("/riwayat")}>
                   Lihat Semua
                   <ArrowRight className="size-3.5" />
                 </Button>
@@ -305,7 +307,7 @@ export default function DashboardPage() {
                     variant="outline"
                     size="sm"
                     className="w-full text-xs font-medium text-amber-800 border-amber-300 hover:bg-amber-100 dark:text-amber-300"
-                    onClick={() => alert("Membuka antrean persetujuan cuti...")}
+                    onClick={() => router.push("/approval/cuti")}
                   >
                     Buka Antrean Persetujuan
                   </Button>

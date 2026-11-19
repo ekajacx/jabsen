@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
 import * as XLSX from "xlsx";
+import { exportAuditLogsToExcel } from "@/lib/excel-export";
 import {
   ShieldAlert,
   ShieldCheck,
@@ -307,65 +308,13 @@ export default function AuditLogPage() {
     }, 1200);
   };
 
-  // Handler Ekspor Audit Log ke File Excel (.xlsx)
+  // Handler Ekspor Audit Log ke File Excel (.xlsx) Standar Korporat
   const handleExportExcel = () => {
-    const reportData: any[][] = [
-      ["LAPORAN JEJAK AUDIT SISTEM (WORM AUDIT LOG) - J-ABSEN"],
-      ["INTEGRITAS WRITE-ONCE, READ-MANY BERBASIS KRIPTOGRAFI SHA-256"],
-      [],
-      ["Waktu Ekspor:", new Date().toLocaleString("id-ID"), "", "Diekspor Oleh:", `${user?.name} (${user?.role})`],
-      ["Total Log Terpilih:", `${filteredLogs.length} rekaman`, "", "Status Hash Chain:", "Terverifikasi Valid"],
-      [],
-      [
-        "ID Log",
-        "Waktu (WIB)",
-        "Nama Aktor",
-        "Role",
-        "IP Address",
-        "Nama Aksi",
-        "Modul",
-        "Objek Sasaran",
-        "Tingkat Risiko",
-        "Hasil",
-        "Kriptografi Hash WORM (SHA-256)",
-      ],
-      ...filteredLogs.map((log) => [
-        log.id,
-        log.timestamp,
-        log.actorName,
-        log.actorRole,
-        log.ipAddress,
-        log.actionName,
-        log.module,
-        log.targetObject,
-        log.riskLevel,
-        log.status,
-        log.hash,
-      ]),
-      [],
-      ["CATATAN PENGAMANAN & REGULASI:"],
-      ["1. Seluruh rekaman bersifat Append-Only. Database menolak perintah UPDATE atau DELETE."],
-      ["2. CEO memegang hak baca pengawasan independen atas seluruh aktivitas administratif Admin IT (Resolusi P-15)."],
-    ];
-
-    const worksheet = XLSX.utils.aoa_to_sheet(reportData);
-    worksheet["!cols"] = [
-      { wch: 22 }, // ID
-      { wch: 20 }, // Waktu
-      { wch: 24 }, // Aktor
-      { wch: 14 }, // Role
-      { wch: 16 }, // IP
-      { wch: 32 }, // Aksi
-      { wch: 20 }, // Modul
-      { wch: 28 }, // Objek
-      { wch: 14 }, // Risiko
-      { wch: 12 }, // Hasil
-      { wch: 68 }, // Hash
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "WORM Audit Log");
-    XLSX.writeFile(workbook, `Audit_Log_WORM_J-Absen_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    exportAuditLogsToExcel(filteredLogs, {
+      moduleFilter: selectedModule,
+      riskFilter: selectedRisk,
+      currentUser: user ? { name: user.name, role: user.role } : undefined,
+    });
   };
 
   const isAuthorized = ["Admin IT", "CEO"].includes(user?.role || "");
@@ -625,14 +574,7 @@ export default function AuditLogPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs table-fixed min-w-[760px]">
-              <colgroup>
-                <col className="w-[16%]" />
-                <col className="w-[18%]" />
-                <col className="w-[24%]" />
-                <col className="w-[16%]" />
-                <col className="w-[10%]" />
-                <col className="w-[16%]" />
-              </colgroup>
+              <colgroup><col className="w-[16%]" /><col className="w-[18%]" /><col className="w-[24%]" /><col className="w-[16%]" /><col className="w-[10%]" /><col className="w-[16%]" /></colgroup>
               <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
                 <tr>
                   <th className="px-4 py-3">Waktu & ID</th>

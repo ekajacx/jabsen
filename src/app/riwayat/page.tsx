@@ -5,8 +5,10 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { exportAttendanceHistoryToExcel } from "@/lib/excel-export";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import {
   History,
   Calendar,
@@ -155,6 +157,7 @@ const INITIAL_RECORDS: AttendanceItem[] = [
 
 export default function RiwayatPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const [records, setRecords] = useState<AttendanceItem[]>(INITIAL_RECORDS);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("Semua");
@@ -247,7 +250,11 @@ export default function RiwayatPage() {
   // Submit Pengajuan Koreksi Absensi (PRD 5.11 - 2 Tahap Sequential SPV -> HRD)
   const handleSubmitCorrection = () => {
     if (!correctionReason.trim()) {
-      alert("Harap isi alasan pengajuan koreksi absensi.");
+      showAlert({
+        title: "Alasan Wajib Diisi",
+        message: "Harap isi alasan pengajuan koreksi absensi.",
+        type: "warning",
+      });
       return;
     }
 
@@ -264,11 +271,14 @@ export default function RiwayatPage() {
       }
       setCorrectionSubmitting(false);
       setShowCorrectionModal(false);
-      alert(
-        "Pengajuan Koreksi Berhasil Dikirim!\n\nWorkflow Approval (PRD P-3):\n1. Tahap 1: Verifikasi Supervisor (" +
+      showAlert({
+        title: "Pengajuan Koreksi Terkirim",
+        message:
+          "Pengajuan Koreksi Berhasil Dikirim!\n\nWorkflow Approval (PRD P-3):\n1. Tahap 1: Verifikasi Supervisor (" +
           user.role +
-          ")\n2. Tahap 2: Finalisasi Admin HRD\n\nStatus pengajuan kini: Pending Review Supervisor."
-      );
+          ")\n2. Tahap 2: Finalisasi Admin HRD\n\nStatus pengajuan kini: Pending Review Supervisor.",
+        type: "success",
+      });
     }, 1000);
   };
 
@@ -292,11 +302,35 @@ export default function RiwayatPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => alert("Mengunduh Laporan Riwayat Presensi (Format Excel .xlsx)...")}
+              onClick={() => {
+                exportAttendanceHistoryToExcel(
+                  filteredRecords.map((r) => ({
+                    date: r.date,
+                    day: r.dateFormatted.split(",")[0],
+                    shift: "Reguler Office (08:00 - 17:00)",
+                    clockIn: r.checkIn,
+                    clockOut: r.checkOut,
+                    workHours: r.checkIn && r.checkOut && r.checkOut !== "--:--" ? "8 Jam" : "-",
+                    lateMinutes: r.status === "Terlambat" ? 15 : 0,
+                    status: r.status,
+                    location: `${r.office} (${r.distanceMeters}m)`,
+                    inGeofence: r.distanceMeters <= 100,
+                    wormHashValid: true,
+                    notes: r.notes || "-",
+                  })),
+                  {
+                    employeeName: user.name,
+                    employeeNik: user.nik || user.id || "NIK-EMP",
+                    department: user.department,
+                    periodText: "30 Hari Terakhir",
+                    currentUser: { name: user.name, role: user.role },
+                  }
+                );
+              }}
               className="bg-white/10 text-white border-white/20 hover:bg-white/20 text-xs backdrop-blur-md"
             >
               <Download className="size-3.5" />
-              Ekspor Laporan
+              Ekspor Laporan (.xlsx)
             </Button>
           </div>
         </div>
@@ -373,15 +407,7 @@ export default function RiwayatPage() {
         {/* Tabel Riwayat Kehadiran (Desktop View - Fixed Columns & Zero Layout Shift) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup>
-              <col className="w-[20%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[22%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-            </colgroup>
+            <colgroup><col className="w-[20%]" /><col className="w-[13%]" /><col className="w-[13%]" /><col className="w-[22%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[10%]" /></colgroup>
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-5 py-3.5">Tanggal</th>

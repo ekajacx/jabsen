@@ -29,17 +29,22 @@ import {
   UserCheck,
   ShoppingBag,
   ShieldAlert,
+  Download,
 } from "lucide-react";
+import { exportDepartmentsToExcel } from "@/lib/excel-export";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import { useOrgData, Department } from "@/lib/org-data";
 
 export default function DepartemenPage() {
   const { user } = useAuth();
+  const { showConfirm } = useModal();
   const isAuthorized = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
   const {
     departments,
     positions,
+    allEmployees,
     isLoaded,
     addDepartment,
     editDepartment,
@@ -95,10 +100,17 @@ export default function DepartemenPage() {
   };
 
   const handleDelete = (dept: Department) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus '${dept.name}'? Seluruh posisi di bawahnya juga akan dihapus dari bagan hirarki.`)) {
-      deleteDepartment(dept.id);
-      showToast("success", `'${dept.name}' berhasil dihapus.`);
-    }
+    showConfirm({
+      title: "Hapus Departemen",
+      message: `Apakah Anda yakin ingin menghapus '${dept.name}'? Seluruh posisi di bawahnya juga akan dihapus dari bagan hirarki.`,
+      type: "danger",
+      confirmText: "Ya, Hapus",
+      cancelText: "Batal",
+      onConfirm: () => {
+        deleteDepartment(dept.id);
+        showToast("success", `'${dept.name}' berhasil dihapus.`);
+      },
+    });
   };
 
   const filteredDepts = departments.filter((d) => {
@@ -150,6 +162,32 @@ export default function DepartemenPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const mappedDepts = departments.map((d) => {
+                  const empCount = allEmployees.filter((e) => e.departmentId === d.id).length;
+                  const head = allEmployees.find((e) => e.departmentId === d.id && (e.level === 3 || e.level === 2));
+                  return {
+                    code: d.code,
+                    name: d.name,
+                    description: d.description,
+                    headName: head ? `${head.name} (${head.jobTitle})` : "-",
+                    employeeCount: empCount,
+                  };
+                });
+                exportDepartmentsToExcel(mappedDepts, {
+                  currentUser: user ? { name: user.name, role: user.role } : undefined,
+                });
+              }}
+              className="rounded-full px-4 text-xs font-semibold shadow-xs gap-1.5"
+            >
+              <Download className="size-3.5" />
+              Ekspor Excel (.xlsx)
+            </Button>
+
             <Link
               href="/organisasi"
               className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 text-xs font-semibold shadow-xs transition-colors"

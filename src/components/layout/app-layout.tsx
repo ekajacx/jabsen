@@ -12,15 +12,29 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, pageTitle = "Dashboard" }: AppLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("sidebar_collapsed") === "true";
+      } catch {}
+    }
+    return false;
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleSetCollapsed = (val: boolean) => {
+    setCollapsed(val);
+    try {
+      localStorage.setItem("sidebar_collapsed", String(val));
+    } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       {/* Desktop Sidebar & Mobile Drawer */}
       <Sidebar
         collapsed={collapsed}
-        setCollapsed={setCollapsed}
+        setCollapsed={handleSetCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import {
   ScanFace,
   CheckCircle2,
@@ -102,6 +103,7 @@ const INITIAL_ENROLLMENTS: FaceEnrollmentSubmission[] = [
 
 export default function EnrollmentReviewPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const [enrollments, setEnrollments] = useState<FaceEnrollmentSubmission[]>(INITIAL_ENROLLMENTS);
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,9 +146,11 @@ export default function EnrollmentReviewPage() {
       );
       setIsProcessing(false);
       setShowReviewModal(false);
-      alert(
-        `Sukses! Sampel wajah ${selectedEnr.employeeName} (${selectedEnr.employeeId}) telah DISETUJUI.\nKaryawan kini dapat melakukan presensi wajah di aplikasi smartphone.`
-      );
+      showAlert({
+        title: "Sampel Wajah Disetujui",
+        message: `Sukses! Sampel wajah ${selectedEnr.employeeName} (${selectedEnr.employeeId}) telah DISETUJUI.\nKaryawan kini dapat melakukan presensi wajah di aplikasi smartphone.`,
+        type: "success",
+      });
     }, 700);
   };
 
@@ -154,7 +158,11 @@ export default function EnrollmentReviewPage() {
   const handleReject = () => {
     if (!selectedEnr) return;
     if (!hrRejectReason.trim()) {
-      alert("Harap masukkan alasan penolakan agar karyawan dapat memperbaiki foto selfie.");
+      showAlert({
+        title: "Alasan Penolakan Wajib Diisi",
+        message: "Harap masukkan alasan penolakan agar karyawan dapat memperbaiki foto selfie.",
+        type: "warning",
+      });
       return;
     }
 
@@ -175,7 +183,11 @@ export default function EnrollmentReviewPage() {
       setIsProcessing(false);
       setShowReviewModal(false);
       setHrRejectReason("");
-      alert(`Sampel wajah ${selectedEnr.employeeName} DITOLAK. Karyawan akan diminta registrasi ulang.`);
+      showAlert({
+        title: "Sampel Wajah Ditolak",
+        message: `Sampel wajah ${selectedEnr.employeeName} DITOLAK. Karyawan akan diminta registrasi ulang.`,
+        type: "error",
+      });
     }, 700);
   };
 

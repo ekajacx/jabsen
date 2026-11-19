@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ShieldCheck,
@@ -16,6 +16,11 @@ import {
   Building2,
   ChevronRight,
   X,
+  Smartphone,
+  Laptop,
+  KeyRound,
+  ShieldAlert,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +29,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAuth, UserRole, UserProfile } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import { NeuralBackground } from "@/components/ui/neural-background";
 import { cn } from "@/lib/utils";
+import {
+  getStoredUserAccounts,
+  getCurrentDevice,
+  setSimulatedDevice,
+  validateDeviceForLogin,
+  bindDeviceOnLogin,
+  completeFirstTimePasswordChange,
+  UserAccount,
+  DeviceType,
+  SimulatedDeviceConfig,
+  PRESET_DEVICES,
+} from "@/lib/user-account-data";
 
 const ROLE_BADGE_STYLES: Record<UserRole, string> = {
   CEO: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
@@ -38,6 +56,7 @@ const ROLE_BADGE_STYLES: Record<UserRole, string> = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { showAlert } = useModal();
   const { login, allProfiles } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -48,6 +67,26 @@ export default function LoginPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(undefined);
   const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
   const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
+
+  // Status Perangkat Simulasi (Pengujian Device Binding)
+  const [activeDevice, setActiveDevice] = useState<SimulatedDeviceConfig>(PRESET_DEVICES.mobile_registered);
+
+  useEffect(() => {
+    setActiveDevice(getCurrentDevice());
+  }, []);
+
+  const handleSwitchDevice = (preset: DeviceType) => {
+    setSimulatedDevice(preset);
+    setActiveDevice(getCurrentDevice());
+    setErrors({});
+  };
+
+  // State Modal Wajib Ubah Password Baru pada Login Pertama Kali
+  const [pendingAccountForPasswordChange, setPendingAccountForPasswordChange] = useState<UserAccount | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
 
   // Modal 27 Karyawan
   const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
@@ -81,15 +120,13 @@ export default function LoginPage() {
     setErrors({});
     setLoginSuccess(null);
 
-    // Validation
+    // Validasi Dasar
     const newErrors: { username?: string; password?: string } = {};
     if (!username.trim()) {
       newErrors.username = "NIP atau Username wajib diisi";
     }
     if (!password) {
       newErrors.password = "Kata sandi wajib diisi";
-    } else if (password.length < 4) {
-      newErrors.password = "Kata sandi minimal 4 karakter";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -97,7 +134,70 @@ export default function LoginPage() {
       return;
     }
 
-    // Simulate login and redirect
+    const cleanUser = username.trim().toLowerCase();
+    const storedAccounts = getStoredUserAccounts();
+    const matchedAccount = storedAccounts.find(
+      (a) =>
+        a.employeeId.toLowerCase() === cleanUser ||
+        a.username.toLowerCase() === cleanUser ||
+        a.name.toLowerCase() === cleanUser
+    );
+
+    if (matchedAccount) {
+      // 1. Verifikasi Password
+      const isDevFallback = password === "password123";
+      const isActualMatch = password === matchedAccount.password;
+
+      if (!isActualMatch && !isDevFallback) {
+        setErrors({ password: "Kata sandi yang Anda masukkan salah. Silakan coba lagi." });
+        return;
+      }
+
+      // 2. Cek Status Akun
+      if (matchedAccount.accountStatus === "Terkunci") {
+        setErrors({
+          general: "Akun Anda saat ini terkunci demi keamanan. Silakan hubungi Admin IT atau HRD.",
+        });
+        return;
+      }
+
+      // 3. Cek Apakah Wajib Ganti Password (Login Pertama Kali)
+      if (matchedAccount.mustChangePassword) {
+        setPendingAccountForPasswordChange(matchedAccount);
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setChangePasswordError(null);
+        return;
+      }
+
+      // 4. Cek Validasi Device Binding (Anti Titip Absen)
+      const currentDev = getCurrentDevice();
+      const deviceRes = validateDeviceForLogin(matchedAccount, currentDev);
+
+      if (!deviceRes.allowed) {
+        setErrors({ general: deviceRes.reason });
+        return;
+      }
+
+      // Jika ini login pertama di HP yang cocok, otomatis ikat
+      if (deviceRes.isFirstBinding) {
+        bindDeviceOnLogin(matchedAccount.employeeId, currentDev);
+      }
+
+      // 5. Sukses Masuk
+      setIsLoading(true);
+      setTimeout(() => {
+        login(matchedAccount.username, matchedAccount.role, matchedAccount.employeeId);
+        setIsLoading(false);
+        setLoginSuccess(`Berhasil masuk sebagai ${matchedAccount.name}! Mengalihkan ke Dashboard...`);
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 500);
+      }, 600);
+      return;
+    }
+
+    // Fallback jika login menggunakan username non-terdaftar (Demo Mode)
     setIsLoading(true);
     setTimeout(() => {
       login(username, selectedRole, selectedEmployeeId);
@@ -107,6 +207,47 @@ export default function LoginPage() {
         router.push("/dashboard");
       }, 500);
     }, 700);
+  };
+
+  // Simpan Kata Sandi Baru pada Aktivasi Pertama Kali & Kembali ke Login Bersih
+  const handleCompletePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingAccountForPasswordChange) return;
+
+    if (!newPassword || newPassword.length < 8) {
+      setChangePasswordError("Kata sandi baru minimal 8 karakter.");
+      return;
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    if (!hasUpper || !hasLower) {
+      setChangePasswordError("Kata sandi baru wajib memuat kombinasi huruf besar dan huruf kecil.");
+      return;
+    }
+
+    if (newPassword === pendingAccountForPasswordChange.password) {
+      setChangePasswordError("Kata sandi baru tidak boleh sama dengan kata sandi acak sementara.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setChangePasswordError("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+
+    // Berhasil Update Kata Sandi
+    completeFirstTimePasswordChange(pendingAccountForPasswordChange.employeeId, newPassword);
+    const employeeName = pendingAccountForPasswordChange.name;
+    const employeeNik = pendingAccountForPasswordChange.employeeId;
+
+    // Tutup Modal dan Bersihkan Form ke Halaman Login Bersih
+    setPendingAccountForPasswordChange(null);
+    setPassword("");
+    setErrors({});
+    setLoginSuccess(
+      `Aktivasi berhasil! Kata sandi baru untuk '${employeeName}' (${employeeNik}) telah disimpan. Silakan masuk kembali menggunakan kata sandi baru Anda.`
+    );
   };
 
   const handleQuickFill = (demoUser: string, role: UserRole) => {
@@ -169,6 +310,73 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
+            {/* SAKELAR SIMULATOR PERANGKAT (DEVICE BINDING TESTING) */}
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50/80 p-2.5 dark:border-gray-800 dark:bg-gray-900/60">
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <Smartphone className="size-3 text-brand-600" />
+                  Simulator Perangkat:
+                </span>
+                <Badge
+                  variant={activeDevice.type === "mobile_registered" ? "success" : activeDevice.type === "desktop_pc" ? "info" : "warning"}
+                  size="sm"
+                  className="text-[9px] py-0 px-1.5"
+                >
+                  {activeDevice.type === "mobile_registered" ? "HP Terikat" : activeDevice.type === "desktop_pc" ? "Laptop / PC" : "HP Asing (Titip Absen)"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchDevice("mobile_registered")}
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-lg p-1.5 text-center transition-all border",
+                    activeDevice.type === "mobile_registered"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-800 font-bold dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700 shadow-xs"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  )}
+                  title="Simulasi login dari HP Samsung Galaxy A54 (Device pribadi resmi)"
+                >
+                  <Smartphone className="size-3.5 mb-0.5" />
+                  <span className="text-[10px] leading-tight">HP Terdaftar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSwitchDevice("mobile_foreign")}
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-lg p-1.5 text-center transition-all border",
+                    activeDevice.type === "mobile_foreign"
+                      ? "border-amber-500 bg-amber-50 text-amber-800 font-bold dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700 shadow-xs"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  )}
+                  title="Simulasi login dari HP Xiaomi Redmi (HP pinjaman teman / titip absen)"
+                >
+                  <ShieldAlert className="size-3.5 mb-0.5" />
+                  <span className="text-[10px] leading-tight">HP Pinjaman</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSwitchDevice("desktop_pc")}
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-lg p-1.5 text-center transition-all border",
+                    activeDevice.type === "desktop_pc"
+                      ? "border-blue-500 bg-blue-50 text-blue-800 font-bold dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-700 shadow-xs"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  )}
+                  title="Simulasi login dari Komputer PC / Laptop Kantor (Hanya diizinkan untuk Pimpinan/Atasan)"
+                >
+                  <Laptop className="size-3.5 mb-0.5" />
+                  <span className="text-[10px] leading-tight">Laptop / PC</span>
+                </button>
+              </div>
+              <p className="mt-1 text-[9px] text-gray-400 px-0.5 truncate">
+                ID: {activeDevice.deviceName}
+              </p>
+            </div>
+
             {/* Alert Error */}
             {errors.general && (
               <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
@@ -213,7 +421,13 @@ export default function LoginPage() {
                     type="button"
                     tabIndex={-1}
                     className="text-xs font-medium text-brand-600 hover:text-brand-500 dark:text-brand-400"
-                    onClick={() => alert("Silakan hubungi Administrator IT atau HRD untuk mereset kata sandi.")}
+                    onClick={() =>
+                      showAlert({
+                        title: "Bantuan Masuk & Reset Sandi",
+                        message: "Silakan hubungi Administrator IT atau Departemen HRD perusahaan untuk mereset kata sandi Anda.",
+                        type: "info",
+                      })
+                    }
                   >
                     Lupa sandi?
                   </button>
@@ -421,6 +635,130 @@ export default function LoginPage() {
           </button>
         </div>
       </Dialog>
+
+      {/* ======================================================== */}
+      {/* MODAL WAJIB GANTI KATA SANDI BARU (LOGIN PERTAMA KALI)   */}
+      {/* ======================================================== */}
+      {pendingAccountForPasswordChange && (
+        <Dialog
+          open={Boolean(pendingAccountForPasswordChange)}
+          onClose={() => {
+            setPendingAccountForPasswordChange(null);
+            setPassword("");
+            setErrors({});
+          }}
+          title="Aktivasi Akun & Ubah Kata Sandi Wajib"
+          description="Ini adalah login pertama kali Anda. Demi keamanan akun, Anda wajib membuat kata sandi baru pribadi sebelum melanjutkan."
+          className="max-w-md text-xs"
+        >
+          <form onSubmit={handleCompletePasswordChange} className="space-y-4 pt-1">
+            {/* Informasi Karyawan */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-brand-50/50 border border-brand-100 dark:bg-brand-950/20 dark:border-brand-900/50">
+              <div className="flex size-10 items-center justify-center rounded-full bg-brand-500 text-white font-bold text-sm shrink-0">
+                {pendingAccountForPasswordChange.name.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-bold text-xs text-gray-900 dark:text-white truncate">
+                  {pendingAccountForPasswordChange.name}
+                </h4>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  NIK: <span className="font-mono font-semibold">{pendingAccountForPasswordChange.employeeId}</span> &bull; {pendingAccountForPasswordChange.jobTitle}
+                </p>
+                <p className="text-[10px] text-brand-600 dark:text-brand-400 font-medium">
+                  {pendingAccountForPasswordChange.departmentName}
+                </p>
+              </div>
+            </div>
+
+            {changePasswordError && (
+              <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
+                <AlertCircle className="size-4 shrink-0 text-red-500" />
+                <span>{changePasswordError}</span>
+              </div>
+            )}
+
+            {/* Input Kata Sandi Baru */}
+            <div>
+              <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                Kata Sandi Baru Pribadi *
+              </label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setChangePasswordError(null);
+                  }}
+                  placeholder="Minimal 8 karakter kombinasi huruf besar & kecil"
+                  className="pr-10 text-xs"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-gray-400">
+                Contoh: <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">BagusPratama</code> atau <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">RianHidayat</code>
+              </p>
+            </div>
+
+            {/* Input Konfirmasi Kata Sandi Baru */}
+            <div>
+              <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                Ulangi Kata Sandi Baru *
+              </label>
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                value={confirmNewPassword}
+                onChange={(e) => {
+                  setConfirmNewPassword(e.target.value);
+                  setChangePasswordError(null);
+                }}
+                placeholder="Ketik ulang kata sandi baru Anda"
+                className="text-xs"
+                required
+              />
+            </div>
+
+            {/* Catatan Alur Sesuai Permintaan */}
+            <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-[11px] text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300 leading-relaxed">
+              <p className="font-semibold mb-1 flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-blue-600 dark:text-blue-400" />
+                Ketentuan Aktivasi:
+              </p>
+              <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                <li>Setelah kata sandi baru disimpan, Anda akan kembali ke <strong>halaman login bersih</strong> untuk masuk ulang.</li>
+                <li>Gunakan <strong>HP pribadi Anda</strong> saat login ulang agar sistem mengikat ponsel tersebut untuk presensi kehadiran wajah.</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setPendingAccountForPasswordChange(null);
+                  setPassword("");
+                  setErrors({});
+                }}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button type="submit" size="sm" className="text-xs font-semibold">
+                <KeyRound className="size-3.5 mr-1" />
+                Simpan &amp; Kembali ke Login
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

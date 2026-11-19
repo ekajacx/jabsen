@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import { useOrgData } from "@/lib/org-data";
 import {
   LeaveRequest,
@@ -39,8 +40,10 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { exportSchedulesToExcel } from "@/lib/excel-export";
 import {
   ShiftPattern,
   DaySchedule,
@@ -57,6 +60,7 @@ const STORAGE_SCHEDULES_KEY = "jabsen_weekly_schedules_v1";
 
 export default function JadwalPage() {
   const { user } = useAuth();
+  const { showConfirm } = useModal();
   const { departments, allEmployees } = useOrgData();
 
   // Tab State
@@ -448,11 +452,18 @@ export default function JadwalPage() {
 
   // Hapus Jadwal Mingguan
   const handleDeleteSchedule = (id: string, name: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus seluruh jadwal mingguan untuk ${name}?`)) {
-      const filtered = weeklySchedules.filter((rec) => rec.id !== id);
-      saveSchedules(filtered);
-      showToast("success", `Jadwal mingguan untuk ${name} berhasil dihapus.`);
-    }
+    showConfirm({
+      title: "Hapus Jadwal Karyawan",
+      message: `Apakah Anda yakin ingin menghapus seluruh jadwal mingguan untuk ${name}?`,
+      type: "danger",
+      confirmText: "Ya, Hapus Jadwal",
+      cancelText: "Batal",
+      onConfirm: () => {
+        const filtered = weeklySchedules.filter((rec) => rec.id !== id);
+        saveSchedules(filtered);
+        showToast("success", `Jadwal mingguan untuk ${name} berhasil dihapus.`);
+      },
+    });
   };
 
   // Filter Baris Roster
@@ -512,6 +523,46 @@ export default function JadwalPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {activeTab === "calendar" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const mapped = filteredSchedules.map((rec) => {
+                    const getDayShift = (dayName: string) => {
+                      const d = rec.days.find((x: any) => x.dayName.toLowerCase().startsWith(dayName.toLowerCase()));
+                      if (!d || d.isOff) return "OFF (Libur)";
+                      return d.shiftName || d.shiftId || "Kerja";
+                    };
+                    return {
+                      employeeId: rec.employeeId,
+                      employeeName: rec.employeeName,
+                      department: rec.departmentName,
+                      defaultShiftName: rec.days[0]?.shiftName || "Reguler Office",
+                      senin: getDayShift("Senin"),
+                      selasa: getDayShift("Selasa"),
+                      rabu: getDayShift("Rabu"),
+                      kamis: getDayShift("Kamis"),
+                      jumat: getDayShift("Jumat"),
+                      sabtu: getDayShift("Sabtu"),
+                      minggu: getDayShift("Minggu"),
+                    };
+                  });
+
+                  exportSchedulesToExcel(mapped, shifts, {
+                    departmentScope: selectedDeptFilter !== "ALL" ? selectedDeptFilter : "Semua Departemen (Global)",
+                    searchQuery,
+                    currentUser: user ? { name: user.name, role: user.role } : undefined,
+                  });
+                }}
+                className="bg-white/15 text-white hover:bg-white/25 font-bold border-white/25 text-xs gap-1.5 shadow-theme-xs backdrop-blur-md"
+              >
+                <Download className="size-4" />
+                Ekspor Jadwal (.xlsx)
+              </Button>
+            )}
+
             {activeTab === "calendar" && canCreateSchedule && (
               <Button
                 type="button"
@@ -1110,9 +1161,16 @@ export default function JadwalPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (confirm("Apakah Anda yakin ingin menghapus pola shift kerja ini?")) {
-                            setShifts((prev) => prev.filter((s) => s.id !== shift.id));
-                          }
+                          showConfirm({
+                            title: "Hapus Pola Shift",
+                            message: "Apakah Anda yakin ingin menghapus pola shift kerja ini?",
+                            type: "danger",
+                            confirmText: "Ya, Hapus Shift",
+                            cancelText: "Batal",
+                            onConfirm: () => {
+                              setShifts((prev) => prev.filter((s) => s.id !== shift.id));
+                            },
+                          });
                         }}
                         className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                       >

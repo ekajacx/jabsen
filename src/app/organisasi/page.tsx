@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import {
   useOrgData,
   Department,
@@ -38,6 +39,7 @@ import {
 
 export default function OrganisasiPage() {
   const { user } = useAuth();
+  const { showAlert } = useModal();
   const canManageOrg = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
   // Sinkronisasi data real-time dengan modul Manajemen Departemen & Karyawan
@@ -193,21 +195,37 @@ export default function OrganisasiPage() {
     if (!selectedDeptForAdd) return;
 
     if (!empName.trim()) {
-      alert("Silakan masukkan Nama Lengkap Karyawan.");
+      showAlert({
+        title: "Nama Wajib Diisi",
+        message: "Silakan masukkan Nama Lengkap Karyawan.",
+        type: "warning",
+      });
       return;
     }
     if (!empKtp.trim()) {
-      alert("Silakan masukkan Nomor KTP.");
+      showAlert({
+        title: "Nomor KTP Wajib Diisi",
+        message: "Silakan masukkan Nomor KTP.",
+        type: "warning",
+      });
       return;
     }
 
     if (empStatus === "Tetap" && !empTanggalMasuk) {
-      alert("Untuk status Tetap, kolom Tanggal Masuk wajib diisi.");
+      showAlert({
+        title: "Tanggal Masuk Wajib Diisi",
+        message: "Untuk status Tetap, kolom Tanggal Masuk wajib diisi.",
+        type: "warning",
+      });
       return;
     }
 
     if (empStatus !== "Tetap" && (!empTanggalMulai || !empTanggalBerhenti)) {
-      alert(`Untuk status ${empStatus}, kolom Mulai Kerja dan Berhenti Kerja wajib diisi.`);
+      showAlert({
+        title: "Periode Kontrak Belum Lengkap",
+        message: `Untuk status ${empStatus}, kolom Mulai Kerja dan Berhenti Kerja wajib diisi.`,
+        type: "warning",
+      });
       return;
     }
 
@@ -1096,6 +1114,7 @@ function NodeCard({
   isHead = false,
   canEdit = true,
 }: NodeCardProps) {
+  const { showConfirm } = useModal();
   const holders = getNodeHolders(node);
 
   return (
@@ -1177,9 +1196,14 @@ function NodeCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (confirm(`Hapus ${holder.name} dari posisi ini?`)) {
-                    onRemoveHolder(idx);
-                  }
+                  showConfirm({
+                    title: "Hapus Pemegang Posisi",
+                    message: `Hapus ${holder.name} dari posisi ini?`,
+                    type: "danger",
+                    confirmText: "Ya, Hapus",
+                    cancelText: "Batal",
+                    onConfirm: () => onRemoveHolder(idx),
+                  });
                 }}
                 title={`Hapus ${holder.name} dari posisi ini`}
                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-0.5 transition-opacity shrink-0"
