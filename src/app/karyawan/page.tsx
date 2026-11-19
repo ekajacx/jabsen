@@ -1,613 +1,1176 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { useAuth, UserRole } from "@/context/auth-context";
 import {
   Users,
   UserPlus,
   Search,
-  Filter,
-  Shield,
-  ScanFace,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Building,
-  Mail,
-  Edit,
+  Building2,
+  Network,
+  ExternalLink,
+  Edit2,
+  Trash2,
   Power,
-  Eye,
-  Check,
-  Send,
+  CheckCircle2,
+  AlertTriangle,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Briefcase,
+  Save,
+  Shield,
+  SlidersHorizontal,
 } from "lucide-react";
-
-export interface Employee {
-  id: string; // NIP
-  name: string;
-  username: string;
-  email: string;
-  role: UserRole;
-  department: string;
-  jobTitle: string;
-  officeLocation: string;
-  status: "Aktif" | "Nonaktif";
-  enrollmentStatus: "Disetujui" | "Menunggu Review" | "Belum Terdaftar" | "Ditolak";
-  avatar: string;
-  joinedDate: string;
-}
-
-const INITIAL_EMPLOYEES: Employee[] = [
-  {
-    id: "EMP-001",
-    name: "Budi Santoso",
-    username: "staff.operasional",
-    email: "budi.santoso@perusahaan.co.id",
-    role: "Staff",
-    department: "Operasional",
-    jobTitle: "Staff Operasional Lapangan",
-    officeLocation: "Kantor Pusat Jakarta",
-    status: "Aktif",
-    enrollmentStatus: "Disetujui",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    joinedDate: "15 Jan 2024",
-  },
-  {
-    id: "EMP-002",
-    name: "Siti Rahmawati",
-    username: "spv.operasional",
-    email: "siti.rahmawati@perusahaan.co.id",
-    role: "Supervisor",
-    department: "Operasional",
-    jobTitle: "Supervisor Operasional",
-    officeLocation: "Kantor Pusat Jakarta",
-    status: "Aktif",
-    enrollmentStatus: "Disetujui",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    joinedDate: "02 Feb 2023",
-  },
-  {
-    id: "EMP-003",
-    name: "Dewi Lestari",
-    username: "hrd.admin",
-    email: "dewi.lestari@perusahaan.co.id",
-    role: "HRD",
-    department: "HRD & Personalia",
-    jobTitle: "Head of Human Resources",
-    officeLocation: "Kantor Pusat Jakarta",
-    status: "Aktif",
-    enrollmentStatus: "Disetujui",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-    joinedDate: "10 Agt 2022",
-  },
-  {
-    id: "EMP-004",
-    name: "Hendra Gunawan",
-    username: "gm.operasional",
-    email: "hendra.gunawan@perusahaan.co.id",
-    role: "GM",
-    department: "Direksi Operasional",
-    jobTitle: "General Manager",
-    officeLocation: "Kantor Pusat Jakarta",
-    status: "Aktif",
-    enrollmentStatus: "Disetujui",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    joinedDate: "01 Mar 2021",
-  },
-  {
-    id: "EMP-005",
-    name: "Rian Hidayat",
-    username: "rian.hidayat",
-    email: "rian.hidayat@perusahaan.co.id",
-    role: "Staff",
-    department: "Operasional",
-    jobTitle: "Junior Staff Lapangan",
-    officeLocation: "Kantor Pusat Jakarta",
-    status: "Aktif",
-    enrollmentStatus: "Menunggu Review",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-    joinedDate: "10 Nov 2026",
-  },
-  {
-    id: "EMP-006",
-    name: "Ahmad Fauzi",
-    username: "ahmad.fauzi",
-    email: "ahmad.fauzi@perusahaan.co.id",
-    role: "Staff",
-    department: "Logistik & Gudang",
-    jobTitle: "Staff Pergudangan",
-    officeLocation: "Kantor Cabang Surabaya",
-    status: "Aktif",
-    enrollmentStatus: "Belum Terdaftar",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
-    joinedDate: "15 Nov 2026",
-  },
-];
+import { cn } from "@/lib/utils";
+import {
+  useOrgData,
+  FullEmployeeRecord,
+  Department,
+  AddEmployeeParams,
+} from "@/lib/org-data";
 
 export default function KaryawanPage() {
-  const { user } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const {
+    departments,
+    positions,
+    allEmployees,
+    updateEmployeeRecord,
+    toggleEmployeeResignStatus,
+    deleteEmployeeFromDirectory,
+    addEmployeeToDepartment,
+  } = useOrgData();
+
+  // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("Semua");
-  const [roleFilter, setRoleFilter] = useState("Semua");
+  const [deptFilter, setDeptFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [employmentFilter, setEmploymentFilter] = useState("ALL");
 
-  // State Modal Tambah Karyawan
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newId, setNewId] = useState("");
-  const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newRole, setNewRole] = useState<UserRole>("Staff");
-  const [newDepartment, setNewDepartment] = useState("Operasional");
-  const [newJobTitle, setNewJobTitle] = useState("");
-  const [newOffice, setNewOffice] = useState("Kantor Pusat Jakarta");
+  // Toast State
+  const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const showToast = (type: "success" | "error", text: string) => {
+    setToastMessage({ type, text });
+    setTimeout(() => setToastMessage(null), 4500);
+  };
 
-  // State Modal Edit Karyawan
-  const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
+  // State Modal Edit Karyawan Lengkap (Icon Pensil)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEmp, setEditingEmp] = useState<FullEmployeeRecord | null>(null);
 
-  // Submit Tambah Karyawan Baru
-  const handleAddEmployee = (e: React.FormEvent) => {
+  // Form Fields Modal Edit
+  const [editName, setEditName] = useState("");
+  const [editKtp, setEditKtp] = useState("");
+  const [editTanggalLahir, setEditTanggalLahir] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAlamat, setEditAlamat] = useState("");
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editDeptId, setEditDeptId] = useState("");
+  const [editEmploymentStatus, setEditEmploymentStatus] = useState<"Tetap" | "Kontrak" | "DW" | "Magang">("Tetap");
+  const [editStatus, setEditStatus] = useState<"Aktif" | "Nonaktif">("Aktif");
+  const [editTanggalMasuk, setEditTanggalMasuk] = useState("");
+  const [editTanggalMulai, setEditTanggalMulai] = useState("");
+  const [editTanggalBerhenti, setEditTanggalBerhenti] = useState("");
+
+  // State Modal Tambah Karyawan Baru
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addDeptId, setAddDeptId] = useState("");
+  const [addLevel, setAddLevel] = useState<"Kepala" | "Staff">("Staff");
+  const [addJobTitle, setAddJobTitle] = useState("");
+  const [addName, setAddName] = useState("");
+  const [addKtp, setAddKtp] = useState("");
+  const [addTanggalLahir, setAddTanggalLahir] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addAlamat, setAddAlamat] = useState("");
+  const [addEmploymentStatus, setAddEmploymentStatus] = useState<"Tetap" | "Kontrak" | "DW" | "Magang">("Tetap");
+  const [addTanggalMasuk, setAddTanggalMasuk] = useState("");
+  const [addTanggalMulai, setAddTanggalMulai] = useState("");
+  const [addTanggalBerhenti, setAddTanggalBerhenti] = useState("");
+
+  // Buka Modal Edit Karyawan (Klik Icon Pensil)
+  const handleOpenEdit = (emp: FullEmployeeRecord) => {
+    setEditingEmp(emp);
+    setEditName(emp.name);
+    setEditKtp(emp.ktp || "");
+    setEditTanggalLahir(emp.tanggalLahir || "");
+    setEditEmail(emp.email);
+    setEditPhone(emp.phone);
+    setEditAlamat(emp.alamat || "");
+    setEditJobTitle(emp.jobTitle);
+    setEditDeptId(emp.departmentId);
+    setEditEmploymentStatus(emp.employmentStatus || "Tetap");
+    setEditStatus(emp.status || "Aktif");
+    setEditTanggalMasuk(emp.tanggalMasuk || "");
+    setEditTanggalMulai(emp.tanggalMulai || "");
+    setEditTanggalBerhenti(emp.tanggalBerhenti || "");
+    setIsEditModalOpen(true);
+  };
+
+  // Simpan Perubahan Edit
+  const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingEmp || !editName.trim()) return;
 
-    if (!newId || !newName || !newEmail || !newJobTitle) {
-      alert("Harap lengkapi semua kolom wajib.");
+    updateEmployeeRecord(
+      editingEmp.positionId,
+      editingEmp.holderIndex,
+      {
+        name: editName.trim(),
+        ktp: editKtp.trim(),
+        tanggalLahir: editTanggalLahir.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        alamat: editAlamat.trim(),
+        employmentStatus: editEmploymentStatus,
+        status: editStatus,
+        tanggalMasuk: editEmploymentStatus === "Tetap" ? editTanggalMasuk : undefined,
+        tanggalMulai: editEmploymentStatus !== "Tetap" ? editTanggalMulai : undefined,
+        tanggalBerhenti: editEmploymentStatus !== "Tetap" ? editTanggalBerhenti : undefined,
+      },
+      editJobTitle.trim(),
+      editDeptId
+    );
+
+    showToast("success", `Data karyawan '${editName}' berhasil diperbarui dan disinkronkan ke struktur organisasi!`);
+    setIsEditModalOpen(false);
+  };
+
+  // Toggle Nonaktif jika Resign
+  const handleToggleResign = (emp: FullEmployeeRecord) => {
+    const isNowResign = emp.status === "Aktif";
+    const actionText = isNowResign ? "menonaktifkan (karyawan resign)" : "mengaktifkan kembali";
+    if (confirm(`Apakah Anda yakin ingin ${actionText} karyawan '${emp.name}' (${emp.jobTitle})?`)) {
+      toggleEmployeeResignStatus(emp.positionId, emp.holderIndex);
+      showToast(
+        "success",
+        `Status '${emp.name}' berhasil diubah menjadi: ${isNowResign ? "🔴 Nonaktif (Resign)" : "🟢 Aktif"}.`
+      );
+    }
+  };
+
+  // Hapus Karyawan (Icon Sampah)
+  const handleDeleteEmployee = (emp: FullEmployeeRecord) => {
+    if (confirm(`Apakah Anda yakin ingin MENGHAPUS karyawan '${emp.name}' (${emp.jobTitle}) dari sistem dan struktur organisasi?`)) {
+      deleteEmployeeFromDirectory(emp.positionId, emp.holderIndex);
+      showToast("success", `Karyawan '${emp.name}' berhasil dihapus.`);
+    }
+  };
+
+  // Buka Modal Tambah Karyawan Baru
+  const handleOpenAdd = () => {
+    setAddDeptId(departments[0]?.id || "dept-ti");
+    setAddLevel("Staff");
+    setAddJobTitle("");
+    setAddName("");
+    setAddKtp("");
+    setAddTanggalLahir("");
+    setAddEmail("");
+    setAddPhone("");
+    setAddAlamat("");
+    setAddEmploymentStatus("Tetap");
+    setAddTanggalMasuk("");
+    setAddTanggalMulai("");
+    setAddTanggalBerhenti("");
+    setIsAddModalOpen(true);
+  };
+
+  // Simpan Tambah Karyawan Baru
+  const handleSaveAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addName.trim() || !addKtp.trim()) {
+      alert("Silakan lengkapi Nama Lengkap dan Nomor KTP.");
       return;
     }
 
-    const created: Employee = {
-      id: newId,
-      name: newName,
-      username: newEmail.split("@")[0],
-      email: newEmail,
-      role: newRole,
-      department: newDepartment,
-      jobTitle: newJobTitle,
-      officeLocation: newOffice,
-      status: "Aktif",
-      enrollmentStatus: "Belum Terdaftar",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
-      joinedDate: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
-    };
+    addEmployeeToDepartment({
+      departmentId: addDeptId,
+      level: addLevel,
+      customTitle: addJobTitle.trim() || undefined,
+      name: addName.trim(),
+      ktp: addKtp.trim(),
+      tanggalLahir: addTanggalLahir.trim(),
+      email: addEmail.trim(),
+      phone: addPhone.trim(),
+      alamat: addAlamat.trim(),
+      employmentStatus: addEmploymentStatus,
+      tanggalMasuk: addEmploymentStatus === "Tetap" ? addTanggalMasuk : undefined,
+      tanggalMulai: addEmploymentStatus !== "Tetap" ? addTanggalMulai : undefined,
+      tanggalBerhenti: addEmploymentStatus !== "Tetap" ? addTanggalBerhenti : undefined,
+    });
 
-    setEmployees((prev) => [created, ...prev]);
-    setShowAddModal(false);
-    // Reset
-    setNewId("");
-    setNewName("");
-    setNewEmail("");
-    setNewJobTitle("");
-    alert(`Karyawan baru ${created.name} (${created.id}) berhasil didaftarkan!`);
+    showToast("success", `Karyawan baru '${addName}' berhasil ditambahkan ke direktori dan struktur organisasi!`);
+    setIsAddModalOpen(false);
   };
 
-  // Toggle Status Aktif / Nonaktif Karyawan
-  const handleToggleStatus = (empId: string) => {
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id !== empId) return emp;
-        const nextStatus = emp.status === "Aktif" ? "Nonaktif" : "Aktif";
-        return { ...emp, status: nextStatus };
-      })
-    );
-  };
+  // Filter Data Karyawan
+  const filteredEmployees = useMemo(() => {
+    return allEmployees.filter((emp) => {
+      // Pencarian Teks
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matches =
+          emp.name.toLowerCase().includes(q) ||
+          emp.id.toLowerCase().includes(q) ||
+          emp.ktp.toLowerCase().includes(q) ||
+          emp.email.toLowerCase().includes(q) ||
+          emp.phone.toLowerCase().includes(q) ||
+          emp.jobTitle.toLowerCase().includes(q) ||
+          emp.departmentName.toLowerCase().includes(q) ||
+          emp.alamat.toLowerCase().includes(q);
+        if (!matches) return false;
+      }
 
-  // Filter Data
-  const filteredEmployees = employees.filter((emp) => {
-    const matchesSearch =
-      emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.jobTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      // Filter Departemen
+      if (deptFilter !== "ALL") {
+        if (deptFilter === "EXEC") {
+          if (emp.level > 2) return false;
+        } else if (emp.departmentId !== deptFilter) {
+          return false;
+        }
+      }
 
-    const matchesDept =
-      departmentFilter === "Semua" ? true : emp.department === departmentFilter;
+      // Filter Status Keaktifan
+      if (statusFilter !== "ALL") {
+        if (emp.status !== statusFilter) return false;
+      }
 
-    const matchesRole =
-      roleFilter === "Semua" ? true : emp.role === roleFilter;
+      // Filter Status Ketenagakerjaan
+      if (employmentFilter !== "ALL") {
+        if (emp.employmentStatus !== employmentFilter) return false;
+      }
 
-    return matchesSearch && matchesDept && matchesRole;
-  });
+      return true;
+    });
+  }, [allEmployees, searchQuery, deptFilter, statusFilter, employmentFilter]);
 
-  const getEnrollmentBadge = (status: Employee["enrollmentStatus"]) => {
-    switch (status) {
-      case "Disetujui":
-        return <Badge variant="success" size="sm" className="gap-1"><CheckCircle2 className="size-3" /> Wajah Aktif</Badge>;
-      case "Menunggu Review":
-        return <Badge variant="warning" size="sm" className="gap-1 animate-pulse"><ScanFace className="size-3" /> Review HRD</Badge>;
-      case "Belum Terdaftar":
-        return <Badge variant="secondary" size="sm">Belum Daftar</Badge>;
-      case "Ditolak":
-        return <Badge variant="destructive" size="sm">Ditolak</Badge>;
-    }
-  };
+  // Metrik Ringkasan
+  const totalEmployees = allEmployees.length;
+  const activeCount = allEmployees.filter((e) => e.status === "Aktif").length;
+  const resignCount = allEmployees.filter((e) => e.status === "Nonaktif").length;
+  const tetapCount = allEmployees.filter((e) => e.employmentStatus === "Tetap").length;
 
   return (
-    <AppLayout pageTitle="Manajemen Data Karyawan">
+    <AppLayout pageTitle="Data Karyawan">
       <div className="space-y-6">
-        {/* Banner Utama */}
-        <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 p-5 text-white shadow-theme-md sm:flex-row sm:items-center sm:justify-between">
+        {/* HEADER MODUL */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <Users className="size-5" />
-              <h2 className="text-lg font-bold sm:text-xl">Direktori Master Data Karyawan</h2>
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
+                <Users className="size-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
+                  Manajemen & Direktori Data Karyawan
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                  Data detail lengkap seluruh karyawan perusahaan dari pucuk pimpinan (Direktur Utama / CEO & General Manager) hingga seluruh pimpinan departemen dan staf.
+                </p>
+              </div>
             </div>
-            <p className="mt-1 text-xs text-brand-100 sm:text-sm">
-              Pengelolaan akun, jabatan, penugasan kantor, dan status enrollment biometrik wajah.
-            </p>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            className="bg-white text-brand-700 hover:bg-brand-50 font-bold border-none text-xs gap-1.5 shadow-theme-xs self-start sm:self-auto"
+          <div className="flex items-center gap-2">
+            <Link
+              href="/organisasi"
+              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Network className="size-3.5 text-emerald-500" />
+              <span>Bagan Struktur Organisasi</span>
+              <ExternalLink className="size-3 text-gray-400" />
+            </Link>
+
+            <Link
+              href="/departemen"
+              className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
+            >
+              <Building2 className="size-3.5 text-blue-500" />
+              <span>Departemen</span>
+            </Link>
+
+            <Button
+              onClick={handleOpenAdd}
+              size="sm"
+              className="rounded-full px-4 text-xs font-semibold shadow-sm"
+            >
+              <UserPlus className="size-3.5 mr-1" />
+              Tambah Karyawan
+            </Button>
+          </div>
+        </div>
+
+        {/* NOTIFIKASI TOAST */}
+        {toastMessage && (
+          <div
+            className={cn(
+              "flex items-center justify-between rounded-xl border px-4 py-3 text-sm shadow-sm transition-all",
+              toastMessage.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+            )}
           >
-            <UserPlus className="size-4" />
-            Tambah Karyawan Baru
-          </Button>
+            <div className="flex items-center gap-2.5">
+              {toastMessage.type === "success" ? (
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <AlertTriangle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
+              )}
+              <span className="font-medium text-xs sm:text-sm">{toastMessage.text}</span>
+            </div>
+            <button onClick={() => setToastMessage(null)} className="text-xs font-semibold underline hover:no-underline">
+              Tutup
+            </button>
+          </div>
+        )}
+
+        {/* 4 STATISTIK METRIK RINGKASAN */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Karyawan</span>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totalEmployees}</p>
+                <span className="text-[10px] text-gray-400">Seluruh level jabatan</span>
+              </div>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                <Users className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Karyawan Aktif</span>
+                <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p>
+                <span className="text-[10px] text-emerald-600 font-medium">Bekerja aktif</span>
+              </div>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                <CheckCircle2 className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Nonaktif / Resign</span>
+                <p className="mt-1 text-2xl font-bold text-red-500 dark:text-red-400">{resignCount}</p>
+                <span className="text-[10px] text-red-400 font-medium">Telah berhenti</span>
+              </div>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                <Power className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Karyawan Tetap</span>
+                <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">{tetapCount}</p>
+                <span className="text-[10px] text-gray-400">{totalEmployees - tetapCount} Kontrak/DW/Magang</span>
+              </div>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                <Briefcase className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* 3 Metric Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          <Card className="border-gray-200 dark:border-gray-800">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Karyawan Terdaftar</span>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{employees.length}</p>
-                <span className="text-[10px] text-emerald-600 font-medium">
-                  {employees.filter((e) => e.status === "Aktif").length} Akun Aktif
-                </span>
-              </div>
-              <div className="flex size-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
-                <Users className="size-6" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200 dark:border-gray-800">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Biometrik Wajah Terverifikasi</span>
-                <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {employees.filter((e) => e.enrollmentStatus === "Disetujui").length}
-                </p>
-                <span className="text-[10px] text-gray-400 font-medium">Siap absensi kamera</span>
-              </div>
-              <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-                <CheckCircle2 className="size-6" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200 dark:border-gray-800">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Antrian Review Wajah (HRD)</span>
-                <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  {employees.filter((e) => e.enrollmentStatus === "Menunggu Review").length}
-                </p>
-                <a href="/enrollment-review" className="text-[10px] text-brand-600 font-bold hover:underline dark:text-brand-400">
-                  Buka Halaman Review ➔
-                </a>
-              </div>
-              <div className="flex size-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
-                <ScanFace className="size-6" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filter & Search Bar */}
+        {/* SEARCH & FILTERS BAR */}
         <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-            {/* Search */}
-            <div className="relative max-w-sm w-full">
-              <Search className="absolute left-3 top-2.5 size-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari nama, NIP, email, jabatan..."
+          <CardContent className="p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-gray-400" />
+              <Input
+                placeholder="Cari nama, NIK, No. KTP, jabatan, email, alamat..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="pl-9 text-xs"
               />
             </div>
 
-            {/* Departemen & Role Filter */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                <SlidersHorizontal className="size-3.5" />
+                Filter:
+              </span>
+
+              {/* Filter Departemen */}
               <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-xs"
               >
-                <option value="Semua">Semua Departemen</option>
-                <option value="Operasional">Operasional</option>
-                <option value="HRD & Personalia">HRD & Personalia</option>
-                <option value="Direksi Operasional">Direksi Operasional</option>
-                <option value="Logistik & Gudang">Logistik & Gudang</option>
+                <option value="ALL">Semua Departemen ({departments.length})</option>
+                <option value="EXEC">Direksi (CEO & GM)</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
               </select>
 
+              {/* Filter Status Keaktifan */}
               <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-xs"
               >
-                <option value="Semua">Semua Role</option>
-                <option value="Staff">Staff</option>
-                <option value="Supervisor">Supervisor</option>
-                <option value="HRD">HRD</option>
-                <option value="GM">GM</option>
-                <option value="CEO">CEO</option>
-                <option value="Admin IT">Admin IT</option>
+                <option value="ALL">Semua Keaktifan</option>
+                <option value="Aktif">🟢 Aktif</option>
+                <option value="Nonaktif">🔴 Nonaktif (Resign)</option>
+              </select>
+
+              {/* Filter Status Ketenagakerjaan */}
+              <select
+                value={employmentFilter}
+                onChange={(e) => setEmploymentFilter(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 shadow-xs"
+              >
+                <option value="ALL">Semua Ikatan Kerja</option>
+                <option value="Tetap">Tetap</option>
+                <option value="Kontrak">Kontrak</option>
+                <option value="DW">DW (Daily Worker)</option>
+                <option value="Magang">Magang</option>
               </select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tabel Data Karyawan (Desktop View - Full Width & Fixed) */}
-        <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
-          <table className="w-full table-fixed text-left text-xs">
-            <colgroup>
-              <col className="w-[24%]" /> {/* Karyawan & NIP */}
-              <col className="w-[18%]" /> {/* Departemen & Jabatan */}
-              <col className="w-[12%]" /> {/* Role RBAC */}
-              <col className="w-[18%]" /> {/* Lokasi Kantor */}
-              <col className="w-[14%]" /> {/* Status Wajah */}
-              <col className="w-[14%]" /> {/* Aksi */}
-            </colgroup>
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
-              <tr>
-                <th className="px-5 py-3.5">Karyawan</th>
-                <th className="px-5 py-3.5">Departemen & Jabatan</th>
-                <th className="px-5 py-3.5">Peran (Role)</th>
-                <th className="px-5 py-3.5">Lokasi Kantor</th>
-                <th className="px-5 py-3.5">Status Wajah</th>
-                <th className="px-5 py-3.5 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-800 dark:text-gray-200">
-              {filteredEmployees.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
-                    Tidak ada data karyawan yang cocok dengan pencarian.
-                  </td>
-                </tr>
-              ) : (
-                filteredEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3 truncate">
-                        <img
-                          src={emp.avatar}
-                          alt={emp.name}
-                          className="size-9 rounded-xl object-cover shrink-0 border border-gray-200 dark:border-gray-700"
-                        />
-                        <div className="flex flex-col truncate">
-                          <span className="font-bold text-gray-900 dark:text-white truncate">{emp.name}</span>
-                          <span className="text-[10px] text-gray-400">{emp.id} &bull; {emp.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-col truncate">
-                        <span className="font-semibold text-gray-900 dark:text-white truncate">{emp.jobTitle}</span>
-                        <span className="text-[10px] text-gray-400 truncate">{emp.department}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge variant="secondary" size="sm">{emp.role}</Badge>
-                    </td>
-                    <td className="px-5 py-4 truncate">
-                      <span className="text-gray-700 dark:text-gray-300 truncate">{emp.officeLocation}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      {getEnrollmentBadge(emp.enrollmentStatus)}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedEmp(emp);
-                            setShowEditModal(true);
-                          }}
-                          className="h-8 text-xs gap-1"
-                        >
-                          <Edit className="size-3.5 text-brand-500" />
-                          Edit
-                        </Button>
+        {/* TABEL DATA KARYAWAN LENGKAP */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardHeader className="border-b border-gray-100 dark:border-gray-800/80 pb-3 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold">
+                Daftar Karyawan ({filteredEmployees.length} Orang)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Termasuk Direktur Utama (CEO), Manajer Umum (GM), Kepala Departemen, dan seluruh staf operasional.
+              </CardDescription>
+            </div>
+          </CardHeader>
 
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(emp.id)}
-                          className={`size-8 rounded-lg flex items-center justify-center border transition-colors ${
-                            emp.status === "Aktif"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40"
-                              : "border-gray-200 bg-gray-100 text-gray-400 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-800"
-                          }`}
-                          title={emp.status === "Aktif" ? "Klik untuk Nonaktifkan Akun" : "Klik untuk Aktifkan Akun"}
-                        >
-                          <Power className="size-3.5" />
-                        </button>
-                      </div>
-                    </td>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[1080px]">
+                <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
+                  <tr>
+                    <th className="px-4 py-3 w-12 text-center">No</th>
+                    <th className="px-4 py-3 min-w-[200px]">Nama Karyawan</th>
+                    <th className="px-4 py-3">No. KTP & NIK</th>
+                    <th className="px-4 py-3">Tanggal Lahir</th>
+                    <th className="px-4 py-3">Departemen & Jabatan</th>
+                    <th className="px-4 py-3">Kontak (Email / HP)</th>
+                    <th className="px-4 py-3 max-w-xs">Alamat Domisili</th>
+                    <th className="px-4 py-3 text-center">Status Kerja</th>
+                    <th className="px-4 py-3 text-center">Keaktifan</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {filteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                        Tidak ada data karyawan yang cocok dengan kriteria pencarian.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEmployees.map((emp, idx) => (
+                      <tr
+                        key={`${emp.positionId}-${emp.holderIndex}`}
+                        className={cn(
+                          "hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors",
+                          emp.status === "Nonaktif" && "bg-red-50/30 dark:bg-red-950/10 opacity-75"
+                        )}
+                      >
+                        <td className="px-4 py-3 text-center text-gray-400 font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
 
-        {/* Mobile View */}
-        <div className="lg:hidden space-y-3">
-          {filteredEmployees.map((emp) => (
-            <Card key={emp.id} className="border-gray-200 dark:border-gray-800">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={emp.avatar}
-                    alt={emp.name}
-                    className="size-11 rounded-xl object-cover shrink-0 border border-gray-200 dark:border-gray-700"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate">{emp.name}</h4>
-                    <p className="text-xs text-gray-500">{emp.id} &bull; {emp.jobTitle}</p>
+                        {/* Nama Karyawan & Role */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={emp.avatar}
+                              alt={emp.name}
+                              style={{ width: 34, height: 34, minWidth: 34, minHeight: 34 }}
+                              className="w-[34px] h-[34px] min-w-[34px] min-h-[34px] rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-700 shrink-0"
+                            />
+                            <div>
+                              <div className="font-bold text-gray-900 dark:text-white leading-tight">
+                                {emp.name}
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-bold px-1.5 py-0.2 rounded-full",
+                                    emp.level === 1
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                      : emp.level === 2
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                      : emp.level === 3
+                                      ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                                      : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                  )}
+                                >
+                                  {emp.role}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* No KTP & NIK */}
+                        <td className="px-4 py-3">
+                          <div className="font-mono text-xs font-semibold text-gray-900 dark:text-white">
+                            {emp.ktp}
+                          </div>
+                          <div className="font-mono text-[10px] text-gray-400">
+                            NIK: {emp.id}
+                          </div>
+                        </td>
+
+                        {/* Tanggal Lahir */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-gray-800 dark:text-gray-200">
+                            <Calendar className="size-3 text-brand-500 shrink-0" />
+                            <span className="font-medium text-xs">
+                              {emp.tanggalLahir || "-"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Departemen & Jabatan */}
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-gray-900 dark:text-white leading-tight">
+                            {emp.jobTitle}
+                          </div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                            {emp.departmentName}
+                          </div>
+                        </td>
+
+                        {/* Kontak */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1 text-[11px] text-gray-700 dark:text-gray-300">
+                            <Mail className="size-3 text-gray-400 shrink-0" />
+                            <span className="truncate max-w-[150px]">{emp.email}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                            <Phone className="size-3 text-gray-400 shrink-0" />
+                            <span>{emp.phone}</span>
+                          </div>
+                        </td>
+
+                        {/* Alamat */}
+                        <td className="px-4 py-3 max-w-xs">
+                          <div className="flex items-start gap-1 text-[11px] text-gray-600 dark:text-gray-400">
+                            <MapPin className="size-3 text-gray-400 mt-0.5 shrink-0" />
+                            <span className="truncate max-w-[200px]" title={emp.alamat}>
+                              {emp.alamat || "-"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Status Ketenagakerjaan */}
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold px-2 py-0.5 rounded-full inline-block",
+                              emp.employmentStatus === "Tetap"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                : emp.employmentStatus === "Kontrak"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                                : emp.employmentStatus === "DW"
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                                : "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300"
+                            )}
+                          >
+                            {emp.employmentStatus}
+                          </span>
+                          <div className="text-[9px] text-gray-400 mt-0.5">
+                            {emp.employmentStatus === "Tetap"
+                              ? `Masuk: ${emp.tanggalMasuk || "-"}`
+                              : `Hingga: ${emp.tanggalBerhenti || "-"}`}
+                          </div>
+                        </td>
+
+                        {/* Keaktifan (Aktif vs Resign) */}
+                        <td className="px-4 py-3 text-center">
+                          {emp.status === "Aktif" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Aktif
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800">
+                              <span className="size-1.5 rounded-full bg-red-500" />
+                              Resign
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Aksi: Edit Pensil, Nonaktif Resign, Hapus Sampah */}
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Tombol Edit Pensil */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(emp)}
+                              className="size-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/50 dark:hover:text-brand-400 transition-colors border border-gray-200 dark:border-gray-700"
+                              title="Edit Lengkap Informasi Karyawan"
+                            >
+                              <Edit2 className="size-3.5" />
+                            </button>
+
+                            {/* Tombol Nonaktifkan jika Resign */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleResign(emp)}
+                              className={cn(
+                                "size-7 rounded-lg flex items-center justify-center transition-colors border",
+                                emp.status === "Aktif"
+                                  ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/40"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40"
+                              )}
+                              title={
+                                emp.status === "Aktif"
+                                  ? "Tandai Karyawan Telah Resign (Nonaktif)"
+                                  : "Aktifkan Kembali Karyawan"
+                              }
+                            >
+                              <Power className="size-3.5" />
+                            </button>
+
+                            {/* Tombol Hapus Sampah */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteEmployee(emp)}
+                              className="size-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition-colors border border-gray-200 dark:border-gray-700"
+                              title="Hapus Karyawan"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ======================================================== */}
+        {/* MODAL EDIT LENGKAP INFORMASI KARYAWAN (ICON PENSIL)     */}
+        {/* ======================================================== */}
+        <Dialog
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          title={`Edit Informasi Lengkap Karyawan`}
+          description={`Ubah data profil lengkap ${editingEmp?.name || "karyawan"}, tanggal lahir, status kerja, dan status keaktifan.`}
+          className="max-w-xl text-xs"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4 pt-2 max-h-[78vh] overflow-y-auto px-0.5">
+            {/* Header info badge jika CEO atau GM */}
+            {editingEmp && (editingEmp.level === 1 || editingEmp.level === 2) && (
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-2.5 flex items-center gap-2">
+                <Shield className="size-4 text-amber-600 shrink-0" />
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  {editingEmp.level === 1 ? "Direktur Utama (CEO)" : "Manajer Umum (General Manager)"} - Pucuk Pimpinan Perusahaan
+                </span>
+              </div>
+            )}
+
+            {/* FOTO & NAMA */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+              <img
+                src={editingEmp?.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
+                alt={editName}
+                style={{ width: 48, height: 48, minWidth: 48, minHeight: 48 }}
+                className="w-12 h-12 rounded-full object-cover ring-2 ring-brand-500 shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                  {editingEmp?.name}
+                </div>
+                <div className="text-[10px] text-gray-400 font-mono">
+                  NIK: {editingEmp?.id} &bull; Jabatan: {editingEmp?.jobTitle}
+                </div>
+              </div>
+            </div>
+
+            {/* DATA PRIBADI */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nama Lengkap Karyawan *
+                </label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Tanggal Lahir *
+                </label>
+                <Input
+                  type="date"
+                  value={editTanggalLahir}
+                  onChange={(e) => setEditTanggalLahir(e.target.value)}
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nomor KTP (16 Digit) *
+                </label>
+                <Input
+                  value={editKtp}
+                  onChange={(e) => setEditKtp(e.target.value)}
+                  className="text-xs font-mono"
+                  maxLength={16}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nomor HP / WhatsApp *
+                </label>
+                <Input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Alamat Email Resmi *
+                </label>
+                <Input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="text-xs"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                Alamat Domisili Lengkap *
+              </label>
+              <textarea
+                rows={2}
+                value={editAlamat}
+                onChange={(e) => setEditAlamat(e.target.value)}
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                required
+              />
+            </div>
+
+            {/* JABATAN & DEPARTEMEN */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-gray-100 dark:border-gray-800">
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Departemen *
+                </label>
+                <select
+                  value={editDeptId}
+                  onChange={(e) => setEditDeptId(e.target.value)}
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="dept-exec">Direksi / Eksekutif</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nama Jabatan *
+                </label>
+                <Input
+                  value={editJobTitle}
+                  onChange={(e) => setEditJobTitle(e.target.value)}
+                  className="text-xs"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* STATUS KERJA & KEAKTIFAN */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 p-3 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-bold text-gray-800 dark:text-gray-200 text-xs">
+                    Status Ketenagakerjaan *
+                  </label>
+                  <select
+                    value={editEmploymentStatus}
+                    onChange={(e) => setEditEmploymentStatus(e.target.value as any)}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                  >
+                    <option value="Tetap">Tetap (Pegawai Tetap)</option>
+                    <option value="Kontrak">Kontrak (PKWT)</option>
+                    <option value="DW">DW (Daily Worker / Lepas)</option>
+                    <option value="Magang">Magang (Internship)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block font-bold text-gray-800 dark:text-gray-200 text-xs">
+                    Status Keaktifan (Resign) *
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as "Aktif" | "Nonaktif")}
+                    className={cn(
+                      "w-full rounded-md border px-3 py-1.5 text-xs font-bold shadow-xs focus:outline-none",
+                      editStatus === "Aktif"
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : "border-red-300 bg-red-50 text-red-800 dark:bg-red-950/60 dark:text-red-300"
+                    )}
+                  >
+                    <option value="Aktif">🟢 Aktif (Bekerja)</option>
+                    <option value="Nonaktif">🔴 Nonaktif (Resign)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* TANGGAL KONDISIONAL */}
+              {editEmploymentStatus === "Tetap" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300 text-[11px]">
+                      Tanggal Masuk *
+                    </label>
+                    <Input
+                      type="date"
+                      value={editTanggalMasuk}
+                      onChange={(e) => setEditTanggalMasuk(e.target.value)}
+                      className="text-xs"
+                      required
+                    />
                   </div>
-                  <div>{getEnrollmentBadge(emp.enrollmentStatus)}</div>
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-400 dark:text-gray-500 text-[11px]">
+                      Tanggal Keluar (Otomatis Tidak Aktif)
+                    </label>
+                    <Input
+                      type="text"
+                      disabled
+                      value="Tidak Aktif (Karyawan Tetap)"
+                      className="text-xs bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500"
+                    />
+                  </div>
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300 text-[11px]">
+                      Mulai Kerja (Tanggal Mulai) *
+                    </label>
+                    <Input
+                      type="date"
+                      value={editTanggalMulai}
+                      onChange={(e) => setEditTanggalMulai(e.target.value)}
+                      className="text-xs"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300 text-[11px]">
+                      Berhenti Kerja (Tanggal Selesai) *
+                    </label>
+                    <Input
+                      type="date"
+                      value={editTanggalBerhenti}
+                      onChange={(e) => setEditTanggalBerhenti(e.target.value)}
+                      className="text-xs"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
-                <div className="text-xs bg-gray-50 rounded-xl p-2.5 dark:bg-gray-800/60 flex justify-between items-center">
-                  <span>Kantor: <strong>{emp.officeLocation}</strong></span>
-                  <Badge variant={emp.status === "Aktif" ? "success" : "secondary"} size="sm">{emp.status}</Badge>
+            {/* BUTTONS */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button type="submit" size="sm" className="text-xs font-semibold">
+                <Save className="size-3.5 mr-1" />
+                Simpan Perubahan Data
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+
+        {/* ======================================================== */}
+        {/* MODAL REGISTRASI TAMBAH KARYAWAN BARU                    */}
+        {/* ======================================================== */}
+        <Dialog
+          open={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          title="Tambah Karyawan Baru"
+          description="Masukkan data profil lengkap karyawan baru. Otomatis masuk ke struktur organisasi."
+          className="max-w-xl text-xs"
+        >
+          <form onSubmit={handleSaveAdd} className="space-y-4 pt-2 max-h-[78vh] overflow-y-auto px-0.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Departemen *
+                </label>
+                <select
+                  value={addDeptId}
+                  onChange={(e) => setAddDeptId(e.target.value)}
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                >
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Level Jabatan *
+                </label>
+                <select
+                  value={addLevel}
+                  onChange={(e) => setAddLevel(e.target.value as "Kepala" | "Staff")}
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="Staff">Staff</option>
+                  <option value="Kepala">Kepala Departemen</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nama Jabatan *
+                </label>
+                <Input
+                  value={addJobTitle}
+                  onChange={(e) => setAddJobTitle(e.target.value)}
+                  placeholder="Contoh: Staf Logistik / Staf Pemasaran"
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nama Lengkap Karyawan *
+                </label>
+                <Input
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="Nama lengkap..."
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Tanggal Lahir *
+                </label>
+                <Input
+                  type="date"
+                  value={addTanggalLahir}
+                  onChange={(e) => setAddTanggalLahir(e.target.value)}
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nomor KTP (16 Digit) *
+                </label>
+                <Input
+                  value={addKtp}
+                  onChange={(e) => setAddKtp(e.target.value)}
+                  placeholder="3201234567890001"
+                  className="text-xs font-mono"
+                  maxLength={16}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Nomor HP / WhatsApp *
+                </label>
+                <Input
+                  type="tel"
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value)}
+                  placeholder="0812-xxxx-xxxx"
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                  Alamat Email Resmi *
+                </label>
+                <Input
+                  type="email"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  placeholder="nama@perusahaan.co.id"
+                  className="text-xs"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
+                Alamat Domisili Lengkap *
+              </label>
+              <textarea
+                rows={2}
+                value={addAlamat}
+                onChange={(e) => setAddAlamat(e.target.value)}
+                placeholder="Alamat domisili lengkap..."
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                required
+              />
+            </div>
+
+            {/* STATUS KETENAGAKERJAAN */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 p-3 space-y-3">
+              <div>
+                <label className="mb-1 block font-bold text-gray-800 dark:text-gray-200 text-xs">
+                  Status Ketenagakerjaan *
+                </label>
+                <select
+                  value={addEmploymentStatus}
+                  onChange={(e) => setAddEmploymentStatus(e.target.value as any)}
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="Tetap">Tetap (Pegawai Tetap)</option>
+                  <option value="Kontrak">Kontrak (PKWT)</option>
+                  <option value="DW">DW (Daily Worker / Lepas)</option>
+                  <option value="Magang">Magang (Internship)</option>
+                </select>
+              </div>
+
+              {addEmploymentStatus === "Tetap" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300 text-[11px]">
+                      Tanggal Masuk *
+                    </label>
+                    <Input
+                      type="date"
+                      value={addTanggalMasuk}
+                      onChange={(e) => setAddTanggalMasuk(e.target.value)}
+                      className="text-xs"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-400 dark:text-gray-500 text-[11px]">
+                      Tanggal Keluar (Otomatis Tidak Aktif)
+                    </label>
+                    <Input
+                      type="text"
+                      disabled
+                      value="Tidak Aktif (Karyawan Tetap)"
+                      className="text-xs bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500"
+                    />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300 text-[11px]">
+                      Mulai Kerja (Tanggal Mulai) *
+                    </label>
+                    <Input
+                      type="date"
+                      value={addTanggalMulai}
+                      onChange={(e) => setAddTanggalMulai(e.target.value)}
+                      className="text-xs"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300 text-[11px]">
+                      Berhenti Kerja (Tanggal Selesai) *
+                    </label>
+                    <Input
+                      type="date"
+                      value={addTanggalBerhenti}
+                      onChange={(e) => setAddTanggalBerhenti(e.target.value)}
+                      className="text-xs"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button type="submit" size="sm" className="text-xs font-semibold">
+                <UserPlus className="size-3.5 mr-1" />
+                Simpan Karyawan
+              </Button>
+            </div>
+          </form>
+        </Dialog>
       </div>
-
-      {/* MODAL FORM TAMBAH KARYAWAN BARU */}
-      <Dialog
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Registrasi Karyawan Baru"
-        description="Buat akun dan data profil karyawan baru di dalam organisasi."
-      >
-        <form onSubmit={handleAddEmployee} className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Nomor Induk Pegawai (NIP)
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Contoh: EMP-007"
-                value={newId}
-                onChange={(e) => setNewId(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Nama Lengkap
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Nama karyawan"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              Alamat Email Resmi
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="nama.karyawan@perusahaan.co.id"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Departemen
-              </label>
-              <select
-                value={newDepartment}
-                onChange={(e) => setNewDepartment(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="Operasional">Operasional</option>
-                <option value="HRD & Personalia">HRD & Personalia</option>
-                <option value="Logistik & Gudang">Logistik & Gudang</option>
-                <option value="IT & Sistem">IT & Sistem</option>
-                <option value="Keuangan & Finansial">Keuangan & Finansial</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Peran Hak Akses (RBAC)
-              </label>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value as any)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="Staff">Staff</option>
-                <option value="Supervisor">Supervisor</option>
-                <option value="HRD">HRD</option>
-                <option value="GM">GM</option>
-                <option value="CEO">CEO</option>
-                <option value="Admin IT">Admin IT</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Jabatan
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Contoh: Staff Lapangan"
-                value={newJobTitle}
-                onChange={(e) => setNewJobTitle(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Penugasan Lokasi Kantor
-              </label>
-              <select
-                value={newOffice}
-                onChange={(e) => setNewOffice(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="Kantor Pusat Jakarta">Kantor Pusat Jakarta</option>
-                <option value="Kantor Cabang Surabaya">Kantor Cabang Surabaya</option>
-                <option value="Kantor Cabang Bandung">Kantor Cabang Bandung</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-6 flex gap-2.5 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowAddModal(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              className="flex-1 font-bold gap-1.5"
-            >
-              <UserPlus className="size-4" />
-              Simpan Data Karyawan
-            </Button>
-          </div>
-        </form>
-      </Dialog>
     </AppLayout>
   );
 }

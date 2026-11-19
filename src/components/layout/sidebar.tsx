@@ -22,6 +22,8 @@ import {
   Shield,
   Settings as SettingsIcon,
   FileText,
+  Network,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, UserRole } from "@/context/auth-context";
@@ -106,6 +108,18 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
     {
       sectionTitle: "Manajemen Karyawan",
       items: [
+        {
+          title: "Struktur Organisasi",
+          href: "/organisasi",
+          icon: Network,
+          allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
+        },
+        {
+          title: "Departemen",
+          href: "/departemen",
+          icon: Building2,
+          allowedRoles: ["HRD", "GM", "CEO", "Admin IT"],
+        },
         {
           title: "Review Wajah",
           href: "/enrollment-review",
