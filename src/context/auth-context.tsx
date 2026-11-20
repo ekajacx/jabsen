@@ -430,7 +430,12 @@ interface AuthContextType {
   allProfiles: UserProfile[];
   isAuthenticated: boolean;
   isAuthReady: boolean;
-  login: (username: string, role?: UserRole, employeeId?: string) => void;
+  login: (
+    username: string,
+    role?: UserRole,
+    employeeId?: string,
+    profileData?: Partial<UserProfile>
+  ) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   switchUser: (identifier: string) => void;
@@ -519,7 +524,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = (username: string, role?: UserRole, employeeId?: string) => {
+  const login = (
+    username: string,
+    role?: UserRole,
+    employeeId?: string,
+    profileData?: Partial<UserProfile>
+  ) => {
+    // Jika data profil lengkap dikirim dari API autentikasi (PostgreSQL)
+    if (profileData && profileData.name && profileData.role) {
+      const fullProfile: UserProfile = {
+        id: profileData.id || employeeId || username,
+        nik: profileData.nik || employeeId || username,
+        name: profileData.name,
+        username: profileData.username || username,
+        role: profileData.role as UserRole,
+        department: profileData.department || "Teknologi Informasi",
+        departmentId: profileData.departmentId || "dept-ti",
+        jobTitle: profileData.jobTitle || (profileData.role as string),
+        avatar:
+          profileData.avatar ||
+          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+        officeLocation: profileData.officeLocation || "Kantor Pusat Bali",
+        email: profileData.email || "",
+        phone: profileData.phone || "",
+      };
+      setUser(fullProfile);
+      setIsAuthenticated(true);
+      localStorage.setItem("j_absen_user_id", fullProfile.id);
+      localStorage.setItem("j_absen_role", fullProfile.role);
+      return;
+    }
+
     if (employeeId) {
       const profile = findProfile(employeeId);
       if (profile) {

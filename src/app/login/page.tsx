@@ -170,7 +170,7 @@ export default function LoginPage() {
           return;
         }
 
-        login(data.user.username, data.user.role, data.user.id);
+        login(data.user.username, data.user.role, data.user.id, data.user);
         setIsLoading(false);
         setLoginSuccess(`Berhasil masuk sebagai ${data.user.name}! Mengalihkan ke Dashboard...`);
         setTimeout(() => {

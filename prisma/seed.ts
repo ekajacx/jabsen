@@ -202,10 +202,10 @@ async function main() {
     },
     {
       nik: "TI-105",
-      name: "Budi Santoso, S.Kom",
-      email: "budi.santoso@perusahaan.co.id",
-      username: "admin.it",
-      role: "Admin IT",
+      name: "Budi Utomo, S.Kom",
+      email: "budi.utomo@perusahaan.co.id",
+      username: "budi.it",
+      role: "Staff",
       positionId: "pos-ti-admin",
       departmentId: "dept-ti",
       deviceName: "Lenovo ThinkPhone (Android 13)",
@@ -214,8 +214,8 @@ async function main() {
     {
       nik: "ADM-001",
       name: "Rian Saputra",
-      email: "rian.saputra@perusahaan.co.id",
-      username: "rian.saputra",
+      email: "admin.it@perusahaan.co.id",
+      username: "admin.it",
       role: "Admin IT",
       positionId: "pos-ti-admin",
       departmentId: "dept-ti",
@@ -472,8 +472,12 @@ async function main() {
 
     // Upsert User
     const user = await prisma.user.upsert({
-      where: { username: u.username },
-      update: {},
+      where: { employeeId: u.nik },
+      update: {
+        username: u.username,
+        role: u.role,
+        passwordHash: defaultPasswordHash,
+      },
       create: {
         employeeId: u.nik,
         username: u.username,
