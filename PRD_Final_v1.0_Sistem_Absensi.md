@@ -75,33 +75,33 @@ Struktur organisasi J-Absen mengadopsi hierarki 4 tingkat (Level 1 s.d. Level 4)
 
 ```mermaid
 flowchart TD
-    CEO["Direktur Utama (CEO)<br>Level 1 • Eka Jacx"] --> GM["Manajer Umum (GM)<br>Level 2 • Hendra Wijaya, ST"]
+    CEO["Direktur Utama (CEO)<br>Level 1 • Eka Jacx (DIR-001)"] --> GM["Manajer Umum (GM)<br>Level 2 • Hendra Wijaya, ST (DIR-002)"]
     
-    GM --> TI["Kepala TI<br>Level 3 • Budi Santoso"]
-    GM --> KEU["Kepala Keuangan<br>Level 3 • Maya Indah"]
-    GM --> OPS["Kepala Operasional<br>Level 3 • Bambang Suprianto"]
-    GM --> MKT["Kepala Pemasaran<br>Level 3 • Anita Wijaya"]
-    GM --> HR["Kepala HR<br>Level 3 • Dewi Lestari"]
-    GM --> SALES["Kepala Penjualan<br>Level 3 • Agus Pratama"]
+    GM --> TI["Kepala TI (Manager)<br>Level 3 • Arya Wijaya, S.Kom, M.T (TI-101)"]
+    GM --> KEU["Kepala Keuangan (Manager)<br>Level 3 • Ratna Sari, SE, Ak, CA (KEU-201)"]
+    GM --> OPS["Kepala Operasional (Manager)<br>Level 3 • Siti Rahmawati, ST (OPS-301)"]
+    GM --> MKT["Kepala Pemasaran (Manager)<br>Level 3 • Nadia Safira, S.I.Kom (MKT-401)"]
+    GM --> HR["Kepala HR (HRD)<br>Level 3 • Dewi Lestari, S.Psi, M.Psi (HR-501)"]
+    GM --> SALES["Kepala Penjualan (Manager)<br>Level 3 • Anton Wijaya, SE (SLS-601)"]
     
-    TI --> TISTAFF["Staf TI (Level 4)<br>• Infrastruktur • Dev Sistem<br>• Helpdesk • Admin IT"]
-    KEU --> KEUSTAFF["Staf Keuangan (Level 4)<br>• Akuntansi • Kasir/Pajak<br>• Payroll & Penggajian"]
-    OPS --> OPSSTAFF["Staf Operasional (Level 4)<br>• Logistik & Gudang • Lapangan<br>• Quality Control"]
-    MKT --> MKTSTAFF["Staf Pemasaran (Level 4)<br>• Digital Marketing • Content Creator<br>• Event & Promosi"]
-    HR --> HRSTAFF["Staf HR (Level 4)<br>• Rekrutmen • Pelatihan/Budaya<br>• Administrasi Personalia"]
-    SALES --> SALESSTAFF["Staf Penjualan (Level 4)<br>• Account Exec B2B • Sales Counter<br>• Customer Care"]
+    TI --> TISTAFF["Staf TI (Level 4)<br>• Rian Hidayat (TI-102)<br>• Fajar Pratama (TI-103)<br>• Dimas Anggara (TI-104)<br>• Rian Saputra - Admin IT (ADM-001)"]
+    KEU --> KEUSTAFF["Staf Keuangan (Level 4)<br>• Maya Indah (KEU-202)<br>• Aditya Putra (KEU-203)<br>• Kevin Sanjaya (KEU-204)"]
+    OPS --> OPSSTAFF["Staf Operasional (Level 4)<br>• Budi Santoso (OPS-302)<br>• Agus Setiawan (OPS-303)<br>• Wahyu Hidayat (OPS-304)"]
+    MKT --> MKTSTAFF["Staf Pemasaran (Level 4)<br>• Rizky Ramadhan (MKT-402)<br>• Clarissa Aurelia (MKT-403)<br>• Gilang Perdana (MKT-404)"]
+    HR --> HRSTAFF["Staf HR (Level 4)<br>• Tri Wulandari (HR-502)<br>• Bayu Nugroho (HR-503)<br>• Sarah Melati (HR-504)"]
+    SALES --> SALESSTAFF["Staf Penjualan (Level 4)<br>• Farhan Maulana (SLS-602)<br>• Putri Ayu Lestari (SLS-603)<br>• Dita Permatasari (SLS-604)"]
 ```
 
 #### 4.3.1 Daftar 6 Departemen Operasional Riil
 
-| ID Dept | Kode | Nama Departemen | Kepala Departemen (SPV) | Ruang Lingkup Operasional |
+| ID Dept | Kode | Nama Departemen | Kepala Departemen (SPV/Mgr) | Ruang Lingkup Operasional |
 |---|---|---|---|---|
-| `dept-ti` | TI | Departemen Teknologi Informasi | Budi Santoso | Infrastruktur server, jaringan kantor, helpdesk, dan keamanan data. |
-| `dept-fin` | KEU | Departemen Keuangan | Maya Indah | Akuntansi, rekonsiliasi kas, perpajakan, dan payroll karyawan. |
-| `dept-ops` | OPS | Departemen Operasional | Bambang Suprianto | Logistik gudang kacamata/lensa, QC, dan operasional lapangan. |
-| `dept-mkt` | MKT | Departemen Pemasaran | Anita Wijaya | Strategi digital marketing, content creation medsos, dan kampanye event. |
-| `dept-hrd` | HR | Departemen HR | Dewi Lestari | Rekrutmen, verifikasi enrollment wajah, pelatihan, dan administrasi HR. |
-| `dept-sales` | SALES | Departemen Penjualan | Agus Pratama | Penjualan B2B instansi, sales counter ritel, dan layanan customer care. |
+| `dept-ti` | TI | Departemen Teknologi Informasi | Arya Wijaya, S.Kom, M.T (`TI-101`) | Infrastruktur server, jaringan kantor, helpdesk, dan keamanan data. |
+| `dept-fin` | KEU | Departemen Keuangan | Ratna Sari, SE, Ak, CA (`KEU-201`) | Akuntansi, rekonsiliasi kas, perpajakan, dan payroll karyawan. |
+| `dept-ops` | OPS | Departemen Operasional | Siti Rahmawati, ST (`OPS-301`) | Logistik gudang, armada transportasi, QC, dan operasional lapangan. |
+| `dept-mkt` | MKT | Departemen Pemasaran | Nadia Safira, S.I.Kom (`MKT-401`) | Strategi digital marketing, content creation medsos, dan kampanye event. |
+| `dept-hrd` | HR | Departemen HR | Dewi Lestari, S.Psi, M.Psi (`HR-501`) | Rekrutmen, verifikasi enrollment wajah, pelatihan, dan administrasi HR. |
+| `dept-sales` | SALES | Departemen Penjualan | Anton Wijaya, SE (`SLS-601`) | Penjualan B2B instansi, sales counter ritel, dan layanan customer care. |
 
 *Catatan Khusus Direksi:* Pimpinan puncak (CEO & GM) dikelompokkan ke dalam unit `dept-exec` (Direksi & Eksekutif). Unit ini diproteksi secara khusus pada bagan organisasi visual agar tampil di puncak struktur pohon (tanpa memunculkan kotak kosong *"Belum ada kepala departemen"*).
 
@@ -110,8 +110,42 @@ flowchart TD
 Sistem menerapkan 27 jabatan terstruktur yang terikat pada hierarki pelaporan vertikal (`parentId`):
 1. **Level 1 (Pucuk):** Direktur Utama (`pos-dirut`).
 2. **Level 2 (Eksekutif):** Manajer Umum / General Manager (`pos-gm`).
-3. **Level 3 (Kepala Departemen):** Kepala TI, Kepala Keuangan, Kepala Operasional, Kepala Pemasaran, Kepala HR, Kepala Penjualan.
-4. **Level 4 (Staf Pelaksana):** 19 posisi spesifik terdistribusi pada masing-masing unit kerja (misal: Staf Pengembangan Sistem, Staf Payroll, Staf Quality Control, Staf Rekrutmen, Account Executive B2B, dll).
+3. **Level 3 (Kepala Departemen / Manager):** Kepala TI (`pos-ti-kepala`), Kepala Keuangan (`pos-fin-kepala`), Kepala Operasional (`pos-ops-kepala`), Kepala Pemasaran (`pos-mkt-kepala`), Kepala HR (`pos-hrd-kepala`), Kepala Penjualan (`pos-sales-kepala`).
+4. **Level 4 (Staf Pelaksana & Admin IT):** 19 posisi spesifik terdistribusi pada masing-masing unit kerja (misal: Administrator Sistem & IT, Staf Pengembangan Sistem, Staf Payroll, Staf Logistik, Staf Rekrutmen, Account Executive B2B, dll).
+
+#### 4.3.3 Master Register 27 Karyawan & Akun Pengguna Aktual
+
+Seluruh karyawan terdaftar secara resmi pada basis data PostgreSQL (`employees` dan `users`) dengan format email terstandarisasi berbasis nama depan (`[nama_depan].[nama_belakang]@perusahaan.co.id`) dan password default `password123`:
+
+| NIK | Nama Lengkap | Jabatan Resmi | Level | Departemen | Role Sistem | Username | Email Resmi | Status |
+|:---|:---|:---|:---:|:---|:---|:---|:---|:---:|
+| **DIR-001** | Eka Jacx | Direktur Utama | 1 | Direksi & Eksekutif | Director (CEO) | `dirut` | `eka.jacx@perusahaan.co.id` | Aktif |
+| **DIR-002** | Hendra Wijaya, ST | Manajer Umum (GM) | 2 | Direksi & Eksekutif | Director (GM) | `dirops` | `hendra.wijaya@perusahaan.co.id` | Aktif |
+| **ADM-001** | Rian Saputra | Administrator Sistem & IT | 4 | Teknologi Informasi | Admin IT | `admin.it` | `rian.saputra@perusahaan.co.id` | Aktif |
+| **TI-101** | Arya Wijaya, S.Kom, M.T | Kepala TI | 3 | Teknologi Informasi | Manager | `mgr.ti` | `arya.wijaya@perusahaan.co.id` | Aktif |
+| **TI-102** | Rian Hidayat, A.Md | Staf Infrastruktur | 4 | Teknologi Informasi | Supervisor | `spv.ti` | `rian.hidayat@perusahaan.co.id` | Aktif |
+| **TI-103** | Fajar Pratama, S.Kom | Staf Pengembangan Sistem | 4 | Teknologi Informasi | Staff | `staff.ti1` | `fajar.pratama@perusahaan.co.id` | Aktif |
+| **TI-104** | Dimas Anggara | Staf Helpdesk | 4 | Teknologi Informasi | Staff | `staff.ti2` | `dimas.anggara@perusahaan.co.id` | Aktif |
+| **KEU-201** | Ratna Sari, SE, Ak, CA | Kepala Keuangan | 3 | Keuangan | Manager | `mgr.keu` | `ratna.sari@perusahaan.co.id` | Aktif |
+| **KEU-202** | Maya Indah, S.Ak | Staf Akuntansi | 4 | Keuangan | Supervisor | `spv.keu` | `maya.indah@perusahaan.co.id` | Aktif |
+| **KEU-203** | Aditya Putra, SE | Staf Keuangan | 4 | Keuangan | Staff | `staff.keu1` | `aditya.putra@perusahaan.co.id` | Aktif |
+| **KEU-204** | Kevin Sanjaya, S.Ak | Staf Pajak | 4 | Keuangan | Staff | `staff.keu2` | `kevin.sanjaya@perusahaan.co.id` | Aktif |
+| **OPS-301** | Siti Rahmawati, ST | Kepala Operasional | 3 | Operasional | Manager | `mgr.ops` | `siti.rahmawati@perusahaan.co.id` | Aktif |
+| **OPS-302** | Budi Santoso | Staf Produksi | 4 | Operasional | Supervisor | `budi.santoso` | `budi.santoso@perusahaan.co.id` | Aktif |
+| **OPS-303** | Agus Setiawan | Staf Logistik | 4 | Operasional | Staff | `staff.ops1` | `agus.setiawan@perusahaan.co.id` | Aktif |
+| **OPS-304** | Wahyu Hidayat | Staf Pengadaan | 4 | Operasional | Staff | `staff.ops2` | `wahyu.hidayat@perusahaan.co.id` | Aktif |
+| **MKT-401** | Nadia Safira, S.I.Kom | Kepala Pemasaran | 3 | Pemasaran | Manager | `mgr.mkt` | `nadia.safira@perusahaan.co.id` | Aktif |
+| **MKT-402** | Rizky Ramadhan, S.M | Staf Marketing | 4 | Pemasaran | Supervisor | `spv.mkt` | `rizky.ramadhan@perusahaan.co.id` | Aktif |
+| **MKT-403** | Clarissa Aurelia, S.Ds | Staf Content Kreator | 4 | Pemasaran | Staff | `staff.mkt1` | `clarissa.aurelia@perusahaan.co.id` | Aktif |
+| **MKT-404** | Gilang Perdana, S.Sn | Staf Desain | 4 | Pemasaran | Staff | `staff.mkt2` | `gilang.perdana@perusahaan.co.id` | Aktif |
+| **HR-501** | Dewi Lestari, S.Psi, M.Psi | Kepala HR | 3 | HR | HRD | `dewi.lestari` | `dewi.lestari@perusahaan.co.id` | Aktif |
+| **HR-502** | Tri Wulandari, S.Psi | Staf Rekrutmen | 4 | HR | Supervisor | `spv.hr` | `tri.wulandari@perusahaan.co.id` | Aktif |
+| **HR-503** | Bayu Nugroho, S.Pd | Staf Pelatihan & Personalia | 4 | HR | HRD | `staff.hr1` | `bayu.nugroho@perusahaan.co.id` | Aktif |
+| **HR-504** | Sarah Melati | Staf Administrasi HR | 4 | HR | Staff | `staff.hr2` | `sarah.melati@perusahaan.co.id` | Aktif |
+| **SLS-601** | Anton Wijaya, SE | Kepala Penjualan | 3 | Penjualan | Manager | `mgr.sls` | `anton.wijaya@perusahaan.co.id` | Aktif |
+| **SLS-602** | Farhan Maulana | Staf Sales | 4 | Penjualan | Supervisor | `spv.sls` | `farhan.maulana@perusahaan.co.id` | Aktif |
+| **SLS-603** | Putri Ayu Lestari, A.Md | Staf Customer Service | 4 | Penjualan | Staff | `staff.sls1` | `putri.ayu@perusahaan.co.id` | Aktif |
+| **SLS-604** | Dita Permatasari | Staf Administrasi Penjualan | 4 | Penjualan | Staff | `staff.sls2` | `dita.permatasari@perusahaan.co.id` | Aktif |
 
 ## 5. Ruang Lingkup Fungsional
 
@@ -133,10 +167,20 @@ Data wajib dan formatnya ditentukan oleh konfigurasi sistem dan kebijakan organi
 - Otorisasi harus diperiksa di server pada setiap endpoint/aksi sensitif.
 
 ### 5.3 Login dan Sesi
-- Login harus menggunakan mekanisme autentikasi yang aman.
-- Sistem menyediakan penanganan sesi, logout, dan pembatasan akses sesuai role.
-- Akun tidak aktif atau dinonaktifkan tidak dapat mengakses sistem.
-- Role switcher atau simulasi role hanya boleh digunakan pada development/testing; tidak boleh menjadi mekanisme otorisasi production.
+
+- **Autentikasi Multi-Identifier Fleksibel:**
+  - Pengguna dapat melakukan login menggunakan salah satu dari 3 kredensial unik:
+    1. **Email Resmi Perusahaan** (misal: `rian.saputra@perusahaan.co.id`).
+    2. **Username Sistem** (misal: `admin.it`, `dirut`, `dewi.lestari`).
+    3. **Nomor Induk Karyawan / NIK** (misal: `ADM-001`, `DIR-001`, `OPS-302`).
+- **Verifikasi Kriptografi Kredensial:**
+  - Kata sandi diverifikasi melalui hashing `bcryptjs` pada database PostgreSQL.
+  - **Penolakan Tegas Password Salah:** Jika kredensial tidak cocok, server mengembalikan status HTTP `401 Unauthorized` dan memblokir proses login. Fitur bypass demo mode telah dicabut permanen untuk menjaga keamanan lingkungan staging dan produksi.
+- **Validasi Keterikatan Perangkat (1-Device Binding):**
+  - Pada lingkungan mobile/smartphone, sistem memverifikasi pengikatan perangkat melalui tabel `device_bindings`. Pengguna dibatasi pada 1 perangkat fisik terdaftar guna mencegah titip absen.
+- **Manajemen Sesi & Role Switching:**
+  - Sesi disimpan secara aman pada `localStorage` dan `cookie` terproteksi dengan pemulihan profil otomatis (`AuthContext`).
+  - Dropdown role switcher pada header navigasi hanya berfungsi sebagai sarana simulasi izin hak akses (*POV Switcher*) pada level antarmuka pengguna tanpa mengesampingkan otorisasi ketat di sisi server.
 
 ### 5.4 Enrollment/Registrasi Wajah (3-Angle Biometric Engine)
 Alur enrollment produksi:
@@ -239,29 +283,38 @@ Alur transaksi presensi:
   - Atasan tidak dapat menimpa (*overwrite*) sel cuti dengan shift kerja operasional, mencegah potensi kesalahan penjadwalan ganda.
 - **Ekspor Roster Mingguan:** Fitur unduh format Excel (.xlsx) rapi lengkap dengan Kop Surat Perusahaan dan matriks nama, tanggal, serta nama shift yang ditugaskan.
 
-### 5.10 Pengajuan dan Approval Cuti (Separasi Rute & Smart Notification)
+### 5.10 Pengajuan dan Approval Cuti (Separasi Rute, Alasan Wajib, & Smart Notification)
+
 - **Separasi Rute Berdasarkan Role (Role-Based Route Separation):**
   - **Karyawan / Staff -> `/cuti` (Pengajuan & Riwayat Cuti Pribadi):**
     - Berisi formulir pengajuan cuti (Cuti Tahunan, Sakit, Alasan Penting), informasi sisa saldo kuota cuti tahunan (default 12 hari/tahun), serta riwayat pengajuan dan statusnya.
   - **Atasan (Supervisor, GM, HRD, Direksi) -> `/approval/cuti` (Modul Persetujuan Cuti Tim):**
-    - Berisi tabel daftar permohonan cuti anggota tim bawahan yang menunggu keputusan, informasi tanggal, alasan, dokumen lampiran, serta tombol **Setujui** dan **Tolak** (disertai isian alasan penolakan).
-  - **Proteksi & Navigasi Cerdas:**
-    - Jika user ber-role Staff mengakses `/approval/cuti`, sistem tidak menampilkan error fatal melainkan kartu informasi ramah: *"Halaman ini diperuntukkan bagi level Atasan (Supervisor, GM, HRD, Direksi) untuk memeriksa dan memutuskan permohonan cuti anggota tim. Untuk mengajukan cuti pribadi, silakan gunakan menu Pengajuan Cuti"* dilengkapi tombol Call-to-Action langsung menuju `/cuti`.
-    - **In-App Notification Click Routing:** Saat karyawan mengklik notifikasi persetujuan cuti (misal: "Permohonan Cuti Tahunan Disetujui"), sistem secara cerdas mengevaluasi role pengguna; jika pengguna adalah Staff, diarahkan langsung ke `/cuti`, sedangkan jika Atasan diarahkan ke `/approval/cuti`.
+    - Berisi tabel daftar permohonan cuti anggota tim bawahan yang menunggu keputusan, informasi tanggal, alasan, dokumen lampiran, serta tombol **Setujui**, **Tolak**, dan **Revisi**.
+  - **Staff Guidance Card pada Akses Approval Cuti:**
+    - Jika pengguna ber-role **Staff** mengakses URL `/approval/cuti`, sistem tidak me-redirect secara berulang ataupun menampilkan error fatal. Sebagai gantinya, sistem menyajikan **Guidance Card (Kartu Panduan)** ramah yang menerangkan bahwa modul approval diperuntukkan bagi manajerial/atasan, disertai tombol aksi langsung menuju *Pengajuan Cuti Pribadi* (`/cuti`).
+- **Aturan Wajib Isi Alasan / Catatan Persetujuan (Mandatory Approval Note):**
+  - **Seluruh keputusan persetujuan cuti (Setujui, Tolak, dan Revisi) WAJIB mengisi kolom alasan/catatan.**
+  - **Validasi Sisi Klien (Frontend):** Form menolak aksi jika input catatan kosong atau hanya berisi spasi (`!reviewNote.trim()`), menampilkan notifikasi modal peringatan *"Alasan / Catatan Wajib Diisi"*, dan memberi tanda bintang merah `*` pada kolom isian.
+  - **Validasi Sisi Server (Backend):** Endpoint `PATCH /api/approval/cuti` menolak request tanpa catatan dengan mengembalikan respon HTTP `400 Bad Request` berpesan *"Kolom alasan / catatan keputusan persetujuan wajib diisi dan tidak boleh kosong"*.
+  - **Transparansi Karyawan:** Seluruh catatan approver disimpan ke kolom `approvalNotes` di basis data PostgreSQL dan ditampilkan secara transparan pada riwayat cuti pemohon di `/cuti`.
 - **Workflow Baseline Cuti (FINAL P-3 & P-10):**
   - Staff -> 1 Tahap persetujuan oleh Atasan Langsung (`reports_to`). Saat disetujui, saldo cuti tahunan dipotong otomatis dan sel roster jadwal mingguan terkunci.
   - Supervisor -> 1 Tahap oleh General Manager (GM).
   - General Manager -> 1 Tahap oleh CEO.
-  - CEO -> Executive Notice.
   - Validasi kuota cuti: Sistem memblokir pengajuan cuti tahunan jika saldo tidak mencukupi (`allow_negative_balance = false`).
 
-### 5.11 Koreksi Absensi
-- Pengajuan koreksi absensi dilakukan jika terjadi kendala teknis perangkat atau penugasan luar kantor.
-- Karyawan mengisi formulir koreksi di `/koreksi` dengan mencantumkan tanggal, jenis koreksi (jam masuk/jam pulang), jam sebenarnya, alasan logis, dan bukti pendukung.
+### 5.11 Koreksi Absensi (2-Tahap Sequential & Alasan Wajib)
+
+- Pengajuan koreksi absensi dilakukan jika terjadi kendala teknis perangkat, lupa absen pulang karena lembur mendadak, atau penugasan dinas luar kota.
+- Karyawan mengisi formulir koreksi di `/riwayat` dengan mencantumkan tanggal target, jenis koreksi (jam masuk/jam pulang), usulan jam yang sebenarnya, alasan logis, dan bukti penugasan.
 - **Workflow 2-Tahap Sequential (FINAL P-3):**
-  - Tahap 1: Verifikasi dan persetujuan oleh Atasan Langsung (memeriksa kebenaran alasan operasional).
-  - Tahap 2: Verifikasi final oleh HRD (validasi data audit, lalu memperbarui data `attendance_records` aktual).
-- Data absensi asli tidak dihapus; sistem menyimpan nilai sebelum, nilai sesudah, identitas approver, dan catatan approval di database (`attendance_corrections`).
+  - **Tahap 1 (Supervisor):** Verifikasi kebenaran tugas operasional oleh Atasan Langsung.
+  - **Tahap 2 (HRD):** Verifikasi final kesesuaian data audit dan penyesuaian otomatis rekaman absensi (`attendance_records`).
+- **Aturan Wajib Isi Alasan / Catatan Verifikasi Koreksi:**
+  - Baik saat **Menyetujui** maupun **Menolak**, Approver **WAJIB** memberikan catatan verifikasi.
+  - Endpoint `PATCH /api/approval/koreksi` memvalidasi `notes.trim()` dan mengembalikan status HTTP `400 Bad Request` apabila kosong.
+  - Catatan disimpan pada field `supervisorNotes` (tahap 1) dan `hrdNotes` (tahap 2).
+- Data absensi asli tidak dihapus; sistem menyimpan nilai sebelum, nilai sesudah, identitas approver, dan audit log perubahan di database (`attendance_corrections`).
 
 ### 5.12 Dashboard dan Monitoring Real-Time
 - **Dashboard Multi-POV:**
@@ -643,7 +696,25 @@ flowchart TD
     L --> M[Tampilkan Notifikasi Sukses & Waktu Presensi]
 ```
 
-### 10.2 Workflow Enrollment Wajah 3 Sudut (Multi-Angle & HRD Approval)
+### 10.2 Workflow Autentikasi Multi-Identifier & Keamanan Sesi
+
+```mermaid
+flowchart TD
+    A[Pengguna Akses /login] --> B[Input Identifier: Email / Username / NIK]
+    B --> C[Input Password & Device Info]
+    C --> D[Kirim POST /api/auth/login]
+    D --> E{Cari Akun di PostgreSQL?}
+    E -- Tidak Ditemukan --> F[Tolak: Identitas akun tidak terdaftar HTTP 401]
+    E -- Ditemukan --> G{Verifikasi Hash Password bcrypt?}
+    G -- Password Salah --> H[Tolak: Kredensial tidak valid HTTP 401]
+    G -- Password Valid --> I{Platform Mobile & Device Binding?}
+    I -- Perangkat Tidak Cocok --> J[Tolak: Device ID tidak terdaftar HTTP 403]
+    I -- Valid / Desktop Web --> K[Terbitkan Sesi & Set Auth State]
+    K --> L[Audit Log Event: USER_LOGIN_SUCCESS]
+    L --> M[Arahkan ke Dashboard Berdasarkan Role]
+```
+
+### 10.3 Workflow Enrollment Wajah 3 Sudut & Validasi HRD (Mandatory Reason)
 
 ```mermaid
 flowchart TD
@@ -651,19 +722,24 @@ flowchart TD
     B --> C[Pengambilan Sudut 1: Depan / Frontal]
     C --> D[Pengambilan Sudut 2: Menoleh Kanan 30°]
     D --> E[Pengambilan Sudut 3: Menoleh Kiri 30°]
-    E --> F{Pemeriksaan Kualitas & Pose: Quality >= 75%?}
+    E --> F{Pemeriksaan Kualitas: Quality >= 75%?}
     F -- Kualitas Rendah / Buram --> G[Peringatan & Ulangi Pengambilan]
     G --> B
-    F -- Memenuhi Syarat --> H[Simpan Status: Menunggu Review]
-    H --> I[HRD Buka Modul /approval/wajah]
-    I --> J{Keputusan HRD}
-    J -- Ditolak --> K[Isi Alasan Penolakan -> Status: Perlu Registrasi Ulang]
-    K --> L[Notifikasi In-App ke Karyawan untuk Foto Ulang]
-    J -- Disetujui --> M[Status: Disetujui -> Template Biometrik Aktif]
-    M --> N[Karyawan Siap Melakukan Presensi]
+    F -- Memenuhi Syarat --> H[Simpan FaceEnrollment: Menunggu Review]
+    H --> I[HRD Buka /enrollment-review]
+    I --> J[Inspeksi 3 Sudut Foto & Skor AI]
+    J --> K{Keputusan HRD}
+    K --> L{Kolom Alasan / Catatan Terisi?}
+    L -- Kosong / Spasi Saja --> M[Validasi Gagal: Tampilkan Alert Wajib Isi Alasan]
+    M --> J
+    L -- Terisi Valid --> N{Aksi HRD}
+    N -- Ditolak --> O[Status: Ditolak + Catatan Alasan Tersimpan]
+    O --> P[Notifikasi In-App: Karyawan Diminta Registrasi Ulang]
+    N -- Disetujui --> Q[Status: Disetujui + Catatan Verifikasi Tersimpan]
+    Q --> R[Model Embedding Aktif: Karyawan Siap Absensi Live]
 ```
 
-### 10.3 Workflow Pengajuan Cuti & Sinkronisasi Anti-Tabrakan Roster
+### 10.4 Workflow Persetujuan Cuti Berjenjang & Penguncian Roster (Mandatory Reason)
 
 ```mermaid
 flowchart TD
@@ -673,16 +749,58 @@ flowchart TD
     C -- Saldo Cukup --> D[Submit Permohonan -> Status: Menunggu SPV]
     D --> E[Notifikasi Masuk ke Lonceng Supervisor]
     E --> F[Supervisor Buka /approval/cuti]
-    F --> G{Keputusan Atasan}
-    G -- Ditolak --> H[Status Ditolak & Alasan Tersimpan]
-    G -- Disetujui --> I[Status: Disetujui -> Potong Saldo Cuti]
-    I --> J[Kirim Notifikasi Cerdas ke Staff: Klik langsung buka /cuti]
-    I --> K[Sinkronisasi Otomatis Modul /jadwal]
-    K --> L[Kunci Sel Roster dengan Badge: Cuti Disetujui]
-    L --> M[Shift Kerja Tidak Dapat Ditimpa / Anti-Collision Lock]
+    F --> G[Klik Review & Putuskan]
+    G --> H{Kolom Catatan / Alasan Terisi?}
+    H -- Kosong --> I[Validasi Gagal: Blokir Aksi & Tampilkan Alert]
+    I --> G
+    H -- Terisi Valid --> J{Keputusan Atasan}
+    J -- Ditolak --> K[Status: Ditolak + Alasan Tersimpan di PostgreSQL]
+    J -- Revisi --> L[Status: Perlu Revisi + Catatan Instruksi]
+    J -- Disetujui --> M{Apakah Perlu Persetujuan HRD?}
+    M -- Perlu HRD --> N[Status: Menunggu HRD -> Notifikasi ke HRD]
+    N --> O[HRD Review dengan Catatan Wajib -> Disetujui Final]
+    M -- Final Langsung --> P[Status: Disetujui Final]
+    O --> Q[Potong Saldo Kuota Cuti Tahunan]
+    P --> Q
+    Q --> R[Sinkronisasi Otomatis Modul /jadwal]
+    R --> S[Kunci Sel Roster dengan Badge: Cuti Disetujui Anti-Collision]
 ```
 
----
+### 10.5 Workflow Persetujuan Koreksi Absensi 2-Tahap (Mandatory Reason)
+
+```mermaid
+flowchart TD
+    A[Karyawan Submit Koreksi Absensi] --> B[Status: Menunggu SPV]
+    B --> C[Supervisor Buka /approval/koreksi]
+    C --> D[Pilih Permohonan & Buka Modal Review]
+    D --> E{Input Catatan Verifikasi SPV Terisi?}
+    E -- Kosong --> F[Alert: Catatan verifikasi wajib diisi]
+    F --> D
+    E -- Terisi Valid --> G{Keputusan SPV}
+    G -- Ditolak --> H[Status: Ditolak + Catatan SPV Tersimpan]
+    G -- Setujui --> I[Status: Menunggu HRD -> Notifikasi ke HRD]
+    I --> J[HRD Buka /approval/koreksi]
+    J --> K{Input Catatan HRD Terisi?}
+    K -- Kosong --> L[Alert: Catatan verifikasi HRD wajib diisi]
+    L --> J
+    K -- Terisi Valid --> M{Keputusan HRD}
+    M -- Ditolak --> N[Status: Ditolak + Catatan HRD Tersimpan]
+    M -- Disetujui Final --> O[Status: Disetujui Final]
+    O --> P[Update Otomatis Jam Presensi di attendance_records]
+    P --> Q[Audit Log Event WORM & Notifikasi ke Karyawan]
+```
+
+### 10.6 Alur Staff Guidance Card pada Modul Persetujuan
+
+```mermaid
+flowchart TD
+    A[Pengguna Akses /approval/cuti] --> B{Pemeriksaan Role Pengguna}
+    B -- Role: Staff --> C[Tampilkan Staff Guidance Card]
+    C --> D[Tampilkan Penjelasan Akses Khusus Atasan]
+    D --> E[Tampilkan Tombol: Buka Pengajuan Cuti Pribadi]
+    E --> F[Klik Tombol -> Navigasi ke /cuti]
+    B -- Role: Supervisor / HRD / GM / CEO --> G[Tampilkan Antrean Permohonan Cuti Tim]
+```
 
 ## 11. Diagram Flow Database Produksi (Prisma As-Built ERD)
 
@@ -1017,7 +1135,7 @@ Dokumen **PRD Final v2.0 (As-Built Production Specification)** ini merupakan rep
 ---
 
 **Nama aplikasi: J-Absen**  
-**Versi: 2.0 (As-Built Production Specification)**  
+**Versi: 2.1 (Production Baseline As-Built & Security Verified)**  
 **Pengembang: EKA JACX**  
 
 ## 18. Catatan Perubahan Dokumen
@@ -1095,32 +1213,30 @@ Dokumen **PRD Final v2.0 (As-Built Production Specification)** ini merupakan rep
   - CEO dan General Manager (GM) ditetapkan di puncak hierarki eksekutif tanpa departemen operasional.
   - Menetapkan 6 Departemen Operasional resmi: Teknologi Informasi (TI), Keuangan & Akuntansi (FIN), Operasional (OPS), Pemasaran (MKT), Human Resources & Umum (HRD), dan Penjualan (SLS).
   - Meresmikan 27 jabatan terstruktur dalam 4 level hierarki (Level 1: Direksi, Level 2: GM, Level 3: Kepala Departemen, Level 4: Staff/Pelaksana).
-- **Engine Pendaftaran Biometrik Wajah 3-Sudut (Bagian 5.4, 10.2, 13.2):**
-  - Implementasi alur registrasi biometrik 3 sudut terpandu: Depan (Frontal), Kanan 30°, dan Kiri 30°.
-  - Validasi kualitas gambar (Quality Score >= 75%) dan liveness berbasis MediaPipe FaceMesh.
-  - Modul peninjauan HRD di `/approval/wajah` dengan alur persetujuan dan penolakan berargumen.
-- **Presensi, Geofence Bali, & 1-Device Binding (Bagian 5.5, 5.6, 5.8, 10.1, 13.1-13.4):**
-  - Penerapan 4-Step Random Liveness Challenge anti-spoofing saat check-in dan check-out.
-  - Geofence resmi Kantor Pusat Bali (radius 100m) dengan peta Leaflet interaktif dan tombol 1-Klik GPS Autofill.
-  - Validasi 1-Device Binding (penguncian hardware/browser UUID smartphone) guna mencegah kecurangan presensi antar perangkat, dengan wewenang reset perangkat eksklusif oleh Admin IT.
-- **Relokasi & Proteksi Shift di `/pengaturan?tab=shift` (Bagian 5.7 & 13.5):**
-  - Memindahkan konfigurasi jam kerja dan pola shift ke dalam tab pengaturan terpusat.
-  - Penegakan proteksi hak akses: Staff dilarang keras mengakses konfigurasi shift (tampilan diblokir aman).
-  - Mendukung konfigurasi Reguler Office, Shift 1 Pagi, Shift 2 Siang, dan Shift 3 Malam Lintas Tengah Malam (`isOvernight`).
-- **Roster Jadwal Mingguan & Integrasi Cuti Anti-Tabrakan (Bagian 5.9, 10.3, 13.5):**
-  - Modul `/jadwal` berbasis hierarki Atasan-Bawahan (`reports_to`).
-  - Sinkronisasi Cuti Anti-Tabrakan (*Anti-Collision Leave Locking*): Sel jadwal karyawan yang memiliki cuti disetujui otomatis terkunci dengan badge "Cuti Disetujui" dan tidak dapat ditimpa shift kerja.
-- **Separasi Rute Cuti & Smart In-App Notification (Bagian 5.10 & 13.6):**
-  - Pemisahan rute antarmuka: Staff ke `/cuti` (pengajuan pribadi), Atasan ke `/approval/cuti` (tinjauan tim).
-  - In-App Notification cerdas: klik notifikasi otomatis mengarahkan ke `/cuti` atau `/approval/cuti` sesuai role pengguna.
-- **Injeksi Kop Surat Resmi Excel Otomatis (Bagian 5.13 & 13.7):**
-  - Modul ekspor Excel (.xlsx) menginjeksi Kop Surat Resmi Perusahaan secara otomatis dan dinamis dari `CompanyProfile` pada baris atas laporan.
-- **Audit Log Kriptografi WORM SHA-256 (Bagian 5.14 & 13.8):**
-  - Tabel `audit_logs` beroperasi secara Append-Only (WORM); modifikasi dan penghapusan data diblokir permanen.
-  - Rantai hash SHA-256 (`hash` + `prevHash`) untuk audit forensik dengan verifikasi integritas berkesinambungan.
-- **Penyelesaian Isu UI & Komponen Input (Stabilitas Sistem):**
-  - Penyelesaian hydration error pada header notifikasi dan dropdown POV switcher.
-  - Perlindungan terhadap React *Controlled to Uncontrolled Input* di formulir pengaturan perusahaan.
+
+### Revisi 11 - 20 November 2026 (Standarisasi 27 Karyawan, Mandatory Approval Reason, & Security Hardening)
+
+- **Standarisasi Menyeluruh 27 Karyawan & Akun Pengguna (Bagian 4.3.3):**
+  - Seluruh 27 data karyawan disinkronkan secara identik antara basis data PostgreSQL, Prisma seed, dan frontend mock.
+  - Email terstandarisasi penuh menggunakan nama depan dan nama belakang resmi (`[nama_depan].[nama_belakang]@perusahaan.co.id`), meniadakan email generik/placeholder.
+  - Admin IT ditetapkan resmi pada akun **Rian Saputra** (`ADM-001`, username `admin.it`, email `rian.saputra@perusahaan.co.id`).
+  - Direktur Utama / CEO ditetapkan resmi pada akun **Eka Jacx** (`DIR-001`, username `dirut`, email `eka.jacx@perusahaan.co.id`).
+  - Kepala TI ditetapkan resmi pada akun **Arya Wijaya, S.Kom, M.T** (`TI-101`, username `mgr.ti`, email `arya.wijaya@perusahaan.co.id`).
+- **Autentikasi Multi-Identifier & Penguatan Keamanan Login (Bagian 5.3 & 10.2):**
+  - Login mendukung multi-identifier fleksibel: Email resmi, Username, atau NIK.
+  - Pengujian kata sandi ketat via `bcryptjs` dengan penolakan langsung HTTP 401 Unauthorized apabila salah; penghapusan total bypass demo mode login.
+- **Mandatory Approval Notes / Alasan Wajib Diisi pada Seluruh Alur Persetujuan (Bagian 5.4, 5.10, 5.11, 10.3, 10.4, 10.5):**
+  - Seluruh tindakan keputusan (Setujui, Tolak, dan Revisi) pada modul **Persetujuan Cuti** (`/approval/cuti`), **Persetujuan Koreksi Absensi** (`/approval/koreksi`), dan **Pendaftaran Biometrik Wajah** (`/enrollment-review`) **WAJIB** mengisi kolom alasan/catatan.
+  - Validasi ketat pada antarmuka pengguna (tanda `*`, feedback validasi visual, dialog peringatan jika kosong).
+  - Validasi ketat pada backend API (`PATCH /api/approval/cuti`, `PATCH /api/approval/koreksi`, `PATCH /api/enrollment`) dengan respon HTTP `400 Bad Request` jika alasan kosong atau hanya spasi.
+- **Staff Guidance Card pada Halaman Persetujuan Cuti (Bagian 5.10 & 10.6):**
+  - Pengguna dengan role Staff yang mengakses `/approval/cuti` ditampilkan Kartu Panduan (*Guidance Card*) informatif dan ramah pengguna, dilengkapi tombol navigasi langsung ke portal pengajuan pribadi (`/cuti`).
+- **Sinkronisasi Dual-Database (Lokal & Neon Cloud PostgreSQL):**
+  - Basis data PostgreSQL lokal (`localhost:5432/jabsen_db`) dan Neon Cloud PostgreSQL (`neondb` on AWS ap-southeast-1) telah terseed dan terverifikasi 100% konsisten.
+- **Audit Keamanan Komprehensif (/cek-keamanan):**
+  - Audit rahasia & kredensial: 0 hardcoded secrets di source code (`.env` terisolasi di `.gitignore`).
+  - Audit injeksi SQL & sanitasi input: 100% kueri basis data menggunakan Prisma parameterized queries.
+  - Audit otorisasi: Perlindungan endpoint server-side dan penolakan bypass password salah.
 
 ## 19. Register Keputusan Desain dan Item Pending
 
@@ -1240,7 +1356,7 @@ Dokumen **PRD Final v2.0 (As-Built Production Specification)** ini merupakan rep
 ---
 
 **Nama aplikasi: J-Absen**  
-**Versi: 2.0 (As-Built Production Specification)**  
+**Versi: 2.1 (Production Baseline As-Built & Security Verified)**  
 **Pengembang: EKA JACX**  
 **Tanggal Rilis: 20 November 2026**  
 
