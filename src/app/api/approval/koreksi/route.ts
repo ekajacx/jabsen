@@ -172,6 +172,20 @@ export async function PATCH(req: NextRequest) {
     const { id, action, actorName, actorRole, notes } = body;
     // action: "SPV_APPROVE" | "SPV_REJECT" | "HRD_APPROVE" | "HRD_REJECT"
 
+    if (!id || !action) {
+      return NextResponse.json({ success: false, message: "ID dan action persetujuan koreksi wajib disertakan." }, { status: 400 });
+    }
+
+    // Seluruh approval wajib mengisi kolom alasan / catatan (tidak boleh kosong)
+    if (!notes || typeof notes !== "string" || !notes.trim()) {
+      return NextResponse.json(
+        { success: false, message: "Kolom alasan / catatan verifikasi koreksi wajib diisi dan tidak boleh kosong." },
+        { status: 400 }
+      );
+    }
+
+    const cleanNotes = notes.trim();
+
     const existing = await prisma.attendanceCorrection.findUnique({
       where: { id },
       include: { employee: true },
@@ -186,19 +200,19 @@ export async function PATCH(req: NextRequest) {
 
     if (action === "SPV_APPROVE") {
       nextStatus = "Menunggu HRD";
-      updateData.supervisorNotes = notes || "Disetujui oleh Supervisor";
+      updateData.supervisorNotes = cleanNotes;
       updateData.supervisorApprovedAt = new Date();
     } else if (action === "SPV_REJECT") {
       nextStatus = "Ditolak";
-      updateData.supervisorNotes = notes || "Ditolak oleh Supervisor";
+      updateData.supervisorNotes = cleanNotes;
       updateData.supervisorApprovedAt = new Date();
     } else if (action === "HRD_APPROVE") {
       nextStatus = "Disetujui Final";
-      updateData.hrdNotes = notes || "Disetujui Final oleh HRD";
+      updateData.hrdNotes = cleanNotes;
       updateData.hrdApprovedAt = new Date();
     } else if (action === "HRD_REJECT") {
       nextStatus = "Ditolak";
-      updateData.hrdNotes = notes || "Ditolak oleh HRD";
+      updateData.hrdNotes = cleanNotes;
       updateData.hrdApprovedAt = new Date();
     }
 

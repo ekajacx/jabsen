@@ -68,11 +68,21 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // Seluruh approval wajib mengisi kolom alasan / catatan (tidak boleh kosong)
+    if (!hrNotes || typeof hrNotes !== "string" || !hrNotes.trim()) {
+      return NextResponse.json(
+        { success: false, message: "Kolom alasan / catatan verifikasi pendaftaran biometrik wajib diisi dan tidak boleh kosong." },
+        { status: 400 }
+      );
+    }
+
+    const cleanNotes = hrNotes.trim();
+
     const updated = await prisma.faceEnrollment.update({
       where: { id },
       data: {
         status,
-        hrNotes: hrNotes || null,
+        hrNotes: cleanNotes,
         reviewedBy: reviewerName || "Kepala HR",
         reviewedAt: new Date(),
       },

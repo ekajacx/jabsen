@@ -195,7 +195,21 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, action, actorName, actorRole, notes } = body;
-    // action: "SPV_APPROVE" | "SPV_REJECT" | "HRD_APPROVE" | "HRD_REJECT"
+    // action: "SPV_APPROVE" | "SPV_REJECT" | "HRD_APPROVE" | "HRD_REJECT" | "REVISE"
+
+    if (!id || !action) {
+      return NextResponse.json({ success: false, message: "ID dan action permohonan cuti wajib disertakan." }, { status: 400 });
+    }
+
+    // Seluruh approval wajib mengisi kolom alasan / catatan (tidak boleh kosong)
+    if (!notes || typeof notes !== "string" || !notes.trim()) {
+      return NextResponse.json(
+        { success: false, message: "Kolom alasan / catatan keputusan persetujuan wajib diisi dan tidak boleh kosong." },
+        { status: 400 }
+      );
+    }
+
+    const cleanNotes = notes.trim();
 
     const existing = await prisma.leaveRequest.findUnique({
       where: { id },
@@ -208,7 +222,7 @@ export async function PATCH(req: NextRequest) {
 
     let nextStatus = existing.status;
     const now = new Date();
-    const updateData: any = { approvalNotes: notes || existing.approvalNotes };
+    const updateData: any = { approvalNotes: cleanNotes };
 
     if (action === "SPV_APPROVE") {
       nextStatus = "Menunggu HRD";

@@ -187,9 +187,21 @@ export default function ApprovalKoreksiPage() {
   // Eksekusi Persetujuan Koreksi (PRD P-3: 2 Tahap Sequential SPV -> HRD)
   const handleApprove = async () => {
     if (!selectedReq) return;
+
+    // Seluruh approval wajib mengisi catatan / alasan
+    if (!reviewNote.trim()) {
+      showAlert({
+        title: "Alasan / Catatan Wajib Diisi",
+        message: "Harap isi kolom catatan verifikasi / alasan sebelum menyetujui permohonan koreksi absensi ini. Kolom tidak boleh kosong.",
+        type: "warning",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     const action = selectedReq.status === "Menunggu SPV" ? "SPV_APPROVE" : "HRD_APPROVE";
+    const cleanNotes = reviewNote.trim();
 
     try {
       const res = await fetch("/api/approval/koreksi", {
@@ -200,7 +212,7 @@ export default function ApprovalKoreksiPage() {
           action,
           actorName: user.name,
           actorRole: user.role,
-          notes: reviewNote || (action === "SPV_APPROVE" ? "Disetujui oleh Supervisor" : "Finalisasi data koreksi selesai"),
+          notes: cleanNotes,
         }),
       });
 
@@ -230,7 +242,7 @@ export default function ApprovalKoreksiPage() {
                   hour: "2-digit",
                   minute: "2-digit",
                 }).format(new Date()) + " WIB",
-                notes: reviewNote || "Disetujui oleh Supervisor",
+                notes: cleanNotes,
               },
             };
           }
@@ -250,7 +262,7 @@ export default function ApprovalKoreksiPage() {
                   hour: "2-digit",
                   minute: "2-digit",
                 }).format(new Date()) + " WIB",
-                notes: reviewNote || "Finalisasi data koreksi selesai",
+                notes: cleanNotes,
               },
             };
           }
@@ -280,9 +292,21 @@ export default function ApprovalKoreksiPage() {
 
   const handleReject = async () => {
     if (!selectedReq) return;
+
+    // Seluruh approval wajib mengisi catatan / alasan
+    if (!reviewNote.trim()) {
+      showAlert({
+        title: "Alasan Penolakan Wajib Diisi",
+        message: "Harap isi kolom alasan penolakan sebelum menolak permohonan koreksi absensi ini. Kolom tidak boleh kosong.",
+        type: "warning",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     const action = selectedReq.status === "Menunggu SPV" ? "SPV_REJECT" : "HRD_REJECT";
+    const cleanNotes = reviewNote.trim();
 
     try {
       const res = await fetch("/api/approval/koreksi", {
@@ -293,7 +317,7 @@ export default function ApprovalKoreksiPage() {
           action,
           actorName: user.name,
           actorRole: user.role,
-          notes: reviewNote || (action === "SPV_REJECT" ? "Ditolak oleh Supervisor" : "Ditolak oleh HRD"),
+          notes: cleanNotes,
         }),
       });
 
@@ -496,6 +520,7 @@ export default function ApprovalKoreksiPage() {
                         size="sm"
                         onClick={() => {
                           setSelectedReq(item);
+                          setReviewNote("");
                           setShowReviewModal(true);
                         }}
                         className="h-8 text-xs font-bold gap-1 shadow-theme-xs"
@@ -538,6 +563,7 @@ export default function ApprovalKoreksiPage() {
                   className="w-full text-xs font-bold"
                   onClick={() => {
                     setSelectedReq(item);
+                    setReviewNote("");
                     setShowReviewModal(true);
                   }}
                 >
@@ -610,15 +636,27 @@ export default function ApprovalKoreksiPage() {
             {selectedReq.status.startsWith("Menunggu") && (
               <div className="text-xs pt-1">
                 <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Catatan Verifikasi Anda ({user.role}):
+                  Catatan Verifikasi Anda ({user.role}) <span className="text-red-500 font-bold">*</span>:
                 </label>
                 <input
                   type="text"
+                  required
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}
-                  placeholder="Contoh: Terkonfirmasi sesuai data log / surat tugas..."
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  placeholder="Wajib diisi: Berikan catatan verifikasi atau alasan keputusan..."
+                  className={`w-full rounded-xl border ${
+                    !reviewNote.trim() ? "border-amber-300 dark:border-amber-700" : "border-gray-300 dark:border-gray-700"
+                  } bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500`}
                 />
+                {!reviewNote.trim() ? (
+                  <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    * Seluruh keputusan approval koreksi wajib mengisi kolom alasan/catatan (tidak boleh kosong).
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                    ✓ Catatan verifikasi terisi dan akan disimpan ke riwayat audit.
+                  </p>
+                )}
               </div>
             )}
 

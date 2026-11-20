@@ -113,7 +113,7 @@ export default function EnrollmentReviewPage() {
   // Modal Detail Review HRD
   const [selectedEnr, setSelectedEnr] = useState<FaceEnrollmentSubmission | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [hrRejectReason, setHrRejectReason] = useState("");
+  const [hrReviewNote, setHrReviewNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchEnrollments = async () => {
@@ -149,17 +149,28 @@ export default function EnrollmentReviewPage() {
   // Eksekusi Persetujuan HRD
   const handleApprove = async () => {
     if (!selectedEnr) return;
+
+    // Seluruh approval wajib mengisi catatan / alasan
+    if (!hrReviewNote.trim()) {
+      showAlert({
+        title: "Alasan / Catatan Wajib Diisi",
+        message: "Harap masukkan catatan verifikasi / alasan sebelum menyetujui pendaftaran biometrik wajah. Kolom tidak boleh kosong.",
+        type: "warning",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      const notes = "Sampel disetujui HRD. Model embedding wajah telah diaktifkan untuk absensi live.";
+      const cleanNotes = hrReviewNote.trim();
       const res = await fetch("/api/enrollment", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedEnr.id,
           status: "Disetujui",
-          hrNotes: notes,
+          hrNotes: cleanNotes,
           reviewerName: user?.name || "HRD",
           reviewerRole: user?.role || "HRD",
         }),
@@ -172,13 +183,14 @@ export default function EnrollmentReviewPage() {
               ? {
                   ...item,
                   status: "Disetujui",
-                  hrNotes: notes,
+                  hrNotes: cleanNotes,
                   reviewedBy: `${user.name} (${user.role})`,
                 }
               : item
           )
         );
         setShowReviewModal(false);
+        setHrReviewNote("");
         showAlert({
           title: "Sampel Wajah Disetujui",
           message: `Sukses! Sampel wajah ${selectedEnr.employeeName} (${selectedEnr.employeeId}) telah DISETUJUI dan tersimpan di database PostgreSQL.\nKaryawan kini dapat melakukan presensi wajah.`,
@@ -195,10 +207,12 @@ export default function EnrollmentReviewPage() {
   // Eksekusi Penolakan HRD
   const handleReject = async () => {
     if (!selectedEnr) return;
-    if (!hrRejectReason.trim()) {
+
+    // Seluruh approval wajib mengisi catatan / alasan
+    if (!hrReviewNote.trim()) {
       showAlert({
         title: "Alasan Penolakan Wajib Diisi",
-        message: "Harap masukkan alasan penolakan agar karyawan dapat memperbaiki foto selfie.",
+        message: "Harap masukkan alasan penolakan agar karyawan dapat memperbaiki foto selfie. Kolom tidak boleh kosong.",
         type: "warning",
       });
       return;
@@ -206,13 +220,14 @@ export default function EnrollmentReviewPage() {
 
     setIsProcessing(true);
     try {
+      const cleanNotes = hrReviewNote.trim();
       const res = await fetch("/api/enrollment", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedEnr.id,
           status: "Ditolak",
-          hrNotes: hrRejectReason,
+          hrNotes: cleanNotes,
           reviewerName: user?.name || "HRD",
           reviewerRole: user?.role || "HRD",
         }),
@@ -225,14 +240,14 @@ export default function EnrollmentReviewPage() {
               ? {
                   ...item,
                   status: "Ditolak",
-                  hrNotes: hrRejectReason,
+                  hrNotes: cleanNotes,
                   reviewedBy: `${user.name} (${user.role})`,
                 }
               : item
           )
         );
         setShowReviewModal(false);
-        setHrRejectReason("");
+        setHrReviewNote("");
         showAlert({
           title: "Sampel Wajah Ditolak",
           message: `Sampel wajah ${selectedEnr.employeeName} DITOLAK di database PostgreSQL. Karyawan akan diminta registrasi ulang.`,
@@ -472,6 +487,7 @@ export default function EnrollmentReviewPage() {
                       className="w-full font-bold text-xs gap-1.5 shadow-theme-xs"
                       onClick={() => {
                         setSelectedEnr(enr);
+                        setHrReviewNote("");
                         setShowReviewModal(true);
                       }}
                     >
@@ -486,6 +502,7 @@ export default function EnrollmentReviewPage() {
                       className="w-full text-xs"
                       onClick={() => {
                         setSelectedEnr(enr);
+                        setHrReviewNote("");
                         setShowReviewModal(true);
                       }}
                     >
@@ -542,19 +559,31 @@ export default function EnrollmentReviewPage() {
               </p>
             </div>
 
-            {/* Input Alasan Penolakan (Jika Ingin Ditolak) */}
+            {/* Input Alasan / Catatan Keputusan HRD */}
             {selectedEnr.status === "Menunggu Review" && (
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Catatan / Alasan Penolakan (Wajib jika menolak)
+                  Catatan Verifikasi / Alasan Keputusan <span className="text-red-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
-                  value={hrRejectReason}
-                  onChange={(e) => setHrRejectReason(e.target.value)}
-                  placeholder="Contoh: Foto miring kiri terlalu gelap atau blur..."
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  required
+                  value={hrReviewNote}
+                  onChange={(e) => setHrReviewNote(e.target.value)}
+                  placeholder="Wajib diisi: Berikan catatan verifikasi atau alasan penolakan..."
+                  className={`w-full rounded-xl border ${
+                    !hrReviewNote.trim() ? "border-amber-300 dark:border-amber-700" : "border-gray-300 dark:border-gray-700"
+                  } bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500`}
                 />
+                {!hrReviewNote.trim() ? (
+                  <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    * Seluruh approval pendaftaran biometrik wajib mengisi kolom alasan/catatan.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                    ✓ Catatan verifikasi terisi.
+                  </p>
+                )}
               </div>
             )}
 

@@ -36,13 +36,6 @@ export default function ApprovalCutiPage() {
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Jika akun adalah Staff, otomatis alihkan ke menu Pengajuan Cuti pribadi (/cuti)
-  useEffect(() => {
-    if (isAuthReady && user?.role === "Staff") {
-      router.replace("/cuti");
-    }
-  }, [isAuthReady, user?.role, router]);
-
   // State Modal Review Approval oleh Atasan / HRD
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -82,6 +75,18 @@ export default function ApprovalCutiPage() {
   const handleDecision = async (decision: "Disetujui" | "Ditolak" | "Perlu Revisi") => {
     if (!selectedRequest) return;
 
+    // Seluruh keputusan approval wajib mengisi kolom catatan / alasan
+    if (!reviewNote.trim()) {
+      showAlert({
+        title: "Alasan / Catatan Wajib Diisi",
+        message: `Harap isi kolom alasan / catatan sebelum ${
+          decision === "Disetujui" ? "menyetujui" : decision === "Ditolak" ? "menolak" : "meminta revisi"
+        } permohonan cuti. Kolom alasan tidak boleh kosong.`,
+        type: "warning",
+      });
+      return;
+    }
+
     setIsProcessingApproval(true);
 
     let action = "SPV_APPROVE";
@@ -97,6 +102,8 @@ export default function ApprovalCutiPage() {
       action = "REVISE";
     }
 
+    const cleanNotes = reviewNote.trim();
+
     try {
       const res = await fetch("/api/approval/cuti", {
         method: "PATCH",
@@ -106,7 +113,7 @@ export default function ApprovalCutiPage() {
           action,
           actorName: user.name,
           actorRole: user.role,
-          notes: reviewNote || (decision === "Disetujui" ? "Disetujui tanpa catatan" : "Ditolak"),
+          notes: cleanNotes,
         }),
       });
 
@@ -138,7 +145,7 @@ export default function ApprovalCutiPage() {
               ...req,
               status: nextStatus,
               currentApproverRole: nextApprover,
-              approverNotes: reviewNote || (decision === "Disetujui" ? "Disetujui tanpa catatan" : "Ditolak"),
+              approverNotes: cleanNotes,
             }
           : req
       );
@@ -211,13 +218,39 @@ export default function ApprovalCutiPage() {
     }
   };
 
-  // Jika akun adalah Staff, otomatis alihkan ke menu Pengajuan Cuti pribadi (/cuti)
+  // Panduan Akses untuk Staff (Staff opening the leave approval page sees a guidance card)
   if (user?.role === "Staff") {
     return (
-      <AppLayout pageTitle="Pengajuan Cuti">
-        <div className="flex flex-col items-center justify-center py-24 text-center max-w-md mx-auto space-y-4">
-          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-          <p className="text-xs text-gray-500 dark:text-gray-400">Mengarahkan ke halaman Pengajuan Cuti Anda...</p>
+      <AppLayout pageTitle="Persetujuan Cuti">
+        <div className="max-w-xl mx-auto py-12 px-4">
+          <Card className="border-amber-200 bg-amber-50/70 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/30">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="size-12 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                <FileCheck2 className="size-6" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Panduan Akses Menu Persetujuan Cuti
+                </h3>
+                <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                  Halaman <strong>Persetujuan Cuti</strong> merupakan modul khusus untuk Atasan (Supervisor, Manager, HRD, dan Direksi) guna meninjau dan memutuskan permohonan hak cuti anggota tim.
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Sebagai akun <strong>Staff</strong>, Anda dapat mengajukan permohonan cuti baru, melihat saldo cuti tahunan, dan melacak status persetujuan pada menu <em>Pengajuan Cuti Pribadi</em>.
+                </p>
+              </div>
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  onClick={() => router.push("/cuti")}
+                  className="gap-2 font-bold text-xs shadow-theme-xs"
+                >
+                  <CalendarDays className="size-4" />
+                  Buka Pengajuan Cuti Pribadi
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </AppLayout>
     );
@@ -439,6 +472,7 @@ export default function ApprovalCutiPage() {
                           size="sm"
                           onClick={() => {
                             setSelectedRequest(item);
+                            setReviewNote("");
                             setShowReviewModal(true);
                           }}
                           className="h-8 text-xs font-bold gap-1 shadow-theme-xs"
@@ -452,6 +486,7 @@ export default function ApprovalCutiPage() {
                           size="sm"
                           onClick={() => {
                             setSelectedRequest(item);
+                            setReviewNote("");
                             setShowReviewModal(true);
                           }}
                           className="h-8 text-xs gap-1"
@@ -502,6 +537,7 @@ export default function ApprovalCutiPage() {
                       size="sm"
                       onClick={() => {
                         setSelectedRequest(item);
+                        setReviewNote("");
                         setShowReviewModal(true);
                       }}
                       className="text-xs h-7 font-semibold"
@@ -598,15 +634,27 @@ export default function ApprovalCutiPage() {
             {isPendingApproval(selectedRequest.status) && (
               <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Catatan Persetujuan / Alasan Penolakan
+                  Catatan Persetujuan / Alasan Penolakan <span className="text-red-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
+                  required
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}
-                  placeholder="Contoh: Disetujui, harap selesaikan hand-over tugas."
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  placeholder="Wajib diisi: Berikan alasan persetujuan, penolakan, atau instruksi revisi..."
+                  className={`w-full rounded-xl border ${
+                    !reviewNote.trim() ? "border-amber-300 dark:border-amber-700" : "border-gray-300 dark:border-gray-700"
+                  } bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500`}
                 />
+                {!reviewNote.trim() ? (
+                  <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    * Seluruh keputusan approval wajib mengisi kolom alasan/catatan (tidak boleh kosong).
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                    ✓ Alasan/catatan terisi dan akan disimpan ke riwayat.
+                  </p>
+                )}
               </div>
             )}
 
