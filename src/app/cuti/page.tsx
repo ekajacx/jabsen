@@ -35,7 +35,7 @@ import { triggerBadgesUpdate } from "@/lib/badge-data";
 
 export default function PengajuanCutiPage() {
   const { user } = useAuth();
-  const { showAlert } = useModal();
+  const { showAlert, showConfirm } = useModal();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
@@ -226,24 +226,67 @@ export default function PengajuanCutiPage() {
     }
   };
 
-  // Batalkan Pengajuan Cuti Mandiri (PRD P-10: hanya jika masih berstatus Menunggu Approval)
-  const handleCancelLeave = (reqId: string) => {
+  // Batalkan Pengajuan Cuti Mandiri
+  const handleCancelLeave = async (reqId: string) => {
     setIsCancelling(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/approval/cuti", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: reqId,
+          action: "CANCEL",
+          actorName: user.name,
+          actorRole: user.role,
+          notes: "Dibatalkan sendiri oleh pemohon.",
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Gagal membatalkan permohonan cuti.");
+      }
+
       const updated = leaveRequests.map((r) =>
-        r.id === reqId ? { ...r, status: "Ditolak" as const, approverNotes: "Dibatalkan sendiri oleh pemohon" } : r
+        r.id === reqId
+          ? {
+              ...r,
+              status: "Batal Di Ajukan" as const,
+              approverNotes: "Dibatalkan sendiri oleh pemohon.",
+            }
+          : r
       );
       setLeaveRequests(updated);
       saveStoredLeaveRequests(updated);
+      await fetchLeaves();
       triggerBadgesUpdate();
-      setIsCancelling(false);
-      setShowDetailModal(false);
+
       showAlert({
         title: "Pengajuan Cuti Dibatalkan",
-        message: `Permohonan cuti ID ${reqId} telah resmi dibatalkan dan statusnya diarsipkan.`,
+        message: `Permohonan cuti ID ${reqId} telah berhasil dibatalkan. Status kini 'Batal Di Ajukan' dan kuota cuti Anda aman. Sisi atasan / approver juga melihat pengajuan ini sebagai dibatalkan.`,
         type: "info",
       });
-    }, 400);
+    } catch (err: any) {
+      showAlert({
+        title: "Gagal Membatalkan Cuti",
+        message: err.message || "Terjadi kesalahan saat membatalkan permohonan cuti.",
+        type: "error",
+      });
+    } finally {
+      setIsCancelling(false);
+      setShowDetailModal(false);
+    }
+  };
+
+  const handleConfirmCancel = (reqId: string) => {
+    showConfirm({
+      title: "Batalkan Pengajuan Cuti?",
+      message: `Apakah Anda yakin ingin membatalkan permohonan cuti ${reqId}? Status akan diubah menjadi 'Batal Di Ajukan' dan kuota cuti tahunan Anda tidak akan terpotong.`,
+      type: "danger",
+      confirmText: "Ya, Batalkan",
+      cancelText: "Kembali",
+      onConfirm: () => handleCancelLeave(reqId),
+    });
   };
 
   // Filter khusus permohonan milik user saat ini (Pengajuan Saya)
@@ -281,6 +324,15 @@ export default function PengajuanCutiPage() {
         return <Badge variant="warning">{status}</Badge>;
       case "Menunggu HRD":
         return <Badge variant="info">{status}</Badge>;
+      case "Batal Di Ajukan":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-800 dark:text-gray-400"
+          >
+            {status}
+          </Badge>
+        );
       default:
         return <Badge variant="secondary" className="animate-pulse">{status}</Badge>;
     }
@@ -411,7 +463,7 @@ export default function PengajuanCutiPage() {
             {/* Filter Status Buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-gray-400 font-medium mr-1">Status:</span>
-              {["Semua", "Menunggu Approval", "Disetujui", "Ditolak"].map((st) => (
+              {["Semua", "Menunggu Approval", "Disetujui", "Ditolak", "Batal Di Ajukan"].map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -506,18 +558,36 @@ export default function PengajuanCutiPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedRequest(item);
-                          setShowDetailModal(true);
-                        }}
-                        className="h-8 text-xs gap-1"
-                      >
-                        Rincian
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRequest(item);
+                            setShowDetailModal(true);
+                          }}
+                          className="h-8 text-xs gap-1"
+                        >
+                          Rincian
+                        </Button>
+                        {(item.status === "Menunggu SPV" ||
+                          item.status === "Menunggu HRD" ||
+                          item.status === "Menunggu Approval") && (
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            disabled={isCancelling}
+                            onClick={() => handleConfirmCancel(item.id)}
+                            className="h-8 text-xs gap-1 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-800"
+                            title="Batalkan pengajuan cuti ini"
+                          >
+                            <Ban className="size-3" />
+                            Batalkan
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -554,7 +624,7 @@ export default function PengajuanCutiPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-1">
+                  <div className="flex justify-end items-center gap-1.5 pt-1">
                     <Button
                       type="button"
                       variant="outline"
@@ -567,6 +637,21 @@ export default function PengajuanCutiPage() {
                     >
                       Lihat Rincian
                     </Button>
+                    {(item.status === "Menunggu SPV" ||
+                      item.status === "Menunggu HRD" ||
+                      item.status === "Menunggu Approval") && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={isCancelling}
+                        onClick={() => handleConfirmCancel(item.id)}
+                        className="text-xs h-7 gap-1 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                      >
+                        <Ban className="size-3" />
+                        Batalkan
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -825,13 +910,15 @@ export default function PengajuanCutiPage() {
 
             {/* Tombol Aksi: Tutup / Batalkan Pengajuan */}
             <div className="mt-6 flex justify-between gap-2.5 pt-2 border-t border-gray-100 dark:border-gray-800">
-              {selectedRequest.status === "Menunggu Approval" ? (
+              {(selectedRequest.status === "Menunggu SPV" ||
+                selectedRequest.status === "Menunggu HRD" ||
+                selectedRequest.status === "Menunggu Approval") ? (
                 <Button
                   type="button"
                   variant="destructive"
                   size="sm"
                   disabled={isCancelling}
-                  onClick={() => handleCancelLeave(selectedRequest.id)}
+                  onClick={() => handleConfirmCancel(selectedRequest.id)}
                   className="gap-1.5 text-xs font-bold"
                 >
                   <Ban className="size-3.5" />

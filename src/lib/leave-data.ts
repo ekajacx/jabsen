@@ -14,7 +14,14 @@ export interface LeaveRequest {
   durationDays: number;
   reason: string;
   attachmentName?: string;
-  status: "Menunggu Approval" | "Menunggu SPV" | "Menunggu HRD" | "Disetujui" | "Ditolak" | "Perlu Revisi";
+  status:
+    | "Menunggu Approval"
+    | "Menunggu SPV"
+    | "Menunggu HRD"
+    | "Disetujui"
+    | "Ditolak"
+    | "Perlu Revisi"
+    | "Batal Di Ajukan";
   currentApproverRole: UserRole;
   approverNotes?: string;
   submittedAt: string;

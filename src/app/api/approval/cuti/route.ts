@@ -195,13 +195,68 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, action, actorName, actorRole, notes } = body;
-    // action: "SPV_APPROVE" | "SPV_REJECT" | "HRD_APPROVE" | "HRD_REJECT" | "REVISE"
+    // action: "SPV_APPROVE" | "SPV_REJECT" | "HRD_APPROVE" | "HRD_REJECT" | "REVISE" | "CANCEL"
 
     if (!id || !action) {
       return NextResponse.json({ success: false, message: "ID dan action permohonan cuti wajib disertakan." }, { status: 400 });
     }
 
-    // Prinsip Pemisahan Tugas (SoD): Admin IT dan Staff tidak memiliki hak approval cuti
+    // 1. Penanganan Pembatalan Mandiri oleh Pemohon (Action: CANCEL)
+    if (action === "CANCEL") {
+      const existing = await prisma.leaveRequest.findUnique({
+        where: { id },
+        include: { employee: true },
+      });
+
+      if (!existing) {
+        return NextResponse.json({ success: false, message: "Permohonan cuti tidak ditemukan." }, { status: 404 });
+      }
+
+      if (
+        existing.status !== "Menunggu SPV" &&
+        existing.status !== "Menunggu HRD" &&
+        existing.status !== "Menunggu Approval"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Permohonan cuti dengan status '${existing.status}' sudah diproses dan tidak dapat dibatalkan.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const nextStatus = "Batal Di Ajukan";
+      const cleanNotes = notes && typeof notes === "string" ? notes.trim() : "Dibatalkan sendiri oleh pemohon.";
+
+      const updated = await prisma.leaveRequest.update({
+        where: { id },
+        data: {
+          status: nextStatus,
+          approvalNotes: cleanNotes,
+        },
+      });
+
+      await createAuditLog({
+        actorName: actorName || "Pemohon",
+        actorRole: actorRole || "Staff",
+        actorEmail: `${actorRole?.toLowerCase() || "staff"}@perusahaan.co.id`,
+        actionName: "BATAL_PENGAJUAN_CUTI",
+        module: "PENGAJUAN_CUTI",
+        targetObject: `LeaveRequest:${id}`,
+        riskLevel: "INFO",
+        status: "SUCCESS",
+        details: { id, prevStatus: existing.status, nextStatus, notes: cleanNotes },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Permohonan cuti ${id} berhasil dibatalkan. Status kini 'Batal Di Ajukan'.`,
+        leave: updated,
+      });
+    }
+
+    // 2. Prinsip Pemisahan Tugas (SoD): Admin IT dan Staff tidak memiliki hak approval cuti
     if (actorRole === "Admin IT" || actorRole === "Staff") {
       return NextResponse.json(
         {

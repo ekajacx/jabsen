@@ -216,6 +216,15 @@ export default function ApprovalCutiPage() {
         return <Badge variant="warning">{status}</Badge>;
       case "Menunggu HRD":
         return <Badge variant="info">{status}</Badge>;
+      case "Batal Di Ajukan":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-800 dark:text-gray-400"
+          >
+            {status}
+          </Badge>
+        );
       default:
         return <Badge variant="secondary" className="animate-pulse">{status}</Badge>;
     }
@@ -373,7 +382,7 @@ export default function ApprovalCutiPage() {
             {/* Filter Status Buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-gray-400 font-medium mr-1">Status:</span>
-              {["Semua", "Menunggu Approval", "Disetujui", "Ditolak", "Perlu Revisi"].map((st) => (
+              {["Semua", "Menunggu Approval", "Disetujui", "Ditolak", "Perlu Revisi", "Batal Di Ajukan"].map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -658,6 +667,13 @@ export default function ApprovalCutiPage() {
                     ✓ Alasan/catatan terisi dan akan disimpan ke riwayat.
                   </p>
                 )}
+              </div>
+            )}
+
+            {selectedRequest.status === "Batal Di Ajukan" && (
+              <div className="rounded-xl bg-gray-100 p-3 border border-gray-200 text-xs text-gray-700 dark:bg-gray-800/80 dark:border-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0 text-gray-500" />
+                <span>Permohonan cuti ini telah <strong>Dibatalkan Sendiri oleh Pemohon</strong> (Batal Di Ajukan). Tidak memerlukan keputusan persetujuan.</span>
               </div>
             )}
 
