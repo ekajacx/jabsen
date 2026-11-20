@@ -79,40 +79,40 @@ export default function DashboardPage() {
       return [
         {
           title: "Presensi Hari Ini",
-          value: "Hadir (07:54)",
-          change: "Dalam Geofence (18m)",
+          value: (dbStats?.presentToday || 0) > 0 ? "Sudah Absen" : "Belum Absen",
+          change: (dbStats?.presentToday || 0) > 0 ? "Tercatat di Database" : "Menunggu Check In",
           icon: CheckCircle2,
           color: "text-emerald-500",
           bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
         },
         {
           title: "Hari Kerja Bulan Ini",
-          value: "21 / 22",
-          change: "95.5% hari kerja aktif",
+          value: `${dbStats?.presentToday || 0} Hari`,
+          change: "Bulan Berjalan",
           icon: CalendarCheck,
           color: "text-brand-500",
           bgColor: "bg-brand-50 dark:bg-brand-950/40",
         },
         {
           title: "Ketepatan Waktu",
-          value: "100%",
-          change: "0x keterlambatan",
+          value: (dbStats?.lateToday || 0) > 0 ? "Terlambat" : "Tepat Waktu",
+          change: (dbStats?.lateToday || 0) > 0 ? `${dbStats.lateToday}x Keterlambatan` : "100% Disiplin",
           icon: Clock,
           color: "text-teal-500",
           bgColor: "bg-teal-50 dark:bg-teal-950/40",
         },
         {
           title: "Sisa Kuota Cuti",
-          value: "9 Hari",
+          value: `${dbStats?.userLeaveBalance ?? 12} Hari`,
           change: "Dari 12 hari tahunan",
           icon: AlertTriangle,
           color: "text-amber-500",
           bgColor: "bg-amber-50 dark:bg-amber-950/40",
         },
         {
-          title: "Akumulasi Jam Kerja",
-          value: "168 Jam",
-          change: "Target 176 jam/bulan",
+          title: "Status Jam Kerja",
+          value: "Reguler",
+          change: "08:00 - 17:00 WITA",
           icon: Users,
           color: "text-indigo-500",
           bgColor: "bg-indigo-50 dark:bg-indigo-950/40",
@@ -123,33 +123,33 @@ export default function DashboardPage() {
     if (isSpv) {
       return [
         {
-          title: "Anggota Tim Operasional",
-          value: "5 Personel",
-          change: "Departemen Operasional",
+          title: `Anggota Tim ${user.department || "Operasional"}`,
+          value: `${dbStats?.totalEmployees || 0} Personel`,
+          change: user.department || "Departemen",
           icon: Users,
           color: "text-brand-500",
           bgColor: "bg-brand-50 dark:bg-brand-950/40",
         },
         {
           title: "Hadir Tepat Waktu",
-          value: "4 Orang",
-          change: "80% dari total tim",
+          value: `${dbStats?.onTimeToday || 0} Orang`,
+          change: "Presensi hari ini",
           icon: CalendarCheck,
           color: "text-emerald-500",
           bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
         },
         {
           title: "Cuti Resmi Tim",
-          value: "1 Orang",
-          change: "Ahmad Fauzi (Disetujui)",
+          value: `${dbStats?.leavesToday || 0} Orang`,
+          change: "Izin disetujui",
           icon: AlertTriangle,
           color: "text-sky-500",
           bgColor: "bg-sky-50 dark:bg-sky-950/40",
         },
         {
           title: "Menunggu Approval SPV",
-          value: "2 Pending",
-          change: "1 Cuti & 1 Koreksi",
+          value: `${(dbStats?.pendingLeaves || 0) + (dbStats?.pendingCorrections || 0)} Pending`,
+          change: `${dbStats?.pendingLeaves || 0} Cuti & ${dbStats?.pendingCorrections || 0} Koreksi`,
           icon: FileCheck2,
           color: "text-amber-500",
           bgColor: "bg-amber-50 dark:bg-amber-950/40",
@@ -169,7 +169,7 @@ export default function DashboardPage() {
       return [
         {
           title: "Total Akun Sistem",
-          value: `${dbStats?.totalEmployees || 28} Akun`,
+          value: `${dbStats?.totalEmployees || 0} Akun`,
           change: "100% pengguna terdaftar di PostgreSQL",
           icon: Users,
           color: "text-brand-500",
@@ -177,7 +177,7 @@ export default function DashboardPage() {
         },
         {
           title: "HP Device Terikat",
-          value: `${dbStats?.totalEmployees || 28} HP`,
+          value: `${dbStats?.boundDevicesCount ?? dbStats?.totalEmployees ?? 0} HP`,
           change: "Strict 1 HP = 1 Akun",
           icon: Smartphone,
           color: "text-emerald-500",
@@ -200,9 +200,9 @@ export default function DashboardPage() {
           bgColor: "bg-sky-50 dark:bg-sky-950/40",
         },
         {
-          title: "Audit Trail Hari Ini",
-          value: "148 Event",
-          change: "Zero manipulasi",
+          title: "Audit Trail Ledger",
+          value: `${dbStats?.totalAuditLogs || 0} Event`,
+          change: "Catatan immutable",
           icon: FileText,
           color: "text-indigo-500",
           bgColor: "bg-indigo-50 dark:bg-indigo-950/40",
@@ -214,40 +214,40 @@ export default function DashboardPage() {
     return [
       {
         title: "Total Karyawan",
-        value: `${dbStats?.totalEmployees || 28}`,
-        change: "7 Departemen aktif",
+        value: `${dbStats?.totalEmployees || 0}`,
+        change: `${dbStats?.totalDepartments || 7} Departemen aktif`,
         icon: Users,
         color: "text-brand-500",
         bgColor: "bg-brand-50 dark:bg-brand-950/40",
       },
       {
         title: "Hadir Tepat Waktu",
-        value: `${dbStats?.onTimeToday || 25}`,
-        change: "92.6% dari total",
+        value: `${dbStats?.onTimeToday || 0}`,
+        change: "Presensi hari ini",
         icon: CalendarCheck,
         color: "text-emerald-500",
         bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
       },
       {
         title: "Terlambat",
-        value: `${dbStats?.lateToday || 1}`,
-        change: "Toleransi max 15m",
+        value: `${dbStats?.lateToday || 0}`,
+        change: "Keterlambatan hari ini",
         icon: Clock,
         color: "text-amber-500",
         bgColor: "bg-amber-50 dark:bg-amber-950/40",
       },
       {
         title: "Cuti / Izin",
-        value: `${dbStats?.leavesToday || 1}`,
-        change: "Disetujui atasan",
+        value: `${dbStats?.leavesToday || 0}`,
+        change: "Izin disetujui",
         icon: AlertTriangle,
         color: "text-sky-500",
         bgColor: "bg-sky-50 dark:bg-sky-950/40",
       },
       {
         title: "Belum Hadir",
-        value: "0",
-        change: "100% shift aktif",
+        value: `${Math.max(0, (dbStats?.totalEmployees || 0) - (dbStats?.presentToday || 0) - (dbStats?.leavesToday || 0))}`,
+        change: "Hari ini",
         icon: UserX,
         color: "text-slate-500",
         bgColor: "bg-slate-50 dark:bg-slate-900/40",
@@ -257,191 +257,7 @@ export default function DashboardPage() {
 
   const metrics = getMetrics();
 
-  // 2. Data Aktivitas Terkini (Disesuaikan berdasarkan Role Pengguna)
-  const getRecentAttendances = () => {
-    if (isStaff) {
-      // 5 Hari kerja terakhir untuk Budi Santoso (Staff)
-      return [
-        {
-          id: "ATT-STF-05",
-          nik: user.nik,
-          name: user.name,
-          dept: user.department,
-          time: "07:54:12 WITA",
-          date: "Jumat, 20 Nov 2026",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (18m)",
-        },
-        {
-          id: "ATT-STF-04",
-          nik: user.nik,
-          name: user.name,
-          dept: user.department,
-          time: "07:48:30 WITA",
-          date: "Kamis, 19 Nov 2026",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (22m)",
-        },
-        {
-          id: "ATT-STF-03",
-          nik: user.nik,
-          name: user.name,
-          dept: user.department,
-          time: "07:56:15 WITA",
-          date: "Rabu, 18 Nov 2026",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (15m)",
-        },
-        {
-          id: "ATT-STF-02",
-          nik: user.nik,
-          name: user.name,
-          dept: user.department,
-          time: "07:50:02 WITA",
-          date: "Selasa, 17 Nov 2026",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (30m)",
-        },
-        {
-          id: "ATT-STF-01",
-          nik: user.nik,
-          name: user.name,
-          dept: user.department,
-          time: "07:52:44 WITA",
-          date: "Senin, 16 Nov 2026",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (25m)",
-        },
-      ];
-    }
-
-    if (isSpv) {
-      // Rekap 5 anggota tim Operasional
-      return [
-        {
-          id: "ATT-SPV-01",
-          nik: "OPS-302",
-          name: "Budi Santoso",
-          dept: "Operasional",
-          time: "07:54:12 WITA",
-          date: "Hari ini",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (18m)",
-        },
-        {
-          id: "ATT-SPV-02",
-          nik: "OPS-303",
-          name: "Cindy Permata",
-          dept: "Operasional",
-          time: "07:49:15 WITA",
-          date: "Hari ini",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (28m)",
-        },
-        {
-          id: "ATT-SPV-03",
-          nik: "OPS-304",
-          name: "Dimas Prasetyo",
-          dept: "Operasional",
-          time: "07:58:33 WITA",
-          date: "Hari ini",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (14m)",
-        },
-        {
-          id: "ATT-SPV-04",
-          nik: "OPS-305",
-          name: "Eko Susanto",
-          dept: "Operasional",
-          time: "07:51:20 WITA",
-          date: "Hari ini",
-          status: "Hadir",
-          liveness: "4 Gerakan Valid",
-          location: "Dalam Geofence (35m)",
-        },
-        {
-          id: "ATT-SPV-05",
-          nik: "EMP-001",
-          name: "Ahmad Fauzi",
-          dept: "Operasional",
-          time: "Cuti Resmi",
-          date: "Hari ini",
-          status: "Cuti",
-          liveness: "Izin Disetujui",
-          location: "Bebas Tugas (Cuti Tahunan)",
-        },
-      ];
-    }
-
-    // Default Perusahaan (HRD, Admin IT, CEO, GM)
-    return [
-      {
-        id: "ATT-101",
-        nik: "TI-101",
-        name: "Eka Jacx",
-        dept: "Teknologi Informasi",
-        time: "07:45:10 WITA",
-        date: "Hari ini",
-        status: "Hadir",
-        liveness: "4 Gerakan Valid",
-        location: "Dalam Geofence (12m)",
-      },
-      {
-        id: "ATT-102",
-        nik: "OPS-302",
-        name: "Budi Santoso",
-        dept: "Operasional",
-        time: "07:54:12 WITA",
-        date: "Hari ini",
-        status: "Hadir",
-        liveness: "4 Gerakan Valid",
-        location: "Dalam Geofence (18m)",
-      },
-      {
-        id: "ATT-103",
-        nik: "HR-501",
-        name: "Dewi Lestari",
-        dept: "HR & GA",
-        time: "07:48:30 WITA",
-        date: "Hari ini",
-        status: "Hadir",
-        liveness: "4 Gerakan Valid",
-        location: "Dalam Geofence (15m)",
-      },
-      {
-        id: "ATT-104",
-        nik: "MKT-402",
-        name: "Rizky Ramadhan",
-        dept: "Pemasaran",
-        time: "07:58:45 WITA",
-        date: "Hari ini",
-        status: "Hadir",
-        liveness: "4 Gerakan Valid",
-        location: "Dalam Geofence (32m)",
-      },
-      {
-        id: "ATT-105",
-        nik: "SLS-602",
-        name: "Dimas Anggara",
-        dept: "Penjualan",
-        time: "08:14:02 WITA",
-        date: "Hari ini",
-        status: "Terlambat",
-        liveness: "4 Gerakan Valid",
-        location: "Dalam Geofence (12m)",
-      },
-    ];
-  };
-
-  const recentAttendances = dbRecent.length > 0 ? dbRecent : getRecentAttendances();
+  const recentAttendances = dbRecent;
 
   return (
     <AppLayout pageTitle="Dashboard Utama">
@@ -718,42 +534,50 @@ export default function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentAttendances.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              {row.name}
-                            </span>
-                            <span className="text-xs text-gray-400">NIK: {row.nik} • {row.date}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                          {row.dept}
-                        </TableCell>
-                        <TableCell className="text-xs font-mono text-gray-600 dark:text-gray-300">
-                          {row.time}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-                            row.status === "Cuti" 
-                              ? "text-sky-600 dark:text-sky-400" 
-                              : "text-emerald-600 dark:text-emerald-400"
-                          }`}>
-                            <CheckCircle2 className="size-3.5 shrink-0" />
-                            {row.location}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={row.status === "Hadir" ? "success" : row.status === "Terlambat" ? "warning" : "info"}
-                            size="sm"
-                          >
-                            {row.status}
-                          </Badge>
+                    {recentAttendances.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-xs text-gray-400">
+                          Belum ada catatan aktivitas presensi terbaru hari ini.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      recentAttendances.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {row.name}
+                              </span>
+                              <span className="text-xs text-gray-400">NIK: {row.nik} • {row.date}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                            {row.dept}
+                          </TableCell>
+                          <TableCell className="text-xs font-mono text-gray-600 dark:text-gray-300">
+                            {row.time}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium ${
+                              row.status === "Cuti" 
+                                ? "text-sky-600 dark:text-sky-400" 
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }`}>
+                              <CheckCircle2 className="size-3.5 shrink-0" />
+                              {row.location}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={row.status === "Hadir" || row.status === "Tepat Waktu" ? "success" : row.status === "Terlambat" ? "warning" : "info"}
+                              size="sm"
+                            >
+                              {row.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -782,9 +606,9 @@ export default function DashboardPage() {
                       <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
                         Pengajuan Cuti Tahunan
                       </span>
-                      <span className="text-[11px] text-gray-400">3 permohonan baru</span>
+                      <span className="text-[11px] text-gray-400">{dbStats?.pendingLeaves || 0} permohonan baru</span>
                     </div>
-                    <Badge variant="warning">3 Pending</Badge>
+                    <Badge variant="warning">{dbStats?.pendingLeaves || 0} Pending</Badge>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-amber-200 dark:bg-gray-900 dark:border-amber-900/50">
@@ -792,9 +616,9 @@ export default function DashboardPage() {
                       <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
                         Koreksi Absensi Masuk
                       </span>
-                      <span className="text-[11px] text-gray-400">1 permohonan baru</span>
+                      <span className="text-[11px] text-gray-400">{dbStats?.pendingCorrections || 0} permohonan baru</span>
                     </div>
-                    <Badge variant="info">1 Pending</Badge>
+                    <Badge variant="info">{dbStats?.pendingCorrections || 0} Pending</Badge>
                   </div>
 
                   <Button

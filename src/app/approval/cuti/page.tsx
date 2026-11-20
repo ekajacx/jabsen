@@ -21,6 +21,7 @@ import {
   Check,
   Download,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import { exportLeaveRequestsToExcel } from "@/lib/excel-export";
 import {
@@ -35,6 +36,7 @@ export default function ApprovalCutiPage() {
   const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -51,12 +53,14 @@ export default function ApprovalCutiPage() {
   useEffect(() => {
     let isMounted = true;
     const fetchLeaves = async () => {
+      setIsLoading(true);
       try {
         const res = await fetch("/api/approval/cuti");
         if (res.ok) {
           const data = await res.json();
           if (data.success && isMounted && Array.isArray(data.leaves)) {
             setLeaveRequests(data.leaves);
+            setIsLoading(false);
             return;
           }
         }
@@ -65,6 +69,7 @@ export default function ApprovalCutiPage() {
       }
       if (isMounted) {
         setLeaveRequests(getStoredLeaveRequests());
+        setIsLoading(false);
       }
     };
     fetchLeaves();
@@ -422,7 +427,16 @@ export default function ApprovalCutiPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-800 dark:text-gray-200">
-              {displayedRequests.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-6 animate-spin text-brand-500" />
+                      <span className="text-xs font-medium">Memuat permohonan cuti...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : displayedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
                     Tidak ada permohonan cuti dalam antrean persetujuan Anda saat ini.
@@ -516,7 +530,12 @@ export default function ApprovalCutiPage() {
 
         {/* Mobile View Cards */}
         <div className="lg:hidden space-y-3">
-          {displayedRequests.length === 0 ? (
+          {isLoading ? (
+            <div className="p-8 flex flex-col items-center justify-center gap-2 text-xs text-gray-400 bg-white rounded-2xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
+              <Loader2 className="size-6 animate-spin text-brand-500" />
+              <span>Memuat permohonan cuti...</span>
+            </div>
+          ) : displayedRequests.length === 0 ? (
             <div className="p-8 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
               Tidak ada permohonan cuti dalam antrean.
             </div>

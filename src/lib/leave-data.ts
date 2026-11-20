@@ -28,107 +28,20 @@ export interface LeaveRequest {
   quotaImpact: boolean; // PRD P-10: true jika memotong saldo cuti tahunan
 }
 
-export const INITIAL_LEAVE_DATA: LeaveRequest[] = [
-  {
-    id: "CUTI-202611-001",
-    applicantId: "OPS-302",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Departemen Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-11-24",
-    endDate: "2026-11-25",
-    durationDays: 2,
-    reason: "Acara perayaan keluarga di luar kota",
-    status: "Menunggu SPV",
-    currentApproverRole: "Supervisor",
-    submittedAt: "18 Nov 2026, 09:30 WITA",
-    quotaImpact: true,
-  },
-  {
-    id: "CUTI-202611-002",
-    applicantId: "TI-102",
-    applicantName: "Rian Hidayat",
-    applicantRole: "Staff",
-    department: "Departemen TI",
-    leaveType: "Cuti Sakit",
-    startDate: "2026-11-10",
-    endDate: "2026-11-11",
-    durationDays: 2,
-    reason: "Istirahat medis sesuai surat rujukan dokter",
-    attachmentName: "Surat_Keterangan_Dokter_Klinik_Medika.pdf",
-    status: "Menunggu HRD",
-    currentApproverRole: "HRD",
-    approverNotes: "Surat sakit tervalidasi oleh Supervisor",
-    submittedAt: "10 Nov 2026, 08:30 WITA",
-    quotaImpact: false,
-  },
-  {
-    id: "CUTI-202610-003",
-    applicantId: "OPS-302",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Departemen Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-10-15",
-    endDate: "2026-10-17",
-    durationDays: 3,
-    reason: "Cuti tahunan keperluan pribadi",
-    status: "Disetujui",
-    currentApproverRole: "HRD",
-    approverNotes: "Disetujui penuh oleh HRD",
-    submittedAt: "12 Okt 2026, 08:30 WITA",
-    quotaImpact: true,
-  },
-  {
-    id: "CUTI-202611-004",
-    applicantId: "OPS-302",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Departemen Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-10-12",
-    endDate: "2026-10-13",
-    durationDays: 2,
-    reason: "Keperluan perpanjangan dokumen kependudukan",
-    status: "Disetujui",
-    currentApproverRole: "Supervisor",
-    approverNotes: "Disetujui. Pekerjaan telah didelegasikan sementara.",
-    submittedAt: "10 Okt 2026, 08:00 WITA",
-    quotaImpact: true,
-  },
-  {
-    id: "CUTI-202611-005",
-    applicantId: "OPS-302",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Departemen Operasional",
-    leaveType: "Cuti Tahunan",
-    startDate: "2026-11-20",
-    endDate: "2026-11-20",
-    durationDays: 1,
-    reason: "Keperluan keluarga mendesak dan renovasi rumah",
-    status: "Disetujui",
-    currentApproverRole: "Supervisor",
-    approverNotes: "Disetujui oleh Supervisor. Shift dialihkan ke cuti resmi.",
-    submittedAt: "16 Nov 2026, 08:30 WITA",
-    quotaImpact: true,
-  },
-];
+export const INITIAL_LEAVE_DATA: LeaveRequest[] = [];
 
 const STORAGE_LEAVE_KEY = "jabsen_leave_requests_v1";
 
 export function getStoredLeaveRequests(): LeaveRequest[] {
-  if (typeof window === "undefined") return INITIAL_LEAVE_DATA;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_LEAVE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_LEAVE_KEY, JSON.stringify(INITIAL_LEAVE_DATA));
-      return INITIAL_LEAVE_DATA;
+      return [];
     }
     return JSON.parse(raw);
   } catch {
-    return INITIAL_LEAVE_DATA;
+    return [];
   }
 }
 

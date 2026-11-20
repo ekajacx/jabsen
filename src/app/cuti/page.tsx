@@ -24,6 +24,7 @@ import {
   Download,
   Ban,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import { exportLeaveRequestsToExcel } from "@/lib/excel-export";
 import {
@@ -37,6 +38,7 @@ export default function PengajuanCutiPage() {
   const { user } = useAuth();
   const { showAlert, showConfirm } = useModal();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -70,6 +72,7 @@ export default function PengajuanCutiPage() {
 
   // Ambil data cuti dari API atau local storage
   const fetchLeaves = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch("/api/approval/cuti");
       if (res.ok) {
@@ -77,6 +80,7 @@ export default function PengajuanCutiPage() {
         if (data.success && Array.isArray(data.leaves)) {
           setLeaveRequests(data.leaves);
           saveStoredLeaveRequests(data.leaves);
+          setIsLoading(false);
           return;
         }
       }
@@ -84,6 +88,7 @@ export default function PengajuanCutiPage() {
       console.warn("Gagal fetch cuti via API:", e);
     }
     setLeaveRequests(getStoredLeaveRequests());
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -506,7 +511,16 @@ export default function PengajuanCutiPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-800 dark:text-gray-200">
-              {displayedRequests.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-6 animate-spin text-brand-600" />
+                      <span className="text-xs">Memuat data cuti...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : displayedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
                     Belum ada riwayat permohonan cuti yang sesuai dengan kriteria.
@@ -599,7 +613,12 @@ export default function PengajuanCutiPage() {
 
         {/* Mobile View Cards */}
         <div className="lg:hidden space-y-3">
-          {displayedRequests.length === 0 ? (
+          {isLoading ? (
+            <div className="p-8 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="size-6 animate-spin text-brand-600" />
+              <span>Memuat data cuti...</span>
+            </div>
+          ) : displayedRequests.length === 0 ? (
             <div className="p-8 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
               Belum ada permohonan cuti.
             </div>

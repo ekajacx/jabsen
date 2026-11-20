@@ -31,6 +31,7 @@ import {
   CalendarDays,
   Check,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 
 interface AttendanceReportItem {
@@ -52,266 +53,6 @@ interface AttendanceReportItem {
   notes?: string;
   avatar: string;
 }
-
-const REPORT_DATA: AttendanceReportItem[] = [
-  {
-    id: "LOG-20261118-001",
-    date: "2026-11-18",
-    employeeId: "EMP-001",
-    name: "Budi Santoso",
-    department: "Operasional",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "07:54:12",
-    clockOut: "17:05:30",
-    workHours: "8j 11m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261118-002",
-    date: "2026-11-18",
-    employeeId: "EMP-002",
-    name: "Siti Rahmawati",
-    department: "Operasional",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "07:48:02",
-    clockOut: "17:15:00",
-    workHours: "8j 27m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261118-003",
-    date: "2026-11-18",
-    employeeId: "EMP-003",
-    name: "Dewi Lestari",
-    department: "HRD & GA",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "08:24:19",
-    clockOut: "17:30:10",
-    workHours: "8j 06m",
-    lateMinutes: 24,
-    status: "Terlambat",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    notes: "Toleransi 15m terlewati (Macet Tol Pancoran)",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261118-004",
-    date: "2026-11-18",
-    employeeId: "EMP-005",
-    name: "Rizky Pratama",
-    department: "IT & Engineering",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Shift 1 Pagi (06:00 - 14:00)",
-    clockIn: "05:50:33",
-    clockOut: "14:10:45",
-    workHours: "8j 20m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261118-005",
-    date: "2026-11-18",
-    employeeId: "EMP-006",
-    name: "Ahmad Fauzi",
-    department: "Operasional",
-    officeLocation: "Kantor Operasional Surabaya",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: null,
-    clockOut: null,
-    workHours: "0j",
-    lateMinutes: 0,
-    status: "Izin / Cuti",
-    location: "Surabaya",
-    inGeofence: false,
-    wormHashValid: true,
-    notes: "Cuti Tahunan (Disetujui SPV & HRD)",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261117-001",
-    date: "2026-11-17",
-    employeeId: "EMP-001",
-    name: "Budi Santoso",
-    department: "Operasional",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "07:58:20",
-    clockOut: "17:02:11",
-    workHours: "8j 04m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261117-002",
-    date: "2026-11-17",
-    employeeId: "EMP-002",
-    name: "Siti Rahmawati",
-    department: "Operasional",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "07:50:11",
-    clockOut: "17:12:00",
-    workHours: "8j 22m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261117-003",
-    date: "2026-11-17",
-    employeeId: "EMP-003",
-    name: "Dewi Lestari",
-    department: "HRD & GA",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "07:55:40",
-    clockOut: "17:00:25",
-    workHours: "8j 05m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261117-004",
-    date: "2026-11-17",
-    employeeId: "EMP-007",
-    name: "Dimas Anggara",
-    department: "Finance & Accounting",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "08:18:05",
-    clockOut: "17:45:00",
-    workHours: "8j 27m",
-    lateMinutes: 18,
-    status: "Terlambat",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    notes: "Terlambat 18 menit (Antrean lift lobi)",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261116-001",
-    date: "2026-11-16",
-    employeeId: "EMP-001",
-    name: "Budi Santoso",
-    department: "Operasional",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "07:52:14",
-    clockOut: "17:08:44",
-    workHours: "8j 16m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261116-002",
-    date: "2026-11-16",
-    employeeId: "EMP-008",
-    name: "Ratna Sari",
-    department: "Marketing & Sales",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: null,
-    clockOut: null,
-    workHours: "0j",
-    lateMinutes: 0,
-    status: "Alpha",
-    location: "-",
-    inGeofence: false,
-    wormHashValid: true,
-    notes: "Tanpa pemberitahuan / Alpha",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261115-001",
-    date: "2026-11-15",
-    employeeId: "EMP-009",
-    name: "Fajar Nugraha",
-    department: "Operasional",
-    officeLocation: "Gudang Logistik Cakung",
-    shift: "Shift 3 Malam (22:00 - 06:00)",
-    clockIn: "21:51:00",
-    clockOut: "06:05:20",
-    workHours: "8j 14m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gudang Logistik Cakung",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261114-001",
-    date: "2026-11-14",
-    employeeId: "EMP-005",
-    name: "Rizky Pratama",
-    department: "IT & Engineering",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Shift 2 Siang (14:00 - 22:00)",
-    clockIn: "13:50:00",
-    clockOut: "22:15:30",
-    workHours: "8j 25m",
-    lateMinutes: 0,
-    status: "Tepat Waktu",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "LOG-20261113-001",
-    date: "2026-11-13",
-    employeeId: "EMP-001",
-    name: "Budi Santoso",
-    department: "Operasional",
-    officeLocation: "Kantor Pusat Bali",
-    shift: "Reguler (08:00 - 17:00)",
-    clockIn: "08:21:40",
-    clockOut: "17:10:00",
-    workHours: "7j 49m",
-    lateMinutes: 21,
-    status: "Terlambat",
-    location: "Gedung Cyber 2 Lt. 15",
-    inGeofence: true,
-    wormHashValid: true,
-    notes: "Terlambat 21 menit",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  },
-];
 
 export default function LaporanPage() {
   const router = useRouter();
@@ -376,22 +117,26 @@ export default function LaporanPage() {
     }
   }, [user?.role, user?.department]);
 
-  const [reportList, setReportList] = useState<AttendanceReportItem[]>(REPORT_DATA);
+  const [reportList, setReportList] = useState<AttendanceReportItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Ambil data laporan agregasi real-time dari PostgreSQL API
   useEffect(() => {
     let isMounted = true;
     const fetchReports = async () => {
+      setIsLoading(true);
       try {
         const res = await fetch("/api/laporan");
         if (res.ok) {
           const data = await res.json();
-          if (data.success && isMounted && Array.isArray(data.reports) && data.reports.length > 0) {
+          if (data.success && isMounted && Array.isArray(data.reports)) {
             setReportList(data.reports);
           }
         }
       } catch (err) {
         console.warn("Gagal mengambil laporan dari API:", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchReports();
@@ -875,7 +620,16 @@ export default function LaporanPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {paginatedData.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="size-6 animate-spin text-brand-500" />
+                        <span className="text-xs font-medium">Memuat data rekapitulasi kehadiran...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                       Tidak ada catatan absensi yang sesuai kriteria filter periode ini.

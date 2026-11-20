@@ -34,6 +34,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 
 export interface AuditLogEntry {
@@ -57,498 +58,6 @@ export interface AuditLogEntry {
     reason?: string;
   };
 }
-
-const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
-  // 20 November 2026 (Hari Ini)
-  {
-    id: "WORM-20261120-0105",
-    timestamp: "2026-11-20 08:02:15",
-    actorName: "Budi Santoso",
-    actorRole: "Staff",
-    actorEmail: "budi.santoso@perusahaan.co.id",
-    ipAddress: "182.253.110.12",
-    actionName: "Presensi Masuk (Clock-In Mobile)",
-    module: "Absensi & Kehadiran",
-    targetObject: "LOG-20261120-001",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "d7a90f14b62e49c812d9f43058b76e104938a12bc9a4f89d3c52e89b41a7d0e6",
-    prevHash: "c6e89d03a51d38b701c8e32f47a65d0f3827901ab8e54c82b41d78902781a9f5",
-    details: {
-      description: "Absensi masuk dengan verifikasi wajah 4 gerakan acak dan GNSS GPS di dalam geofence kantor.",
-      after: { jamMasuk: "08:02:15", lateMinutes: 2, status: "Terlambat", inGeofence: true },
-    },
-  },
-  {
-    id: "WORM-20261120-0104",
-    timestamp: "2026-11-20 07:45:10",
-    actorName: "Siti Rahmawati",
-    actorRole: "Supervisor",
-    actorEmail: "siti.rahmawati@perusahaan.co.id",
-    ipAddress: "192.168.1.28",
-    actionName: "Verifikasi Pengajuan Koreksi Absensi (Tahap 1)",
-    module: "Koreksi Absensi",
-    targetObject: "CORR-20261119-002 (Budi Santoso)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "c6e89d03a51d38b701c8e32f47a65d0f3827901ab8e54c82b41d78902781a9f5",
-    prevHash: "b5d78c92940c27a690b7d21e36954c0e27168909a7d43b71a30c6789167098e4",
-    details: {
-      description: "Verifikasi kewajaran permohonan koreksi absensi keterlambatan staf operasional sesuai riwayat log.",
-      after: { status: "Pending HRD", approvalStep: 1, verifier: "Supervisor" },
-    },
-  },
-  {
-    id: "WORM-20261120-0103",
-    timestamp: "2026-11-20 07:15:32",
-    actorName: "Bambang Sutrisno",
-    actorRole: "CEO",
-    actorEmail: "bambang.sutrisno@perusahaan.co.id",
-    ipAddress: "192.168.1.10",
-    actionName: "Pemeriksaan Audit Log Pengawasan Independen",
-    module: "Audit Log WORM",
-    targetObject: "Seluruh Jejak Audit Sistem",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "b5d78c92940c27a690b7d21e36954c0e27168909a7d43b71a30c6789167098e4",
-    prevHash: "a4c67b8183fb16958fa6c10d25843b0d160578f896c32a6092fb5678056f87d3",
-    details: {
-      description: "Inspeksi integritas rantai kriptografi harian dan audit berkas sistem keamanan WORM (P-15).",
-      after: { scope: "Org", actorFilter: "Semua", totalAudited: 25 },
-    },
-  },
-  {
-    id: "WORM-20261120-0102",
-    timestamp: "2026-11-20 06:55:00",
-    actorName: "Hendra Wijaya",
-    actorRole: "GM",
-    actorEmail: "hendra.wijaya@perusahaan.co.id",
-    ipAddress: "192.168.1.15",
-    actionName: "Penerbitan Jadwal Roster Shift Mingguan",
-    module: "Shift & Geofence",
-    targetObject: "Dept: Operasional (Roster W-47)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "a4c67b8183fb16958fa6c10d25843b0d160578f896c32a6092fb5678056f87d3",
-    prevHash: "93b56a7072ea05847e95b0fc14732a0c05f467e785b2195f81ea4567f45e76c2",
-    details: {
-      description: "Penerbitan jadwal roster shift kerja mingguan untuk 27 karyawan operasional.",
-      after: { weekNumber: 47, totalAssigned: 27, status: "Published" },
-    },
-  },
-  {
-    id: "WORM-20261120-0101",
-    timestamp: "2026-11-20 06:30:18",
-    actorName: "Dewi Lestari",
-    actorRole: "HRD",
-    actorEmail: "dewi.lestari@perusahaan.co.id",
-    ipAddress: "192.168.1.44",
-    actionName: "Ekspor Laporan Rekapitulasi Presensi Mingguan",
-    module: "Laporan & Ekspor",
-    targetObject: "Semua Karyawan (Periode W-47)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "93b56a7072ea05847e95b0fc14732a0c05f467e785b2195f81ea4567f45e76c2",
-    prevHash: "82a4596f61d9f4736d84afeb036219fb94e356d674a1084e70d93456e34d65b1",
-    details: {
-      description: "Unduh rekapitulasi data kehadiran berformat Excel standar administrasi perusahaan.",
-      after: { totalRows: 27, format: "xlsx", scope: "Global" },
-    },
-  },
-
-  // 19 November 2026 (Kemarin)
-  {
-    id: "WORM-20261119-0100",
-    timestamp: "2026-11-19 18:22:10",
-    actorName: "Dewi Lestari",
-    actorRole: "HRD",
-    actorEmail: "dewi.lestari@perusahaan.co.id",
-    ipAddress: "192.168.1.44",
-    actionName: "Pengaktifan Kembali Status Karyawan",
-    module: "Manajemen Karyawan",
-    targetObject: "EMP-007 (Rian Hidayat)",
-    riskLevel: "WARNING",
-    status: "SUCCESS",
-    hash: "82a4596f61d9f4736d84afeb036219fb94e356d674a1084e70d93456e34d65b1",
-    prevHash: "7193485e50c8e3625c739eda925108ea83d245c56390f73d6fc82345d23c54a0",
-    details: {
-      description: "Aktivasi kembali akun dan status kepegawaian karyawan dari status resign ke aktif.",
-      before: { status: "Nonaktif (Resign)" },
-      after: { status: "Aktif", department: "IT & Security" },
-    },
-  },
-  {
-    id: "WORM-20261119-0099",
-    timestamp: "2026-11-19 17:10:45",
-    actorName: "Rian Saputra (Primary IT)",
-    actorRole: "Admin IT",
-    actorEmail: "admin.it@perusahaan.co.id",
-    ipAddress: "192.168.1.105",
-    actionName: "Konfigurasi Radius Geofence Lokasi Kantor",
-    module: "Shift & Geofence",
-    targetObject: "Kantor Pusat Jakarta (Radius 100m)",
-    riskLevel: "CRITICAL",
-    status: "SUCCESS",
-    hash: "7193485e50c8e3625c739eda925108ea83d245c56390f73d6fc82345d23c54a0",
-    prevHash: "6082374d4fb7d2514b628dc98140f7d972c134b4528fe62c5eb71234c12b439f",
-    details: {
-      description: "Pembaruan toleransi perimeter geofence kantor pusat dari 80m menjadi 100m.",
-      before: { radiusMeters: 80 },
-      after: { radiusMeters: 100 },
-    },
-  },
-  {
-    id: "WORM-20261119-0098",
-    timestamp: "2026-11-19 16:55:12",
-    actorName: "Rian Hidayat",
-    actorRole: "Staff",
-    actorEmail: "rian.it@perusahaan.co.id",
-    ipAddress: "192.168.1.110",
-    actionName: "Presensi Pulang (Clock-Out Mobile)",
-    module: "Absensi & Kehadiran",
-    targetObject: "LOG-20261119-003",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "6082374d4fb7d2514b628dc98140f7d972c134b4528fe62c5eb71234c12b439f",
-    prevHash: "5f71263c3ea6c1403a517cb8703fe6c861b023a3417ed51b4da60123b01a328e",
-    details: {
-      description: "Absensi kepulangan berhasil diverifikasi melalui kecocokan biometrik wajah dan radius valid.",
-      after: { jamPulang: "16:55:12", inGeofence: true, workHours: "8j 55m" },
-    },
-  },
-  {
-    id: "WORM-20261119-0097",
-    timestamp: "2026-11-19 14:12:00",
-    actorName: "User Anonim / External Client",
-    actorRole: "Tamu",
-    actorEmail: "external@unknown-device.net",
-    ipAddress: "103.111.45.12",
-    actionName: "Percobaan Akses Multi-Device Ilegal",
-    module: "Autentikasi",
-    targetObject: "Akun: budi.santoso",
-    riskLevel: "WARNING",
-    status: "BLOCKED",
-    hash: "5f71263c3ea6c1403a517cb8703fe6c861b023a3417ed51b4da60123b01a328e",
-    prevHash: "4e60152b2d95b03f29406ba76f2ed5b750af1292306dc40a3c95f012af09217d",
-    details: {
-      description: "Sistem mendeteksi login dari perangkat yang belum terikat (Device Binding Protection).",
-      reason: "Device Fingerprint tidak terdaftar pada whitelist akun karyawan bersangkutan.",
-    },
-  },
-  {
-    id: "WORM-20261119-0096",
-    timestamp: "2026-11-19 11:30:20",
-    actorName: "Dewi Lestari",
-    actorRole: "HRD",
-    actorEmail: "dewi.lestari@perusahaan.co.id",
-    ipAddress: "192.168.1.44",
-    actionName: "Persetujuan Review Sampel Biometrik Wajah",
-    module: "Biometrik Wajah",
-    targetObject: "EMP-003 (Dewi Lestari)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "4e60152b2d95b03f29406ba76f2ed5b750af1292306dc40a3c95f012af09217d",
-    prevHash: "a4f89d3c52e89b41a7d0e6538c29b71a2e49c812d9f43058b76e104938a12bc9",
-    details: {
-      description: "Verifikasi dan validasi 3 sampel sudut pengambilan foto selfie biometrik wajah.",
-      after: { status: "Disetujui", qualityScore: "96%", reviewer: "HRD" },
-    },
-  },
-
-  // 18 November 2026
-  {
-    id: "WORM-20261118-0091",
-    timestamp: "2026-11-18 20:38:21",
-    actorName: "Eka Jacx (Primary IT)",
-    actorRole: "Admin IT",
-    actorEmail: "admin.it@perusahaan.co.id",
-    ipAddress: "192.168.1.105",
-    actionName: "Pembaruan Matriks Hak Akses RBAC",
-    module: "Hak Akses & RBAC",
-    targetObject: "Role: Staff & Supervisor",
-    riskLevel: "CRITICAL",
-    status: "SUCCESS",
-    hash: "a4f89d3c52e89b41a7d0e6538c29b71a2e49c812d9f43058b76e104938a12bc9",
-    prevHash: "7b1029c8e4d3a56f09b821a74d23e5109f64c81a2e3b5049a81e723049b812ef",
-    details: {
-      description: "Pembaruan izin mandiri dan penyederhanaan antarmuka sakelar instan matriks hak akses.",
-      before: { rbacVersion: "v1.0-alpha", mode: "complex-scope" },
-      after: { rbacVersion: "v1.0-final", mode: "instant-toggle", rulesCount: 50 },
-      reason: "Permintaan optimalisasi kode dan antarmuka oleh pengguna.",
-    },
-  },
-  {
-    id: "WORM-20261118-0090",
-    timestamp: "2026-11-18 20:19:08",
-    actorName: "Eka Jacx (Primary IT)",
-    actorRole: "Admin IT",
-    actorEmail: "admin.it@perusahaan.co.id",
-    ipAddress: "192.168.1.105",
-    actionName: "Penerbitan Rekapitulasi Laporan Excel",
-    module: "Laporan & Ekspor",
-    targetObject: "Semua Karyawan (Periode Nov 2026)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "7b1029c8e4d3a56f09b821a74d23e5109f64c81a2e3b5049a81e723049b812ef",
-    prevHash: "6c2018b7d3a2e45f90a710e63c12d4098e53b70a1d2a4038970e612038a701de",
-    details: {
-      description: "Ekspor rekapitulasi presensi karyawan terstruktur format .xlsx ke dokumen fisik.",
-      after: { totalRows: 14, format: "xlsx", filterDept: "Semua" },
-    },
-  },
-  {
-    id: "WORM-20261118-0089",
-    timestamp: "2026-11-18 19:45:10",
-    actorName: "Dewi Lestari",
-    actorRole: "HRD",
-    actorEmail: "dewi.lestari@perusahaan.co.id",
-    ipAddress: "192.168.1.44",
-    actionName: "Persetujuan Enrollment Biometrik Wajah",
-    module: "Biometrik Wajah",
-    targetObject: "EMP-001 (Budi Santoso)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "6c2018b7d3a2e45f90a710e63c12d4098e53b70a1d2a4038970e612038a701de",
-    prevHash: "5b1907a6c291d34e899609d52b01c3087d42a69f0c193027869d5019279690cd",
-    details: {
-      description: "Review dan approval 3 sampel foto wajah (Frontal, Kiri 15°, Kanan 15°) dengan AI Score 94%.",
-      before: { status: "Menunggu Review", confidence: 0 },
-      after: { status: "Disetujui", confidence: 0.94 },
-    },
-  },
-  {
-    id: "WORM-20261118-0088",
-    timestamp: "2026-11-18 18:30:14",
-    actorName: "Siti Rahmawati",
-    actorRole: "Supervisor",
-    actorEmail: "siti.rahmawati@perusahaan.co.id",
-    ipAddress: "192.168.1.28",
-    actionName: "Persetujuan Cuti Tahunan (Tahap 1)",
-    module: "Approval Cuti",
-    targetObject: "CUTI-202611-002 (Budi Santoso)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "5b1907a6c291d34e899609d52b01c3087d42a69f0c193027869d5019279690cd",
-    prevHash: "4a089695b180c23d788598c41a90b2076c31958e9b082016758c4908168589bc",
-    details: {
-      description: "Verifikasi kewajaran permohonan cuti tahunan selama 2 hari kerja.",
-      after: { durasiHari: 2, status: "DISETUJUI_SPV", sisaCuti: 10 },
-    },
-  },
-  {
-    id: "WORM-20261118-0087",
-    timestamp: "2026-11-18 17:05:30",
-    actorName: "Budi Santoso",
-    actorRole: "Staff",
-    actorEmail: "budi.santoso@perusahaan.co.id",
-    ipAddress: "182.253.110.12",
-    actionName: "Presensi Pulang (Clock-Out Mobile)",
-    module: "Absensi & Kehadiran",
-    targetObject: "LOG-20261118-001",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "4a089695b180c23d788598c41a90b2076c31958e9b082016758c4908168589bc",
-    prevHash: "39f78584a079b12c677487b3098fa1065b20847d8a971905647b3897057478ab",
-    details: {
-      description: "Absensi pulang melalui verifikasi wajah 4 gerakan acak dan GNSS GPS di dalam geofence.",
-      after: { jamPulang: "17:05:30", distanceMeters: 14.2, inGeofence: true },
-    },
-  },
-  {
-    id: "WORM-20261118-0086",
-    timestamp: "2026-11-18 16:12:44",
-    actorName: "User Anonim / Percobaan Luar",
-    actorRole: "Tamu",
-    actorEmail: "guest@unknown-ip.net",
-    ipAddress: "103.20.188.75",
-    actionName: "Upaya Login Gagal (Brute Force Detected)",
-    module: "Autentikasi",
-    targetObject: "Akun: admin.it",
-    riskLevel: "WARNING",
-    status: "FAILED",
-    hash: "39f78584a079b12c677487b3098fa1065b20847d8a971905647b3897057478ab",
-    prevHash: "28e674739f68a01b566376a2987e90f54a1f736c79860894536a27869463679a",
-    details: {
-      description: "Percobaan memasukkan kata sandi salah 3 kali berturut-turut dari alamat IP tidak dikenal.",
-      reason: "Invalid password attempt threshold reached. IP rate-limited 15 minutes.",
-    },
-  },
-  {
-    id: "WORM-20261118-0085",
-    timestamp: "2026-11-18 14:20:00",
-    actorName: "Rian Hidayat (Backup IT)",
-    actorRole: "Admin IT",
-    actorEmail: "rian.it@perusahaan.co.id",
-    ipAddress: "192.168.1.110",
-    actionName: "Penambahan Lokasi Titik Geofence Baru",
-    module: "Shift & Geofence",
-    targetObject: "Gudang Logistik Cakung",
-    riskLevel: "CRITICAL",
-    status: "SUCCESS",
-    hash: "28e674739f68a01b566376a2987e90f54a1f736c79860894536a27869463679a",
-    prevHash: "17d563628e579f0a45526591876d8fe4390e625b687597834259167583525689",
-    details: {
-      description: "Pendaftaran titik patok radius kantor baru dengan radius toleransi 100 meter.",
-      after: { latitude: -6.18234, longitude: 106.94521, radiusMeters: 100 },
-    },
-  },
-  {
-    id: "WORM-20261118-0084",
-    timestamp: "2026-11-18 11:05:19",
-    actorName: "Eka Jacx (Primary IT)",
-    actorRole: "Admin IT",
-    actorEmail: "admin.it@perusahaan.co.id",
-    ipAddress: "192.168.1.105",
-    actionName: "Upaya Self-Revocation Role IT (Anti-Lockout)",
-    module: "Hak Akses & RBAC",
-    targetObject: "Akun: admin.it",
-    riskLevel: "CRITICAL",
-    status: "BLOCKED",
-    hash: "17d563628e579f0a45526591876d8fe4390e625b687597834259167583525689",
-    prevHash: "06c452517d468e0934415480765c7ed328fd514a576486723148056472414578",
-    details: {
-      description: "Sistem menolak pencabutan role Admin IT pada akun sendiri untuk mencegah terkunci.",
-      reason: "Proteksi Anti-Lockout (Resolusi PRD P-14) memblokir self-revocation.",
-    },
-  },
-  {
-    id: "WORM-20261118-0083",
-    timestamp: "2026-11-18 07:54:12",
-    actorName: "Budi Santoso",
-    actorRole: "Staff",
-    actorEmail: "budi.santoso@perusahaan.co.id",
-    ipAddress: "182.253.110.12",
-    actionName: "Presensi Masuk (Clock-In Mobile)",
-    module: "Absensi & Kehadiran",
-    targetObject: "LOG-20261118-001",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "06c452517d468e0934415480765c7ed328fd514a576486723148056472414578",
-    prevHash: "f5b341406c357d0823304379654b6dc217ec4039465375612037945361303467",
-    details: {
-      description: "Absensi masuk dengan 4 gerakan acak liveness challenge dan verifikasi radius geofence kantor.",
-      after: { jamMasuk: "07:54:12", lateMinutes: 0, status: "Tepat Waktu" },
-    },
-  },
-  {
-    id: "WORM-20261118-0082",
-    timestamp: "2026-11-18 07:45:00",
-    actorName: "Bambang Sutrisno",
-    actorRole: "CEO",
-    actorEmail: "bambang.sutrisno@perusahaan.co.id",
-    ipAddress: "192.168.1.10",
-    actionName: "Pemeriksaan Audit Log Pengawasan Independen",
-    module: "Audit Log WORM",
-    targetObject: "Seluruh Jejak Audit Sistem",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "f5b341406c357d0823304379654b6dc217ec4039465375612037945361303467",
-    prevHash: "e4a2303f5b246c07122f3268543a5cb106db3f283542645019268342502f2356",
-    details: {
-      description: "Eksekusi hak baca pengawasan independen CEO atas rekaman audit integritas administratif (P-15).",
-      after: { scope: "Org", actorFilter: "Admin IT" },
-    },
-  },
-
-  // 17 November 2026
-  {
-    id: "WORM-20261117-0081",
-    timestamp: "2026-11-17 14:20:15",
-    actorName: "Budi Santoso",
-    actorRole: "Staff",
-    actorEmail: "budi.santoso@perusahaan.co.id",
-    ipAddress: "182.253.110.12",
-    actionName: "Pengajuan Permohonan Cuti Tahunan",
-    module: "Approval Cuti",
-    targetObject: "CUTI-202611-002",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "e4a2303f5b246c07122f3268543a5cb106db3f283542645019268342502f2356",
-    prevHash: "d391202e4a135b06011e215743294ba005ca2e172431534f081572314f1e1245",
-    details: {
-      description: "Permohonan cuti tahunan selama 2 hari kerja untuk keperluan pemeriksaan kesehatan.",
-      after: { startDate: "2026-11-19", endDate: "2026-11-20", duration: 2 },
-    },
-  },
-  {
-    id: "WORM-20261117-0080",
-    timestamp: "2026-11-17 10:15:00",
-    actorName: "Dewi Lestari",
-    actorRole: "HRD",
-    actorEmail: "dewi.lestari@perusahaan.co.id",
-    ipAddress: "192.168.1.44",
-    actionName: "Pendaftaran Karyawan Baru ke Struktur",
-    module: "Manajemen Karyawan",
-    targetObject: "EMP-008 (Ratna Sari)",
-    riskLevel: "INFO",
-    status: "SUCCESS",
-    hash: "d391202e4a135b06011e215743294ba005ca2e172431534f081572314f1e1245",
-    prevHash: "c280191d39024a95f00d104632183a9ff4b91d061320423e970461203e0d0134",
-    details: {
-      description: "Penambahan data personil baru dan penerbitan akun kredensial awal sistem HRIS.",
-      after: { employeeId: "EMP-008", name: "Ratna Sari", role: "Staff" },
-    },
-  },
-  {
-    id: "WORM-20261117-0079",
-    timestamp: "2026-11-17 09:05:40",
-    actorName: "Rian Saputra (Primary IT)",
-    actorRole: "Admin IT",
-    actorEmail: "admin.it@perusahaan.co.id",
-    ipAddress: "192.168.1.105",
-    actionName: "Reset Kredensial & Ikatan Perangkat HP",
-    module: "Autentikasi",
-    targetObject: "EMP-001 (Budi Santoso)",
-    riskLevel: "WARNING",
-    status: "SUCCESS",
-    hash: "c280191d39024a95f00d104632183a9ff4b91d061320423e970461203e0d0134",
-    prevHash: "b17f080c28913984ef9c0f352107298ee3a80c95021f312d86f3501f2d9cf023",
-    details: {
-      description: "Reset pengikatan perangkat (Device Binding Reset) karena pergantian ponsel dinas.",
-      reason: "Permintaan resmi karyawan dengan persetujuan atasan langsung.",
-    },
-  },
-
-  // 16 November 2026
-  {
-    id: "WORM-20261116-0078",
-    timestamp: "2026-11-16 15:30:00",
-    actorName: "Hendra Wijaya",
-    actorRole: "GM",
-    actorEmail: "hendra.wijaya@perusahaan.co.id",
-    ipAddress: "192.168.1.15",
-    actionName: "Pembuatan Unit Departemen Baru",
-    module: "Manajemen Departemen",
-    targetObject: "Departemen Marketing & Sales",
-    riskLevel: "CRITICAL",
-    status: "SUCCESS",
-    hash: "b17f080c28913984ef9c0f352107298ee3a80c95021f312d86f3501f2d9cf023",
-    prevHash: "0000000000000000000000000000000000000000000000000000000000000000",
-    details: {
-      description: "Pendaftaran unit departemen operasional baru ke dalam bagan hierarki organisasi.",
-      after: { code: "DEPT-MKT", name: "Marketing & Sales", head: "Hendra Wijaya" },
-    },
-  },
-  {
-    id: "WORM-20261116-0077",
-    timestamp: "2026-11-16 08:00:00",
-    actorName: "Eka Jacx (Primary IT)",
-    actorRole: "Admin IT",
-    actorEmail: "admin.it@perusahaan.co.id",
-    ipAddress: "192.168.1.105",
-    actionName: "Inisialisasi Kunci Hash Genesis WORM Block",
-    module: "Audit Log WORM",
-    targetObject: "Blok Genesis Integritas WORM",
-    riskLevel: "CRITICAL",
-    status: "SUCCESS",
-    hash: "0000000000000000000000000000000000000000000000000000000000000000",
-    prevHash: "GENESIS_BLOCK_ROOT_SECURITY_KEY_J_ABSEN_HRIS_2026_AUDIT_COMPLIANCE",
-    details: {
-      description: "Inisialisasi rantai log audit WORM (Write Once, Read Many) berbasis SHA-256 berstandar perbankan.",
-      after: { version: "2.0-secure", algorithm: "SHA-256", appendOnly: true },
-    },
-  },
-];
 
 export default function AuditLogPage() {
   const router = useRouter();
@@ -612,26 +121,26 @@ export default function AuditLogPage() {
     setCurrentPage(1);
   };
 
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Ambil baris audit log riil dari PostgreSQL API
   useEffect(() => {
     let isMounted = true;
     const fetchAuditLogs = async () => {
+      setIsLoading(true);
       try {
         const res = await fetch("/api/audit-log");
         if (res.ok) {
           const data = await res.json();
-          if (data.success && isMounted && Array.isArray(data.logs) && data.logs.length > 0) {
-            setAuditLogs((prev) => {
-              const dbIds = new Set(data.logs.map((l: any) => l.id));
-              const remaining = prev.filter((p) => !dbIds.has(p.id));
-              return [...data.logs, ...remaining];
-            });
+          if (data.success && isMounted && Array.isArray(data.logs)) {
+            setAuditLogs(data.logs);
           }
         }
       } catch (e) {
         console.warn("Gagal mengambil audit log dari API:", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchAuditLogs();
@@ -714,7 +223,7 @@ export default function AuditLogPage() {
       setIsVerifying(false);
       setVerificationResult({
         verified: true,
-        totalChecked: INITIAL_AUDIT_LOGS.length,
+        totalChecked: auditLogs.length,
         tamperedCount: 0,
         chainIntegrity: "100% Valid & Bebas Manipulasi (Kriptografi SHA-256 Sempurna)",
       });
@@ -858,7 +367,7 @@ export default function AuditLogPage() {
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Log Audit</span>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{INITIAL_AUDIT_LOGS.length}</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{auditLogs.length}</p>
                 <span className="text-[10px] text-gray-400 font-medium">Rekaman append-only</span>
               </div>
               <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
@@ -872,7 +381,7 @@ export default function AuditLogPage() {
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Aksi Kritis</span>
                 <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  {INITIAL_AUDIT_LOGS.filter((l) => l.riskLevel === "CRITICAL").length}
+                  {auditLogs.filter((l) => l.riskLevel === "CRITICAL").length}
                 </p>
                 <span className="text-[10px] text-amber-600 font-medium">Wajib Re-Auth (P-7)</span>
               </div>
@@ -887,7 +396,7 @@ export default function AuditLogPage() {
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Diblokir / Dicegah</span>
                 <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
-                  {INITIAL_AUDIT_LOGS.filter((l) => l.status === "BLOCKED" || l.status === "FAILED").length}
+                  {auditLogs.filter((l) => l.status === "BLOCKED" || l.status === "FAILED").length}
                 </p>
                 <span className="text-[10px] text-red-600 font-medium">Termasuk Anti-Lockout</span>
               </div>
@@ -1104,7 +613,16 @@ export default function AuditLogPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {paginatedLogs.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="size-6 animate-spin text-brand-500" />
+                        <span className="text-xs font-medium">Memuat catatan log audit WORM...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedLogs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
                       Tidak ada catatan audit yang cocok dengan filter tanggal atau kata kunci yang dipilih.

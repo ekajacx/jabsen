@@ -25,6 +25,7 @@ import {
   History,
   ShieldAlert,
   Download,
+  Loader2,
 } from "lucide-react";
 import { exportCorrectionsToExcel } from "@/lib/excel-export";
 import { triggerBadgesUpdate } from "@/lib/badge-data";
@@ -56,77 +57,12 @@ export interface CorrectionRequest {
   submittedAt: string;
 }
 
-const INITIAL_CORRECTIONS: CorrectionRequest[] = [
-  {
-    id: "KOR-202611-001",
-    applicantId: "OPS-302",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Operasional",
-    targetDate: "Senin, 16 Nov 2026",
-    originalCheckIn: "08:38 WITA",
-    originalCheckOut: "17:15 WITA",
-    proposedCheckIn: "08:00 WITA",
-    proposedCheckOut: "17:15 WITA",
-    reason: "Menghadiri serah terima unit di lapangan sejak pukul 07:45 sebelum sinyal GPS stabil.",
-    stage: "Tahap 1: Supervisor",
-    status: "Menunggu SPV",
-    submittedAt: "16 Nov 2026, 18:30 WITA",
-  },
-  {
-    id: "KOR-202611-002",
-    applicantId: "TI-102",
-    applicantName: "Rian Hidayat",
-    applicantRole: "Staff",
-    department: "Departemen TI",
-    targetDate: "Kamis, 12 Nov 2026",
-    originalCheckIn: "08:00 WITA",
-    originalCheckOut: "--:-- WITA",
-    proposedCheckIn: "08:00 WITA",
-    proposedCheckOut: "17:30 WITA",
-    reason: "Lupa absen pulang karena mendadak lembur perbaikan mesin gudang sampai sore.",
-    stage: "Tahap 2: HRD",
-    status: "Menunggu HRD",
-    supervisorApproval: {
-      approvedBy: "Supervisor Operasional",
-      approvedAt: "13 Nov 2026, 09:15 WITA",
-      notes: "Tervalidasi. Jam lembur sesuai surat perintah tugas.",
-    },
-    submittedAt: "12 Nov 2026, 18:00 WITA",
-  },
-  {
-    id: "KOR-202610-003",
-    applicantId: "OPS-302",
-    applicantName: "Budi Santoso",
-    applicantRole: "Staff",
-    department: "Operasional",
-    targetDate: "Senin, 26 Okt 2026",
-    originalCheckIn: "08:45 WITA",
-    originalCheckOut: "17:00 WITA",
-    proposedCheckIn: "08:00 WITA",
-    proposedCheckOut: "17:00 WITA",
-    reason: "Kendala jaringan seluler di pintu masuk basement parkir kantor.",
-    stage: "Selesai",
-    status: "Disetujui Final",
-    supervisorApproval: {
-      approvedBy: "Supervisor Operasional",
-      approvedAt: "27 Okt 2026, 10:00 WITA",
-      notes: "Sesuai rekam CCTV parkir.",
-    },
-    hrdApproval: {
-      approvedBy: "Dewi Lestari (HRD)",
-      approvedAt: "27 Okt 2026, 14:00 WITA",
-      notes: "Data absensi telah disesuaikan di database.",
-    },
-    submittedAt: "26 Okt 2026, 17:30 WITA",
-  },
-];
-
 export default function ApprovalKoreksiPage() {
   const router = useRouter();
   const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
-  const [corrections, setCorrections] = useState<CorrectionRequest[]>(INITIAL_CORRECTIONS);
+  const [corrections, setCorrections] = useState<CorrectionRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -134,6 +70,7 @@ export default function ApprovalKoreksiPage() {
   useEffect(() => {
     let isMounted = true;
     const fetchCorrections = async () => {
+      setIsLoading(true);
       try {
         const res = await fetch("/api/approval/koreksi");
         if (res.ok) {
@@ -144,6 +81,8 @@ export default function ApprovalKoreksiPage() {
         }
       } catch (e) {
         console.warn("Gagal fetch koreksi dari API:", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchCorrections();
@@ -472,7 +411,16 @@ export default function ApprovalKoreksiPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-800 dark:text-gray-200">
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-6 animate-spin text-brand-500" />
+                      <span className="text-xs font-medium">Memuat data pengajuan koreksi...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
                     Tidak ada pengajuan koreksi yang cocok dengan filter.
@@ -540,7 +488,17 @@ export default function ApprovalKoreksiPage() {
 
         {/* Mobile View */}
         <div className="lg:hidden space-y-3">
-          {filtered.map((item) => (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+              <Loader2 className="size-6 animate-spin text-brand-500" />
+              <span className="text-xs font-medium">Memuat data pengajuan koreksi...</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-8 text-xs text-gray-400 bg-white dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+              Tidak ada pengajuan koreksi yang cocok dengan filter.
+            </div>
+          ) : (
+            filtered.map((item) => (
             <Card key={item.id} className="border-gray-200 dark:border-gray-800">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -574,7 +532,7 @@ export default function ApprovalKoreksiPage() {
                 </Button>
               </CardContent>
             </Card>
-          ))}
+          )))}
         </div>
       </div>
 

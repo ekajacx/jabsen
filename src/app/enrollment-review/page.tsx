@@ -25,6 +25,7 @@ import {
   Eye,
   Camera,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 
 export interface FaceEnrollmentSubmission {
@@ -47,67 +48,12 @@ export interface FaceEnrollmentSubmission {
   reviewedBy?: string;
 }
 
-const INITIAL_ENROLLMENTS: FaceEnrollmentSubmission[] = [
-  {
-    id: "ENR-202611-001",
-    employeeId: "EMP-005",
-    employeeName: "Rian Hidayat",
-    department: "Operasional",
-    role: "Staff",
-    submissionDate: "18 Nov 2026, 14:10 WITA",
-    samples: {
-      front: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
-      left: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&auto=format&fit=crop&q=80",
-      right: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&auto=format&fit=crop&q=80",
-    },
-    qualityScore: 94,
-    lightingQuality: "Optimal",
-    landmarkCount: 478,
-    status: "Menunggu Review",
-  },
-  {
-    id: "ENR-202611-002",
-    employeeId: "EMP-006",
-    employeeName: "Ahmad Fauzi",
-    department: "Logistik & Gudang",
-    role: "Staff",
-    submissionDate: "18 Nov 2026, 10:45 WITA",
-    samples: {
-      front: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&auto=format&fit=crop&q=80",
-      left: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
-      right: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
-    },
-    qualityScore: 88,
-    lightingQuality: "Cukup",
-    landmarkCount: 478,
-    status: "Menunggu Review",
-  },
-  {
-    id: "ENR-202611-003",
-    employeeId: "EMP-001",
-    employeeName: "Budi Santoso",
-    department: "Operasional",
-    role: "Staff",
-    submissionDate: "15 Jan 2024, 09:00 WITA",
-    samples: {
-      front: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-      left: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-      right: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-    },
-    qualityScore: 96,
-    lightingQuality: "Optimal",
-    landmarkCount: 478,
-    status: "Disetujui",
-    hrNotes: "Sampel biometrik jernih dan sesuai SOP identitas.",
-    reviewedBy: "Dewi Lestari (HRD)",
-  },
-];
-
 export default function EnrollmentReviewPage() {
   const router = useRouter();
   const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
-  const [enrollments, setEnrollments] = useState<FaceEnrollmentSubmission[]>(INITIAL_ENROLLMENTS);
+  const [enrollments, setEnrollments] = useState<FaceEnrollmentSubmission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -118,16 +64,19 @@ export default function EnrollmentReviewPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchEnrollments = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch("/api/enrollment");
       if (res.ok) {
         const data = await res.json();
-        if (data.success && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
+        if (data.success && Array.isArray(data.enrollments)) {
           setEnrollments(data.enrollments);
         }
       }
     } catch (e) {
-      console.warn("Falling back to initial enrollments:", e);
+      console.warn("Gagal fetch enrollments dari API:", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -395,7 +344,17 @@ export default function EnrollmentReviewPage() {
 
         {/* Grid Kartu Inspeksi Sampel 3 Wajah (PRD 5.4) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((enr) => (
+          {isLoading ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
+              <Loader2 className="size-6 animate-spin text-brand-500" />
+              <span className="text-xs font-medium">Memuat data pendaftaran biometrik...</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-xs text-gray-400 bg-white dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 p-8">
+              Tidak ada data pendaftaran wajah yang cocok dengan filter.
+            </div>
+          ) : (
+            filtered.map((enr) => (
             <Card key={enr.id} className="border-gray-200 shadow-theme-sm overflow-hidden dark:border-gray-800">
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/70 dark:border-gray-800 dark:bg-gray-800/40">
                 <div>
@@ -515,7 +474,7 @@ export default function EnrollmentReviewPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )))}
         </div>
       </div>
 
