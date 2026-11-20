@@ -29,6 +29,7 @@ import {
   Building2,
   CalendarDays,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export interface AttendanceItem {
@@ -49,116 +50,11 @@ export interface AttendanceItem {
   correctionStatus?: "None" | "Pending SPV" | "Pending HRD" | "Approved" | "Rejected";
 }
 
-// Data historis mock awal (30 hari terakhir)
-const INITIAL_RECORDS: AttendanceItem[] = [
-  {
-    id: "REC-20261118-001",
-    date: "2026-11-18",
-    dateFormatted: "Rabu, 18 Nov 2026",
-    checkIn: "07:55 WITA",
-    checkOut: "--:-- WITA",
-    status: "Tepat Waktu",
-    office: "Kantor Pusat Bali",
-    distanceMeters: 18,
-    latitude: -6.1752,
-    longitude: 106.8272,
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    verificationHash: "SHA256-a1b2c3d4-WORM",
-    livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-    notes: "Hadir tepat waktu",
-    correctionStatus: "None",
-  },
-  {
-    id: "REC-20261117-002",
-    date: "2026-11-17",
-    dateFormatted: "Selasa, 17 Nov 2026",
-    checkIn: "08:12 WITA",
-    checkOut: "17:05 WITA",
-    status: "Tepat Waktu",
-    office: "Kantor Pusat Bali",
-    distanceMeters: 24,
-    latitude: -6.1753,
-    longitude: 106.8271,
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    verificationHash: "SHA256-b2c3d4e5-WORM",
-    livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-    notes: "Operasional normal",
-    correctionStatus: "None",
-  },
-  {
-    id: "REC-20261116-003",
-    date: "2026-11-16",
-    dateFormatted: "Senin, 16 Nov 2026",
-    checkIn: "08:38 WITA",
-    checkOut: "17:15 WITA",
-    status: "Terlambat",
-    office: "Kantor Pusat Bali",
-    distanceMeters: 30,
-    latitude: -6.1754,
-    longitude: 106.8270,
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    verificationHash: "SHA256-c3d4e5f6-WORM",
-    livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-    notes: "Kepadatan lalu lintas jalan tol",
-    correctionStatus: "Pending SPV",
-  },
-  {
-    id: "REC-20261115-004",
-    date: "2026-11-15",
-    dateFormatted: "Minggu, 15 Nov 2026",
-    checkIn: "--:--",
-    checkOut: "--:--",
-    status: "Cuti",
-    office: "Kantor Pusat Bali",
-    distanceMeters: 0,
-    latitude: 0,
-    longitude: 0,
-    photoUrl: "",
-    verificationHash: "SYS-LEAVE-APPROVED",
-    livenessResult: "Cuti Tahunan Disetujui",
-    notes: "Cuti Bersama Akhir Pekan",
-    correctionStatus: "None",
-  },
-  {
-    id: "REC-20261114-005",
-    date: "2026-11-14",
-    dateFormatted: "Sabtu, 14 Nov 2026",
-    checkIn: "08:00 WITA",
-    checkOut: "13:30 WITA",
-    status: "Tepat Waktu",
-    office: "Kantor Pusat Bali",
-    distanceMeters: 15,
-    latitude: -6.1752,
-    longitude: 106.8272,
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    verificationHash: "SHA256-d4e5f6a7-WORM",
-    livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-    notes: "Shift Setengah Hari",
-    correctionStatus: "None",
-  },
-  {
-    id: "REC-20261113-006",
-    date: "2026-11-13",
-    dateFormatted: "Jumat, 13 Nov 2026",
-    checkIn: "07:48 WITA",
-    checkOut: "17:02 WITA",
-    status: "Tepat Waktu",
-    office: "Kantor Pusat Bali",
-    distanceMeters: 20,
-    latitude: -6.1751,
-    longitude: 106.8273,
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    verificationHash: "SHA256-e5f6a7b8-WORM",
-    livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-    notes: "Tugas briefing pagi",
-    correctionStatus: "None",
-  },
-];
-
 export default function RiwayatPage() {
   const { user } = useAuth();
   const { showAlert } = useModal();
-  const [records, setRecords] = useState<AttendanceItem[]>(INITIAL_RECORDS);
+  const [records, setRecords] = useState<AttendanceItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("Semua");
 
@@ -178,6 +74,7 @@ export default function RiwayatPage() {
   useEffect(() => {
     let isMounted = true;
     const fetchHistory = async () => {
+      setIsLoading(true);
       try {
         const empId = user.id || user.nik || "";
         const res = await fetch(`/api/riwayat?employeeId=${encodeURIComponent(empId)}`);
@@ -185,6 +82,7 @@ export default function RiwayatPage() {
           const data = await res.json();
           if (data.success && isMounted && Array.isArray(data.records) && data.records.length > 0) {
             setRecords(data.records);
+            setIsLoading(false);
             return;
           }
         }
@@ -192,38 +90,51 @@ export default function RiwayatPage() {
         console.warn("Gagal mengambil riwayat dari API, beralih ke cache:", apiErr);
       }
 
+      // Fallback ke cache localStorage jika ada data riil hasil absen di browser
       try {
         const stored = localStorage.getItem("j_absen_records");
         if (stored && isMounted) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const formattedStored: AttendanceItem[] = parsed.map((item: any) => ({
-              id: item.id,
-              date: item.timestamp ? item.timestamp.split("T")[0] : "2026-11-18",
-              dateFormatted: item.dateFormatted || "Hari Ini",
-              checkIn: item.type === "masuk" ? item.timeFormatted : "--:--",
-              checkOut: item.type === "pulang" ? item.timeFormatted : "--:--",
-              status: item.status || "Tepat Waktu",
-              office: item.officeName || "Kantor Pusat Bali",
-              distanceMeters: item.distanceMeters || 18,
-              latitude: item.latitude || -6.1752,
-              longitude: item.longitude || 106.8272,
-              photoUrl: item.photoUrl || user.avatar || "",
-              verificationHash: item.verificationHash || "SHA256-VERIFIED-WORM",
-              livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-              notes: "Absensi Live Selfie",
-              correctionStatus: "None",
-            }));
+            const userRecords = parsed.filter(
+              (item: any) =>
+                (item.userId && (item.userId === user.id || item.userId === user.nik)) ||
+                (item.userName && item.userName === user.name) ||
+                (!item.userId && !item.userName)
+            );
 
-            setRecords((prev) => {
-              const existingIds = new Set(prev.map((r) => r.id));
-              const newItems = formattedStored.filter((i) => !existingIds.has(i.id));
-              return [...newItems, ...prev];
-            });
+            if (userRecords.length > 0) {
+              const formattedStored: AttendanceItem[] = userRecords.map((item: any) => ({
+                id: item.id,
+                date: item.timestamp ? item.timestamp.split("T")[0] : new Date().toISOString().split("T")[0],
+                dateFormatted: item.dateFormatted || "Hari Ini",
+                checkIn: item.type === "masuk" ? item.timeFormatted : "--:-- WITA",
+                checkOut: item.type === "pulang" ? item.timeFormatted : "--:-- WITA",
+                status: item.status || "Tepat Waktu",
+                office: item.officeName || "Kantor Pusat Bali",
+                distanceMeters: item.distanceMeters || 18,
+                latitude: item.latitude || -8.7234,
+                longitude: item.longitude || 115.1768,
+                photoUrl: item.photoUrl || user.avatar || "",
+                verificationHash: item.verificationHash || "SHA256-VERIFIED-WORM",
+                livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
+                notes: item.notes || "Absensi Live Selfie",
+                correctionStatus: "None",
+              }));
+
+              setRecords(formattedStored);
+              setIsLoading(false);
+              return;
+            }
           }
         }
       } catch (e) {
         console.error("Gagal membaca riwayat storage:", e);
+      }
+
+      if (isMounted) {
+        setRecords([]);
+        setIsLoading(false);
       }
     };
 
@@ -231,7 +142,7 @@ export default function RiwayatPage() {
     return () => {
       isMounted = false;
     };
-  }, [user.id, user.nik, user.avatar]);
+  }, [user.id, user.nik, user.name, user.avatar]);
 
   // Filter Data
   const filteredRecords = records.filter((r) => {
@@ -480,7 +391,16 @@ export default function RiwayatPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-800 dark:text-gray-200">
-              {filteredRecords.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-6 animate-spin text-brand-500" />
+                      <span className="text-xs font-medium">Memuat riwayat presensi...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-gray-400">
                     Tidak ada catatan riwayat absensi yang cocok dengan filter.
@@ -570,7 +490,17 @@ export default function RiwayatPage() {
 
         {/* Mobile Responsive Cards View */}
         <div className="lg:hidden space-y-3">
-          {filteredRecords.map((item) => (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+              <Loader2 className="size-6 animate-spin text-brand-500" />
+              <span className="text-xs font-medium">Memuat riwayat presensi...</span>
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="text-center py-8 text-xs text-gray-400 bg-white dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+              Tidak ada catatan riwayat absensi yang cocok dengan filter.
+            </div>
+          ) : (
+            filteredRecords.map((item) => (
             <Card key={item.id} className="border-gray-200 dark:border-gray-800">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -620,7 +550,7 @@ export default function RiwayatPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )))}
         </div>
       </div>
 
