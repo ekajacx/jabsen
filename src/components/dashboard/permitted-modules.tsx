@@ -154,7 +154,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Bagan hierarki perusahaan, profil legalitas PT, dan template kop surat.",
     permissionNote: "Informasi Struktur Resmi",
-    badge: "5 Departemen",
+    badge: "6 Dept + 1 Dir",
     badgeVariant: "default",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
@@ -312,7 +312,7 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
         };
       case "mod-organisasi":
         return {
-          badge: `${badges.totalDepartments} Departemen`,
+          badge: `${badges.totalDepartments} Unit (6 Dept + 1 Dir)`,
           variant: "default" as any,
         };
       case "mod-departemen":

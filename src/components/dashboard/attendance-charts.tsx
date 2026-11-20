@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { UserRole } from "@/context/auth-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -288,7 +288,7 @@ export function WeeklyTrendChart({ role, period, departmentName = "Operasional",
 }
 
 /* ========================================================================= */
-/* Donut Chart: Rasio Status Kehadiran Hari Ini                              */
+/* Donut Chart: Rasio Status Kehadiran Hari Ini & Komposisi Departemen      */
 /* ========================================================================= */
 
 interface DonutStatusChartProps {
@@ -298,91 +298,222 @@ interface DonutStatusChartProps {
 
 export function DonutStatusChart({ role, departmentName = "Operasional" }: DonutStatusChartProps) {
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
+  const [donutTab, setDonutTab] = useState<"department" | "status">(
+    role === "CEO" || role === "GM" || role === "HRD" || role === "Admin IT" ? "department" : "status"
+  );
 
-  // Status breakdown based on Role
-  let segments = [
-    { label: "Tepat Waktu", count: 25, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "Hadir sebelum 08:00 WITA" },
-    { label: "Terlambat", count: 1, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Toleransi < 15 menit" },
-    { label: "Cuti Resmi", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Disetujui berjenjang" },
-    { label: "Belum Absen", count: 0, color: "#94a3b8", bgClass: "bg-slate-400", textClass: "text-slate-500", desc: "Shift sore / Libur" },
-  ];
-  let headlineRate = "92.6%";
-  let headlineDesc = "Tingkat Kehadiran";
-  let totalScope = 27;
+  // 1. Data Komposisi 6 Departemen + 1 Direksi (Total 27 Karyawan Aktif)
+  const departmentSegments = useMemo(
+    () => [
+      {
+        label: "Teknologi Informasi",
+        count: 5,
+        color: "#3b82f6",
+        bgClass: "bg-blue-500",
+        textClass: "text-blue-600",
+        desc: "Ka: Arya Wijaya, S.Kom (5 Personel)",
+      },
+      {
+        label: "Departemen Keuangan",
+        count: 4,
+        color: "#10b981",
+        bgClass: "bg-emerald-500",
+        textClass: "text-emerald-600",
+        desc: "Ka: Ratna Sari, SE, Ak, CA (4 Personel)",
+      },
+      {
+        label: "Departemen Operasional",
+        count: 4,
+        color: "#f59e0b",
+        bgClass: "bg-amber-500",
+        textClass: "text-amber-600",
+        desc: "Ka: Siti Rahmawati, ST (4 Personel)",
+      },
+      {
+        label: "Departemen Pemasaran",
+        count: 4,
+        color: "#ec4899",
+        bgClass: "bg-pink-500",
+        textClass: "text-pink-600",
+        desc: "Ka: Nadia Safira, S.I.Kom (4 Personel)",
+      },
+      {
+        label: "Departemen HR",
+        count: 4,
+        color: "#8b5cf6",
+        bgClass: "bg-purple-500",
+        textClass: "text-purple-600",
+        desc: "Ka: Dewi Lestari, S.Psi (4 Personel)",
+      },
+      {
+        label: "Departemen Penjualan",
+        count: 4,
+        color: "#06b6d4",
+        bgClass: "bg-cyan-500",
+        textClass: "text-cyan-600",
+        desc: "Ka: Anton Wijaya, SE (4 Personel)",
+      },
+      {
+        label: "Direksi & Manajemen",
+        count: 2,
+        color: "#6366f1",
+        bgClass: "bg-indigo-500",
+        textClass: "text-indigo-600",
+        desc: "CEO: Eka Jacx & GM: Hendra Wijaya (2 Personel)",
+      },
+    ],
+    []
+  );
 
-  if (role === "Staff") {
-    // Staff breakdown: Hari kerja bulan ini (22 hari kerja)
-    segments = [
-      { label: "Hadir Tepat Waktu", count: 21, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "21 hari kerja tercatat" },
-      { label: "Terlambat", count: 0, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Nol keterlambatan" },
-      { label: "Cuti Disetujui", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "1 hari cuti tahunan" },
-      { label: "Sisa Kuota Cuti", count: 9, color: "#8b5cf6", bgClass: "bg-purple-500", textClass: "text-purple-600", desc: "Dari 12 hari hak cuti" },
-    ];
-    headlineRate = "95.5%";
-    headlineDesc = "Disiplin Pribadi";
-    totalScope = 22;
-  } else if (role === "Supervisor") {
-    // Supervisor: Team Operasional (5 anggota)
-    segments = [
-      { label: "Hadir Tepat Waktu", count: 4, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "4 anggota hadir" },
-      { label: "Terlambat", count: 0, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Nol keterlambatan tim" },
-      { label: "Cuti Resmi", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Ahmad Fauzi (Cuti)" },
-      { label: "Belum Absen", count: 0, color: "#94a3b8", bgClass: "bg-slate-400", textClass: "text-slate-500", desc: "Semua shift pagi aktif" },
-    ];
-    headlineRate = "80.0%";
-    headlineDesc = "Kehadiran Tim";
-    totalScope = 5;
-  } else if (role === "Admin IT") {
-    // Admin IT: Status Perangkat & Kredensial
-    segments = [
-      { label: "HP Terikat Valid", count: 27, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "100% Device Binding" },
-      { label: "Geofence 100m", count: 27, color: "#3b82f6", bgClass: "bg-blue-500", textClass: "text-blue-600", desc: "Semua dalam radius" },
-      { label: "WORM SHA-256", count: 27, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Append-only utuh" },
-      { label: "Anomali / Breach", count: 0, color: "#ef4444", bgClass: "bg-rose-500", textClass: "text-rose-600", desc: "Nol pelanggaran sistem" },
-    ];
-    headlineRate = "100%";
-    headlineDesc = "Integritas Sistem";
-    totalScope = 27;
-  }
+  // 2. Data Status Presensi Hari Ini
+  const statusSegments = useMemo(() => {
+    if (role === "Staff") {
+      return {
+        segments: [
+          { label: "Hadir Tepat Waktu", count: 21, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "21 hari kerja tercatat" },
+          { label: "Terlambat", count: 0, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Nol keterlambatan" },
+          { label: "Cuti Disetujui", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "1 hari cuti tahunan" },
+          { label: "Sisa Kuota Cuti", count: 9, color: "#8b5cf6", bgClass: "bg-purple-500", textClass: "text-purple-600", desc: "Dari 12 hari hak cuti" },
+        ],
+        headlineRate: "95.5%",
+        headlineDesc: "Disiplin Pribadi",
+        totalScope: 22,
+      };
+    }
+    if (role === "Supervisor") {
+      return {
+        segments: [
+          { label: "Hadir Tepat Waktu", count: 4, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "4 anggota hadir" },
+          { label: "Terlambat", count: 0, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Nol keterlambatan tim" },
+          { label: "Cuti Resmi", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "1 anggota cuti tahunan" },
+          { label: "Belum Absen", count: 0, color: "#94a3b8", bgClass: "bg-slate-400", textClass: "text-slate-500", desc: "Semua shift pagi aktif" },
+        ],
+        headlineRate: "80.0%",
+        headlineDesc: "Kehadiran Tim",
+        totalScope: 5,
+      };
+    }
+    if (role === "Admin IT") {
+      return {
+        segments: [
+          { label: "HP Terikat Valid", count: 27, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "100% Device Binding" },
+          { label: "Geofence 100m", count: 27, color: "#3b82f6", bgClass: "bg-blue-500", textClass: "text-blue-600", desc: "Semua dalam radius" },
+          { label: "WORM SHA-256", count: 27, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Append-only utuh" },
+          { label: "Anomali / Breach", count: 0, color: "#ef4444", bgClass: "bg-rose-500", textClass: "text-rose-600", desc: "Nol pelanggaran sistem" },
+        ],
+        headlineRate: "100%",
+        headlineDesc: "Integritas Sistem",
+        totalScope: 27,
+      };
+    }
+    return {
+      segments: [
+        { label: "Tepat Waktu", count: 25, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "Hadir sebelum 08:00 WITA" },
+        { label: "Terlambat", count: 1, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Toleransi < 15 menit" },
+        { label: "Cuti Resmi", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Disetujui berjenjang" },
+        { label: "Belum Absen", count: 0, color: "#94a3b8", bgClass: "bg-slate-400", textClass: "text-slate-500", desc: "Shift sore / Libur" },
+      ],
+      headlineRate: "92.6%",
+      headlineDesc: "Tingkat Kehadiran",
+      totalScope: 27,
+    };
+  }, [role]);
 
-  // Calculate SVG stroke parameters
+  // Tentukan dataset aktif berdasarkan tab
+  const activeDataset = useMemo(() => {
+    if (donutTab === "department") {
+      return {
+        segments: departmentSegments,
+        headlineRate: "7 Unit",
+        headlineDesc: "6 Dept + 1 Dir",
+        totalScope: 27,
+      };
+    }
+    return statusSegments;
+  }, [donutTab, departmentSegments, statusSegments]);
+
+  // Hitung parameter SVG Donut dengan memoization O(N) efisien
   const size = 180;
   const strokeWidth = 22;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  let accumulatedPercent = 0;
-  const donutSlices = segments.map((seg) => {
-    const pct = totalScope > 0 ? (seg.count / totalScope) * 100 : 0;
-    const strokeDasharray = `${(pct / 100) * circumference} ${circumference}`;
-    const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
-    accumulatedPercent += pct;
+  const donutSlices = useMemo(() => {
+    let accumulatedPercent = 0;
+    return activeDataset.segments.map((seg) => {
+      const pct = activeDataset.totalScope > 0 ? (seg.count / activeDataset.totalScope) * 100 : 0;
+      const strokeDasharray = `${(pct / 100) * circumference} ${circumference}`;
+      const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
+      accumulatedPercent += pct;
 
-    return {
-      ...seg,
-      pct: Math.round(pct),
-      strokeDasharray,
-      strokeDashoffset,
-    };
-  });
+      return {
+        ...seg,
+        pct: Math.round(pct),
+        strokeDasharray,
+        strokeDashoffset,
+      };
+    });
+  }, [activeDataset, circumference]);
+
+  const activeSlice = useMemo(
+    () => donutSlices.find((s) => s.label === activeSegment),
+    [donutSlices, activeSegment]
+  );
 
   return (
     <Card className="border border-gray-200/90 shadow-theme-xs dark:border-gray-800">
       <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800/80">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-            <Sparkles className="size-4" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+              <Sparkles className="size-4" />
+            </div>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+              {donutTab === "department" ? "Komposisi Departemen (6+1)" : "Distribusi Presensi Hari Ini"}
+            </CardTitle>
           </div>
-          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
-            {role === "Staff" ? "Status Kehadiran Bulan Ini" : role === "Admin IT" ? "Kesehatan & Integritas Sistem" : "Distribusi Status Presensi Hari Ini"}
-          </CardTitle>
+
+          {/* Toggle Tab Departemen vs Status Presensi */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg text-[11px] self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setDonutTab("department");
+                setActiveSegment(null);
+              }}
+              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                donutTab === "department"
+                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-white"
+                  : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
+              }`}
+            >
+              Departemen (6+1)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDonutTab("status");
+                setActiveSegment(null);
+              }}
+              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                donutTab === "status"
+                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-700 dark:text-white"
+                  : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
+              }`}
+            >
+              Status Presensi
+            </button>
+          </div>
         </div>
-        <CardDescription className="text-xs text-gray-500">
-          {role === "Staff" 
-            ? "Perbandingan proporsi kehadiran dan hak cuti tahunan." 
-            : role === "Supervisor" 
-            ? `Status absensi 5 anggota tim pada Departemen ${departmentName}.`
-            : "Rasio pemenuhan jam kerja dan kedisiplinan personel."}
+
+        <CardDescription className="text-xs text-gray-500 mt-1">
+          {donutTab === "department"
+            ? "Proporsi 27 personel aktif pada 6 departemen operasional & 1 jajaran direksi."
+            : role === "Staff"
+            ? "Perbandingan proporsi kehadiran dan hak cuti tahunan."
+            : role === "Supervisor"
+            ? `Status absensi anggota tim pada Departemen ${departmentName}.`
+            : "Rasio pemenuhan jam kerja dan kedisiplinan personel hari ini."}
         </CardDescription>
       </CardHeader>
 
@@ -420,19 +551,19 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
             ))}
           </svg>
 
-          {/* Center Metric Label */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {headlineRate}
+          {/* Center Metric Label - Dinamis saat di-hover */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
+            <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+              {activeSlice ? `${activeSlice.count} Orang` : activeDataset.headlineRate}
             </span>
-            <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-              {headlineDesc}
+            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 line-clamp-1">
+              {activeSlice ? activeSlice.label : activeDataset.headlineDesc}
             </span>
           </div>
         </div>
 
         {/* Interactive Segment Breakdown List */}
-        <div className="w-full space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-xs">
+        <div className="w-full space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-800 text-xs max-h-48 overflow-y-auto">
           {donutSlices.map((slice, idx) => {
             const isHighlight = activeSegment === slice.label;
             return (
@@ -440,22 +571,22 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
                 key={idx}
                 onMouseEnter={() => setActiveSegment(slice.label)}
                 onMouseLeave={() => setActiveSegment(null)}
-                className={`flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer ${
+                className={`flex items-center justify-between p-1.5 rounded-lg transition-colors cursor-pointer ${
                   isHighlight ? "bg-gray-100 dark:bg-gray-800" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className={`size-2.5 rounded-full ${slice.bgClass}`} />
-                  <div>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                  <span className={`size-2.5 rounded-full shrink-0 ${slice.bgClass}`} />
+                  <div className="truncate">
+                    <span className="font-medium text-gray-800 dark:text-gray-200 block truncate">
                       {slice.label}
                     </span>
-                    <span className="block text-[10px] text-gray-400">
+                    <span className="block text-[10px] text-gray-400 truncate">
                       {slice.desc}
                     </span>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0 ml-2">
                   <span className="font-bold text-gray-900 dark:text-white">
                     {slice.count}
                   </span>
@@ -481,14 +612,77 @@ interface DepartmentComparisonChartProps {
 }
 
 export function DepartmentComparisonChart({ role }: DepartmentComparisonChartProps) {
-  const departments = [
-    { name: "Teknologi Informasi", head: "Eka Jacx", total: 5, hadir: 5, pct: 100, color: "bg-emerald-500" },
-    { name: "HR & General Affairs", head: "Dewi Lestari", total: 5, hadir: 5, pct: 100, color: "bg-emerald-500" },
-    { name: "Pemasaran", head: "Nadia Safira", total: 4, hadir: 4, pct: 100, color: "bg-emerald-500" },
-    { name: "Penjualan", head: "Bambang Soedarmono", total: 4, hadir: 4, pct: 100, color: "bg-emerald-500" },
-    { name: "Operasional", head: "Siti Rahmawati", total: 5, hadir: 4, pct: 80, color: "bg-brand-500", note: "1 Orang Cuti Resmi" },
-    { name: "Direksi & Manajemen", head: "Eka Jacx (CEO)", total: 2, hadir: 2, pct: 100, color: "bg-emerald-500" },
-  ];
+  // Seluruh 6 Departemen + 1 Jajaran Direksi (Total 27 Personel Sesuai Master Data)
+  const departments = useMemo(
+    () => [
+      {
+        name: "Teknologi Informasi",
+        head: "Arya Wijaya, S.Kom, M.T",
+        total: 5,
+        hadir: 5,
+        pct: 100,
+        color: "bg-emerald-500",
+      },
+      {
+        name: "Departemen Keuangan",
+        head: "Ratna Sari, SE, Ak, CA",
+        total: 4,
+        hadir: 4,
+        pct: 100,
+        color: "bg-emerald-500",
+      },
+      {
+        name: "HR & General Affairs",
+        head: "Dewi Lestari, S.Psi, M.Psi",
+        total: 4,
+        hadir: 4,
+        pct: 100,
+        color: "bg-emerald-500",
+      },
+      {
+        name: "Pemasaran",
+        head: "Nadia Safira, S.I.Kom",
+        total: 4,
+        hadir: 4,
+        pct: 100,
+        color: "bg-emerald-500",
+      },
+      {
+        name: "Penjualan",
+        head: "Anton Wijaya, SE",
+        total: 4,
+        hadir: 4,
+        pct: 100,
+        color: "bg-emerald-500",
+      },
+      {
+        name: "Operasional",
+        head: "Siti Rahmawati, ST",
+        total: 4,
+        hadir: 3,
+        pct: 75,
+        color: "bg-brand-500",
+        note: "1 Orang Cuti Resmi",
+      },
+      {
+        name: "Direksi & Manajemen",
+        head: "Eka Jacx (CEO) & Hendra Wijaya (GM)",
+        total: 2,
+        hadir: 2,
+        pct: 100,
+        color: "bg-emerald-500",
+      },
+    ],
+    []
+  );
+
+  // Komputasi rata-rata kehadiran perusahaan secara memoized
+  const { totalStaff, totalHadir, companyRate } = useMemo(() => {
+    const totalStaff = departments.reduce((acc, d) => acc + d.total, 0);
+    const totalHadir = departments.reduce((acc, d) => acc + d.hadir, 0);
+    const companyRate = totalStaff > 0 ? ((totalHadir / totalStaff) * 100).toFixed(1) : "0.0";
+    return { totalStaff, totalHadir, companyRate };
+  }, [departments]);
 
   return (
     <Card className="border border-gray-200/90 shadow-theme-xs dark:border-gray-800">
@@ -507,7 +701,7 @@ export function DepartmentComparisonChart({ role }: DepartmentComparisonChartPro
           </CardDescription>
         </div>
         <Badge variant="info" size="sm" className="hidden sm:inline-flex">
-          5 Departemen + 1 Direksi
+          6 Departemen + 1 Direksi (7 Unit)
         </Badge>
       </CardHeader>
 
@@ -549,7 +743,9 @@ export function DepartmentComparisonChart({ role }: DepartmentComparisonChartPro
         ))}
 
         <div className="pt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800">
-          <span>Rata-rata Kehadiran Perusahaan: <strong className="text-emerald-600 font-bold">92.6%</strong></span>
+          <span>
+            Rata-rata Kehadiran Perusahaan: <strong className="text-emerald-600 font-bold">{companyRate}%</strong> ({totalHadir} dari {totalStaff} Personel)
+          </span>
           <span className="text-[11px] text-gray-400">Standar SLA Minimum: 85.0%</span>
         </div>
       </CardContent>
