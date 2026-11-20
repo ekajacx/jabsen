@@ -598,7 +598,12 @@ export function getStoredDepartments(): Department[] {
       localStorage.setItem(STORAGE_DEPTS_KEY, JSON.stringify(INITIAL_DEPARTMENTS));
       return INITIAL_DEPARTMENTS;
     }
-    return JSON.parse(raw);
+    const parsed: Department[] = JSON.parse(raw);
+    const filtered = parsed.filter((d) => d.id !== "dept-exec" && d.code !== "DIR");
+    if (filtered.length !== parsed.length) {
+      localStorage.setItem(STORAGE_DEPTS_KEY, JSON.stringify(filtered));
+    }
+    return filtered;
   } catch {
     return INITIAL_DEPARTMENTS;
   }
@@ -606,7 +611,8 @@ export function getStoredDepartments(): Department[] {
 
 export function saveStoredDepartments(depts: Department[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_DEPTS_KEY, JSON.stringify(depts));
+  const filtered = depts.filter((d) => d.id !== "dept-exec" && d.code !== "DIR");
+  localStorage.setItem(STORAGE_DEPTS_KEY, JSON.stringify(filtered));
   window.dispatchEvent(new Event(UPDATE_EVENT_NAME));
 }
 

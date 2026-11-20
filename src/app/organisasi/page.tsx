@@ -303,11 +303,17 @@ export default function OrganisasiPage() {
   const dirutNode = positions.find((p) => p.id === "pos-dirut") || positions[0];
   const gmNode = positions.find((p) => p.id === "pos-gm") || positions[1];
 
-  // Filter Kolom Departemen yang Tampil di Bagan (Otomatis Bertambah jika Departemen Baru Dibuat)
+  // Filter Kolom Departemen Operasional di Bawah GM (CEO & GM sudah tampil di pucuk pimpinan)
+  const operationalDepts = useMemo(() => {
+    return departments.filter(
+      (d) => d.id !== "dept-exec" && d.code !== "DIR" && !d.name.toLowerCase().includes("direksi")
+    );
+  }, [departments]);
+
   const visibleDepts = useMemo(() => {
-    if (selectedDeptFilter === "ALL") return departments;
-    return departments.filter((d) => d.id === selectedDeptFilter);
-  }, [departments, selectedDeptFilter]);
+    if (selectedDeptFilter === "ALL") return operationalDepts;
+    return operationalDepts.filter((d) => d.id === selectedDeptFilter);
+  }, [operationalDepts, selectedDeptFilter]);
 
   return (
     <AppLayout pageTitle="Struktur Organisasi">
@@ -448,9 +454,9 @@ export default function OrganisasiPage() {
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
                     }`}
                   >
-                    Semua Departemen ({departments.length})
+                    Semua Departemen ({operationalDepts.length})
                   </button>
-                  {departments.map((dept) => (
+                  {operationalDepts.map((dept) => (
                     <button
                       key={dept.id}
                       onClick={() => setSelectedDeptFilter(dept.id)}

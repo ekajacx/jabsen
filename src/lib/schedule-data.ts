@@ -387,3 +387,27 @@ export function saveStoredWeeklySchedules(schedules: WeeklyScheduleRecord[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_SCHEDULES_KEY, JSON.stringify(schedules));
 }
+
+const STORAGE_SHIFTS_KEY = "jabsen_master_shifts_v1";
+
+// Helper Pengambilan Master Pola Shift Kerja dari LocalStorage
+export function getStoredShifts(): ShiftPattern[] {
+  if (typeof window === "undefined") return INITIAL_SHIFTS;
+  try {
+    const raw = localStorage.getItem(STORAGE_SHIFTS_KEY);
+    if (!raw) {
+      localStorage.setItem(STORAGE_SHIFTS_KEY, JSON.stringify(INITIAL_SHIFTS));
+      return INITIAL_SHIFTS;
+    }
+    const parsed: ShiftPattern[] = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_SHIFTS;
+  } catch {
+    return INITIAL_SHIFTS;
+  }
+}
+
+// Helper Penyimpanan Master Pola Shift Kerja ke LocalStorage
+export function saveStoredShifts(shifts: ShiftPattern[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_SHIFTS_KEY, JSON.stringify(shifts));
+}

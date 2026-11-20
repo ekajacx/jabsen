@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logSecurityEvent } from "@/lib/audit";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const includeExecutive = searchParams.get("includeExecutive") === "true";
+
+    const where: any = {};
+    if (!includeExecutive) {
+      where.id = { not: "dept-exec" };
+    }
+
     const departments = await prisma.department.findMany({
+      where,
       include: {
         _count: {
           select: {

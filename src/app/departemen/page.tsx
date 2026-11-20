@@ -115,7 +115,9 @@ export default function DepartemenPage() {
     });
   };
 
-  const filteredDepts = departments.filter((d) => {
+  const operationalDepts = departments.filter((d) => d.id !== "dept-exec" && d.code !== "DIR");
+
+  const filteredDepts = operationalDepts.filter((d) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q) || d.description.toLowerCase().includes(q);
@@ -180,7 +182,7 @@ export default function DepartemenPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                const mappedDepts = departments.map((d) => {
+                const mappedDepts = operationalDepts.map((d) => {
                   const empCount = allEmployees.filter((e) => e.departmentId === d.id).length;
                   const head = allEmployees.find((e) => e.departmentId === d.id && (e.level === 3 || e.level === 2));
                   return {
@@ -250,7 +252,7 @@ export default function DepartemenPage() {
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Departemen Aktif</span>
-                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{departments.length}</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{operationalDepts.length}</p>
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                   Terkoneksi ke Hirarki
                 </span>

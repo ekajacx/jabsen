@@ -11,10 +11,17 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, id, startIcon, endIcon, isInvalid, disabled, ...props }, ref) => {
+  ({ className, type, id, startIcon, endIcon, isInvalid, disabled, value, ...props }, ref) => {
     const field = useField();
     const resolvedId = id || field?.id;
     const hasError = isInvalid || Boolean(field?.error);
+
+    // Safeguard: jika input pernah dikontrol (controlled), jangan biarkan berubah ke uncontrolled saat value = undefined/null
+    const isControlledRef = React.useRef(value !== undefined);
+    if (value !== undefined) {
+      isControlledRef.current = true;
+    }
+    const safeValue = isControlledRef.current ? (value ?? "") : value;
 
     return (
       <div className="relative flex w-full items-center">
@@ -28,6 +35,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           type={type}
           id={resolvedId}
           disabled={disabled}
+          value={safeValue}
           aria-invalid={hasError}
           className={cn(
             "h-11 w-full min-w-0 rounded-[10px] border bg-white px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs outline-none transition-all placeholder:text-gray-400",

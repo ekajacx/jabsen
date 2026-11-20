@@ -187,7 +187,12 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
     loadNotifications();
     setIsNotifOpen(false);
     if (notif.targetUrl) {
-      router.push(notif.targetUrl);
+      let dest = notif.targetUrl;
+      // Karyawan Staff yang mengklik notifikasi cuti langsung diarahkan ke /cuti (Pengajuan Cuti Saya)
+      if (user.role === "Staff" && (dest === "/approval/cuti" || notif.category === "cuti")) {
+        dest = "/cuti";
+      }
+      router.push(dest);
     }
   };
 
@@ -261,7 +266,7 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white/90 px-4 backdrop-blur-md sm:px-6 dark:border-gray-800 dark:bg-gray-900/90">
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-gray-200 bg-white/90 px-4 backdrop-blur-md sm:px-6 dark:border-gray-800 dark:bg-gray-900/90">
         {/* Left: Mobile Toggle & Page Title */}
         <div className="flex items-center gap-3">
           <button

@@ -7,7 +7,10 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
+import { useModal } from "@/context/modal-context";
 import {
   Settings,
   Building2,
@@ -22,6 +25,14 @@ import {
   Compass,
   ShieldAlert,
   KeyRound,
+  Clock,
+  Plus,
+  Edit,
+  Trash2,
+  Moon,
+  Sun,
+  Users,
+  Check,
 } from "lucide-react";
 
 import {
@@ -31,23 +42,31 @@ import {
   DEFAULT_COMPANY,
 } from "@/lib/company-profile";
 
+import {
+  ShiftPattern,
+  INITIAL_SHIFTS,
+  getStoredShifts,
+  saveStoredShifts,
+} from "@/lib/schedule-data";
+
 function PengaturanContent() {
   const router = useRouter();
   const { user, isAuthReady } = useAuth();
+  const { showConfirm } = useModal();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") || "perusahaan";
 
-  const isAuthorized = ["Admin IT", "CEO", "HRD"].includes(user?.role || "");
+  const isAuthorized = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
-  // Tab Utama: "perusahaan" | "lokasi"
+  // Tab Utama: "perusahaan" | "lokasi" | "shift"
   const [activeTab, setActiveTab] = useState<string>(
-    initialTab === "lokasi" ? "lokasi" : "perusahaan"
+    ["lokasi", "shift"].includes(initialTab) ? initialTab : "perusahaan"
   );
 
   // Sync tab jika URL query param berubah
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["perusahaan", "lokasi"].includes(tabParam)) {
+    if (tabParam && ["perusahaan", "lokasi", "shift"].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -77,6 +96,30 @@ function PengaturanContent() {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [isSavingOffice, setIsSavingOffice] = useState(false);
 
+  // ==========================================
+  // TAB 3: STATE POLA JAM KERJA & SHIFT (PRD 5.7)
+  // ==========================================
+  const [shifts, setShifts] = useState<ShiftPattern[]>(INITIAL_SHIFTS);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [shiftName, setShiftName] = useState("");
+  const [shiftType, setShiftType] = useState<ShiftPattern["type"]>("Operasional Shift");
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("17:00");
+  const [breakStart, setBreakStart] = useState("12:00");
+  const [breakEnd, setBreakEnd] = useState("13:00");
+  const [tolerance, setTolerance] = useState(15);
+  const [crossMidnight, setCrossMidnight] = useState(false);
+  const [assignedDepartments, setAssignedDepartments] = useState<string[]>(["Operasional"]);
+  const [isSavingShift, setIsSavingShift] = useState(false);
+
+  // Inisialisasi Shift dari LocalStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShifts(getStoredShifts());
+    }
+  }, []);
+
   // Load Pengaturan dari database PostgreSQL via API
   useEffect(() => {
     let isMounted = true;
@@ -87,8 +130,19 @@ function PengaturanContent() {
           const data = await res.json();
           if (data.success && isMounted) {
             if (data.profile) {
-              setCompany(data.profile);
-              saveCompanyProfile(data.profile);
+              const fullProfile: CompanyProfile = {
+                ...DEFAULT_COMPANY,
+                ...getCompanyProfile(),
+                ...data.profile,
+                tagline: data.profile.tagline || data.profile.businessField || DEFAULT_COMPANY.tagline,
+                city: data.profile.city || DEFAULT_COMPANY.city,
+                postalCode: data.profile.postalCode || DEFAULT_COMPANY.postalCode,
+                whatsapp: data.profile.whatsapp || DEFAULT_COMPANY.whatsapp,
+                npwp: data.profile.npwp || DEFAULT_COMPANY.npwp,
+                nib: data.profile.nib || DEFAULT_COMPANY.nib,
+              };
+              setCompany(fullProfile);
+              saveCompanyProfile(fullProfile);
             }
             if (data.office) {
               setOfficeId(data.office.id);
@@ -96,6 +150,23 @@ function PengaturanContent() {
               setLatitude(data.office.latitude);
               setLongitude(data.office.longitude);
               setRadiusMeters(data.office.radiusMeters);
+            }
+            if (data.shifts && Array.isArray(data.shifts) && data.shifts.length > 0) {
+              const localShifts = getStoredShifts();
+              const merged = localShifts.map((ls) => {
+                const dbMatch = data.shifts.find((ds: any) => ds.id === ls.id);
+                if (dbMatch) {
+                  return {
+                    ...ls,
+                    name: dbMatch.name || ls.name,
+                    startTime: dbMatch.startTime || ls.startTime,
+                    endTime: dbMatch.endTime || ls.endTime,
+                  };
+                }
+                return ls;
+              });
+              setShifts(merged);
+              saveStoredShifts(merged);
             }
           }
         }
@@ -202,6 +273,122 @@ function PengaturanContent() {
     }
   };
 
+  // ==========================================
+  // TAB 3: HANDLERS POLA JAM KERJA & SHIFT
+  // ==========================================
+  const handleSaveShift = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shiftName.trim()) {
+      showToast("error", "Harap masukkan nama pola shift.");
+      return;
+    }
+
+    setIsSavingShift(true);
+    try {
+      let updatedShifts: ShiftPattern[] = [];
+      let savedPattern: ShiftPattern;
+
+      if (editingShiftId) {
+        savedPattern = {
+          id: editingShiftId,
+          name: shiftName,
+          type: shiftType,
+          startTime,
+          endTime,
+          breakStart,
+          breakEnd,
+          toleranceMinutes: Number(tolerance),
+          assignedDepartments: assignedDepartments.length > 0 ? assignedDepartments : ["Operasional"],
+          daysActive: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
+          crossMidnight,
+          color: crossMidnight ? "bg-purple-500" : "bg-blue-500",
+        };
+        updatedShifts = shifts.map((s) => (s.id === editingShiftId ? savedPattern : s));
+      } else {
+        const generatedId = "shift-" + Date.now().toString(36);
+        savedPattern = {
+          id: generatedId,
+          name: shiftName,
+          type: shiftType,
+          startTime,
+          endTime,
+          breakStart,
+          breakEnd,
+          toleranceMinutes: Number(tolerance),
+          assignedDepartments: assignedDepartments.length > 0 ? assignedDepartments : ["Operasional"],
+          daysActive: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
+          crossMidnight,
+          color: crossMidnight ? "bg-purple-500" : "bg-emerald-500",
+        };
+        updatedShifts = [...shifts, savedPattern];
+      }
+
+      setShifts(updatedShifts);
+      saveStoredShifts(updatedShifts);
+
+      const res = await fetch("/api/pengaturan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "shift",
+          shiftData: savedPattern,
+          actorName: user?.name,
+          actorRole: user?.role,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        console.warn("DB Shift Sync Notice:", data.message);
+      }
+
+      showToast(
+        "success",
+        editingShiftId
+          ? `Pola shift '${shiftName}' berhasil diperbarui!`
+          : `Pola shift baru '${shiftName}' berhasil ditambahkan ke database PostgreSQL!`
+      );
+      setShowShiftModal(false);
+      setEditingShiftId(null);
+      setShiftName("");
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal menyimpan pola shift.");
+    } finally {
+      setIsSavingShift(false);
+    }
+  };
+
+  const handleDeleteShift = (id: string, name: string) => {
+    showConfirm({
+      title: "Hapus Pola Shift Kerja",
+      message: `Apakah Anda yakin ingin menghapus pola shift "${name}"? Perubahan ini akan memengaruhi jadwal kerja terkait.`,
+      type: "danger",
+      confirmText: "Ya, Hapus Shift",
+      cancelText: "Batal",
+      onConfirm: async () => {
+        const filtered = shifts.filter((s) => s.id !== id);
+        setShifts(filtered);
+        saveStoredShifts(filtered);
+
+        try {
+          await fetch("/api/pengaturan", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "delete-shift",
+              shiftData: { id, name },
+              actorName: user?.name,
+              actorRole: user?.role,
+            }),
+          });
+        } catch (e) {
+          console.warn("DB Shift Delete Notice:", e);
+        }
+
+        showToast("success", `Pola shift "${name}" berhasil dihapus.`);
+      },
+    });
+  };
+
   if (!isAuthReady) {
     return (
       <AppLayout pageTitle="Pengaturan Sistem">
@@ -249,7 +436,7 @@ function PengaturanContent() {
                   Pengaturan Sistem & Organisasi
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                  Kelola profil perusahaan & kop surat resmi, serta koordinat GPS & peta radius geofence kantor.
+                  Kelola profil perusahaan & kop surat resmi, koordinat GPS & geofence kantor, serta master konfigurasi pola jam kerja & shift.
                 </p>
               </div>
             </div>
@@ -282,7 +469,7 @@ function PengaturanContent() {
           </div>
         )}
 
-        {/* 2 TAB UTAMA PENGATURAN (BORDERLESS MINIMALIST PILLS) */}
+        {/* 3 TAB UTAMA PENGATURAN (BORDERLESS MINIMALIST PILLS) */}
         <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
           <button
             onClick={() => setActiveTab("perusahaan")}
@@ -306,6 +493,18 @@ function PengaturanContent() {
           >
             <MapPin className="size-3.5" />
             Koordinat & Peta Geofence
+          </button>
+
+          <button
+            onClick={() => setActiveTab("shift")}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all ${
+              activeTab === "shift"
+                ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            }`}
+          >
+            <Clock className="size-3.5" />
+            Pola Jam Kerja &amp; Shift ({shifts.length})
           </button>
 
           <Link
@@ -343,7 +542,7 @@ function PengaturanContent() {
                           Nama Perusahaan / Instansi *
                         </label>
                         <Input
-                          value={company.name}
+                          value={company.name || ""}
                           onChange={(e) => setCompany({ ...company, name: e.target.value })}
                           placeholder="PT Contoh Nama Perusahaan"
                           className="text-xs font-semibold"
@@ -356,7 +555,7 @@ function PengaturanContent() {
                           Bentuk Badan Hukum
                         </label>
                         <Input
-                          value={company.legalEntity}
+                          value={company.legalEntity || ""}
                           onChange={(e) => setCompany({ ...company, legalEntity: e.target.value })}
                           placeholder="Perseroan Terbatas (PT) / CV"
                           className="text-xs"
@@ -369,7 +568,7 @@ function PengaturanContent() {
                         Tagline / Bidang Usaha
                       </label>
                       <Input
-                        value={company.tagline}
+                        value={company.tagline || ""}
                         onChange={(e) => setCompany({ ...company, tagline: e.target.value })}
                         placeholder="Solusi Teknologi & Layanan..."
                         className="text-xs"
@@ -382,7 +581,7 @@ function PengaturanContent() {
                       </label>
                       <textarea
                         rows={2}
-                        value={company.address}
+                        value={company.address || ""}
                         onChange={(e) => setCompany({ ...company, address: e.target.value })}
                         placeholder="Nama jalan, gedung, nomor, RT/RW..."
                         className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-xs shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
@@ -396,7 +595,7 @@ function PengaturanContent() {
                           Kota & Provinsi *
                         </label>
                         <Input
-                          value={company.city}
+                          value={company.city || ""}
                           onChange={(e) => setCompany({ ...company, city: e.target.value })}
                           placeholder="Jakarta Selatan, DKI Jakarta"
                           className="text-xs"
@@ -409,7 +608,7 @@ function PengaturanContent() {
                           Kode Pos
                         </label>
                         <Input
-                          value={company.postalCode}
+                          value={company.postalCode || ""}
                           onChange={(e) => setCompany({ ...company, postalCode: e.target.value })}
                           placeholder="12950"
                           className="text-xs"
@@ -423,7 +622,7 @@ function PengaturanContent() {
                           Nomor Telepon Kantor
                         </label>
                         <Input
-                          value={company.phone}
+                          value={company.phone || ""}
                           onChange={(e) => setCompany({ ...company, phone: e.target.value })}
                           placeholder="(021) 5290-8800"
                           className="text-xs"
@@ -435,7 +634,7 @@ function PengaturanContent() {
                           WhatsApp Layanan / HR
                         </label>
                         <Input
-                          value={company.whatsapp}
+                          value={company.whatsapp || ""}
                           onChange={(e) => setCompany({ ...company, whatsapp: e.target.value })}
                           placeholder="+62 812-xxxx-xxxx"
                           className="text-xs"
@@ -450,7 +649,7 @@ function PengaturanContent() {
                         </label>
                         <Input
                           type="email"
-                          value={company.email}
+                          value={company.email || ""}
                           onChange={(e) => setCompany({ ...company, email: e.target.value })}
                           placeholder="info@perusahaan.co.id"
                           className="text-xs"
@@ -463,7 +662,7 @@ function PengaturanContent() {
                           Situs Web Resmi
                         </label>
                         <Input
-                          value={company.website}
+                          value={company.website || ""}
                           onChange={(e) => setCompany({ ...company, website: e.target.value })}
                           placeholder="https://www.perusahaan.co.id"
                           className="text-xs"
@@ -477,7 +676,7 @@ function PengaturanContent() {
                           NPWP Perusahaan
                         </label>
                         <Input
-                          value={company.npwp}
+                          value={company.npwp || ""}
                           onChange={(e) => setCompany({ ...company, npwp: e.target.value })}
                           placeholder="01.234.567.8-012.000"
                           className="text-xs font-mono"
@@ -489,7 +688,7 @@ function PengaturanContent() {
                           NIB (Nomor Induk Berusaha)
                         </label>
                         <Input
-                          value={company.nib}
+                          value={company.nib || ""}
                           onChange={(e) => setCompany({ ...company, nib: e.target.value })}
                           placeholder="9120009876543"
                           className="text-xs font-mono"
@@ -626,7 +825,7 @@ function PengaturanContent() {
                       Nama Titik Kantor
                     </label>
                     <Input
-                      value={officeName}
+                      value={officeName || ""}
                       onChange={(e) => setOfficeName(e.target.value)}
                       placeholder="Contoh: Kantor Pusat Bali"
                       className="text-xs"
@@ -641,7 +840,7 @@ function PengaturanContent() {
                       <Input
                         type="number"
                         step="any"
-                        value={latitude}
+                        value={latitude ?? 0}
                         onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
                         className="text-xs font-mono"
                       />
@@ -654,7 +853,7 @@ function PengaturanContent() {
                       <Input
                         type="number"
                         step="any"
-                        value={longitude}
+                        value={longitude ?? 0}
                         onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
                         className="text-xs font-mono"
                       />
@@ -757,6 +956,322 @@ function PengaturanContent() {
             </div>
           </div>
         )}
+
+        {/* ======================================================== */}
+        {/* TAB 3: MASTER KONFIGURASI POLA JAM KERJA & SHIFT (PRD 5.7) */}
+        {/* ======================================================== */}
+        {activeTab === "shift" && (
+          <div className="space-y-5">
+            {/* BANNER HEADER SHIFT */}
+            <div className="flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-brand-600 p-5 text-white shadow-theme-md sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Clock className="size-5" />
+                  <h2 className="text-base font-bold sm:text-lg">Konfigurasi Master Pola Jam Kerja &amp; Shift</h2>
+                </div>
+                <p className="mt-1 text-xs text-blue-100 max-w-2xl leading-relaxed">
+                  Sesuai PRD Section 5.7: Kelola aturan jam kerja kantor reguler, shift operasional berulang, shift lintas tengah malam (overnight), jam istirahat, dan toleransi keterlambatan presensi.
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingShiftId(null);
+                  setShiftName("");
+                  setShiftType("Operasional Shift");
+                  setStartTime("08:00");
+                  setEndTime("17:00");
+                  setBreakStart("12:00");
+                  setBreakEnd("13:00");
+                  setTolerance(15);
+                  setCrossMidnight(false);
+                  setAssignedDepartments(["Operasional"]);
+                  setShowShiftModal(true);
+                }}
+                className="bg-white text-brand-700 hover:bg-brand-50 font-bold border-none text-xs gap-1.5 shadow-theme-xs shrink-0 self-start sm:self-auto"
+              >
+                <Plus className="size-4" />
+                + Tambah Pola Shift Baru
+              </Button>
+            </div>
+
+            {/* DAFTAR KARTU POLA SHIFT */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {shifts.map((shift) => (
+                <Card key={shift.id} className="border-gray-200 shadow-theme-sm dark:border-gray-800">
+                  <CardHeader className="p-4 pb-3 border-b border-gray-100 flex flex-row items-center justify-between dark:border-gray-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                        {shift.crossMidnight ? (
+                          <Moon className="size-4 text-indigo-500" />
+                        ) : (
+                          <Sun className="size-4 text-amber-500" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">{shift.name}</h4>
+                        <span className="text-[10px] text-gray-400 font-medium">{shift.type}</span>
+                      </div>
+                    </div>
+
+                    <Badge variant={shift.crossMidnight ? "info" : "secondary"} size="sm">
+                      {shift.crossMidnight ? "Lintas Malam" : "Day Shift"}
+                    </Badge>
+                  </CardHeader>
+
+                  <CardContent className="p-4 space-y-3">
+                    {/* Jam Masuk - Pulang & Istirahat */}
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 rounded-xl p-3 dark:bg-gray-800/50">
+                      <div>
+                        <span className="text-[10px] text-gray-400 block font-semibold">Jam Masuk - Pulang:</span>
+                        <span className="font-bold text-sm text-brand-600 dark:text-brand-400">
+                          {shift.startTime} - {shift.endTime} WIB
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-400 block font-semibold">Jam Istirahat:</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          {shift.breakStart || "-"} - {shift.breakEnd || "-"} WIB
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Toleransi Keterlambatan */}
+                    <div className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400 border-t border-gray-100 pt-2 dark:border-gray-800">
+                      <span>Toleransi Keterlambatan:</span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                        {shift.toleranceMinutes} Menit
+                      </span>
+                    </div>
+
+                    {/* Departemen Penugasan */}
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="text-[10px] text-gray-400 block mb-1">Departemen Penugasan:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {(shift.assignedDepartments || ["Semua Departemen"]).map((dept, i) => (
+                          <span
+                            key={i}
+                            className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                          >
+                            {dept}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions: Edit & Delete */}
+                    <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingShiftId(shift.id);
+                          setShiftName(shift.name);
+                          setShiftType(shift.type);
+                          setStartTime(shift.startTime);
+                          setEndTime(shift.endTime);
+                          setBreakStart(shift.breakStart || "12:00");
+                          setBreakEnd(shift.breakEnd || "13:00");
+                          setTolerance(shift.toleranceMinutes || 15);
+                          setCrossMidnight(shift.crossMidnight);
+                          setAssignedDepartments(shift.assignedDepartments || ["Operasional"]);
+                          setShowShiftModal(true);
+                        }}
+                        className="flex-1 text-xs gap-1"
+                      >
+                        <Edit className="size-3.5 text-brand-500" />
+                        Edit Aturan Shift
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteShift(shift.id, shift.name)}
+                        className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                        title="Hapus Pola Shift"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* DIALOG MODAL BUAT / EDIT POLA SHIFT */}
+        <Dialog
+          open={showShiftModal}
+          onClose={() => setShowShiftModal(false)}
+          title={editingShiftId ? "Edit Pola Shift Kerja" : "Tambah Pola Shift Baru"}
+          description="Atur jam mulai, selesai, toleransi keterlambatan, jam istirahat, dan departemen penugasan."
+        >
+          <form onSubmit={handleSaveShift} className="space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                Nama Pola Shift *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Shift 1 - Pagi Operasional"
+                value={shiftName}
+                onChange={(e) => setShiftName(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Kategori Pola
+                </label>
+                <select
+                  value={shiftType}
+                  onChange={(e) => setShiftType(e.target.value as any)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                >
+                  <option value="Operasional Shift">Operasional Shift</option>
+                  <option value="Office Reguler">Office Reguler</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Toleransi Telat (Menit)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={tolerance}
+                  onChange={(e) => setTolerance(Number(e.target.value))}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Jam Masuk (Start) *
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Jam Pulang (End) *
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Mulai Istirahat
+                </label>
+                <input
+                  type="time"
+                  value={breakStart}
+                  onChange={(e) => setBreakStart(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Selesai Istirahat
+                </label>
+                <input
+                  type="time"
+                  value={breakEnd}
+                  onChange={(e) => setBreakEnd(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="crossMidnight"
+                checked={crossMidnight}
+                onChange={(e) => setCrossMidnight(e.target.checked)}
+                className="size-4 rounded text-brand-600 focus:ring-brand-500"
+              />
+              <label htmlFor="crossMidnight" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                Shift Lintas Tengah Malam (Overnight Shift, e.g. 22:00 - 06:00)
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                Departemen Penugasan
+              </label>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {["Operasional", "TI", "Penjualan", "Pemasaran", "HR", "Keuangan"].map((dept) => {
+                  const isChecked = assignedDepartments.includes(dept);
+                  return (
+                    <button
+                      type="button"
+                      key={dept}
+                      onClick={() => {
+                        if (isChecked) {
+                          setAssignedDepartments(assignedDepartments.filter((d) => d !== dept));
+                        } else {
+                          setAssignedDepartments([...assignedDepartments, dept]);
+                        }
+                      }}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
+                        isChecked
+                          ? "bg-brand-500 text-white shadow-xs"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                      }`}
+                    >
+                      {isChecked ? "✓ " : "+ "}
+                      {dept}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-2.5 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowShiftModal(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="default"
+                disabled={isSavingShift}
+                className="flex-1 font-bold bg-brand-600 hover:bg-brand-700 text-white"
+              >
+                {isSavingShift ? "Menyimpan..." : "Simpan Konfigurasi"}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
       </div>
     </AppLayout>
   );

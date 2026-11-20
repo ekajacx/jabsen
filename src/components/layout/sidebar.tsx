@@ -187,7 +187,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
       title: "Pengaturan",
       href: "/pengaturan",
       icon: SettingsIcon,
-      allowedRoles: ["Admin IT", "CEO", "HRD"],
+      allowedRoles: ["Admin IT", "CEO", "HRD", "GM"],
     },
     {
       title: "Audit Log",

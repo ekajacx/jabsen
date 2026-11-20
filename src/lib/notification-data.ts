@@ -45,7 +45,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
     title: "Permohonan Cuti Tahunan Disetujui",
     message: "Permohonan cuti 3 hari Anda (24 - 26 Nov 2026) telah disetujui oleh Supervisor.",
     category: "cuti",
-    targetUrl: "/approval/cuti",
+    targetUrl: "/cuti",
     createdAt: "15 menit yang lalu",
     timestamp: Date.now() - 15 * 60 * 1000,
     isRead: false,
@@ -304,7 +304,20 @@ export function getAllStoredNotifications(): NotificationItem[] {
       localStorage.setItem(STORAGE_NOTIF_KEY, JSON.stringify(DEFAULT_NOTIFICATIONS));
       return DEFAULT_NOTIFICATIONS;
     }
-    return JSON.parse(raw);
+    const parsed: NotificationItem[] = JSON.parse(raw);
+    let modified = false;
+    const migrated = parsed.map((item) => {
+      // Auto-migrate: Notifikasi cuti untuk staff harus menuju /cuti bukan /approval/cuti
+      if (item.category === "cuti" && item.targetUrl === "/approval/cuti" && (item.forRoles?.includes("Staff") || item.id.includes("staff"))) {
+        modified = true;
+        return { ...item, targetUrl: "/cuti" };
+      }
+      return item;
+    });
+    if (modified) {
+      localStorage.setItem(STORAGE_NOTIF_KEY, JSON.stringify(migrated));
+    }
+    return migrated;
   } catch {
     return DEFAULT_NOTIFICATIONS;
   }

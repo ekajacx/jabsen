@@ -30,11 +30,18 @@ import {
 
 export default function ApprovalCutiPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Jika akun adalah Staff, otomatis alihkan ke menu Pengajuan Cuti pribadi (/cuti)
+  useEffect(() => {
+    if (isAuthReady && user?.role === "Staff") {
+      router.replace("/cuti");
+    }
+  }, [isAuthReady, user?.role, router]);
 
   // State Modal Review Approval oleh Atasan / HRD
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
@@ -204,26 +211,13 @@ export default function ApprovalCutiPage() {
     }
   };
 
-  // Jika akun adalah Staff, arahkan dengan pesan ramah ke menu Pengajuan Cuti
+  // Jika akun adalah Staff, otomatis alihkan ke menu Pengajuan Cuti pribadi (/cuti)
   if (user?.role === "Staff") {
     return (
-      <AppLayout pageTitle="Persetujuan Cuti">
-        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
-          <div className="size-16 rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-900 shadow-sm">
-            <FileCheck2 className="size-8" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Modul Persetujuan Cuti</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-              Halaman ini diperuntukkan bagi level Atasan (Supervisor, GM, HRD, Direksi) untuk memeriksa dan memutuskan permohonan cuti anggota tim.
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Untuk mengajukan cuti pribadi atau melihat status permohonan Anda, silakan gunakan menu <strong>Pengajuan Cuti</strong>.
-            </p>
-          </div>
-          <Button onClick={() => router.push("/cuti")} size="sm" variant="default" className="rounded-full text-xs font-semibold gap-1.5">
-            Buka Pengajuan Cuti
-          </Button>
+      <AppLayout pageTitle="Pengajuan Cuti">
+        <div className="flex flex-col items-center justify-center py-24 text-center max-w-md mx-auto space-y-4">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="text-xs text-gray-500 dark:text-gray-400">Mengarahkan ke halaman Pengajuan Cuti Anda...</p>
         </div>
       </AppLayout>
     );

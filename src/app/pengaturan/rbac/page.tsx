@@ -1802,35 +1802,35 @@ export default function RbacPage() {
                     <col className="w-[11%]" />
                     <col className="w-[12%]" />
                   </colgroup>
-                  <thead className="sticky top-0 z-30 shadow-xs">
+                  <thead className="sticky top-0 z-10 shadow-xs">
                     <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-xs">
-                      <th className="sticky top-0 z-30 px-3 py-3 text-center bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 font-semibold">
+                      <th className="sticky top-0 z-10 px-3 py-3 text-center bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 font-semibold">
                         No
                       </th>
-                      <th className="sticky top-0 z-30 px-4 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 font-semibold">
+                      <th className="sticky top-0 z-10 px-4 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 font-semibold">
                         Nama Menu & Hak Akses
                       </th>
-                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <th className="sticky top-0 z-10 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Direktur Utama</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">CEO</div>
                       </th>
-                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <th className="sticky top-0 z-10 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Manajer Umum</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">GM</div>
                       </th>
-                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <th className="sticky top-0 z-10 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Kepala HR</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">HRD</div>
                       </th>
-                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <th className="sticky top-0 z-10 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Kepala Dept</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">Supervisor</div>
                       </th>
-                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <th className="sticky top-0 z-10 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Staf</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">Staff</div>
                       </th>
-                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-brand-100/90 dark:bg-brand-950/90 border-b border-brand-200 dark:border-brand-900">
+                      <th className="sticky top-0 z-10 px-2 py-3 text-center bg-brand-100/90 dark:bg-brand-950/90 border-b border-brand-200 dark:border-brand-900">
                         <div className="font-bold text-brand-700 dark:text-brand-300 text-xs leading-tight">Admin IT</div>
                         <div className="text-[10px] text-brand-500/80 font-normal uppercase">Sistem</div>
                       </th>
