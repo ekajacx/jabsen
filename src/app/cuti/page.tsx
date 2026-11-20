@@ -297,12 +297,15 @@ export default function PengajuanCutiPage() {
       (item.applicantName && item.applicantName.toLowerCase() === user.name.toLowerCase())
   );
 
+  const isPendingStatus = (status: LeaveRequest["status"]) =>
+    status === "Menunggu Approval" || status === "Menunggu SPV" || status === "Menunggu HRD";
+
   const displayedRequests = myLeaves.filter((item) => {
     const matchesStatus =
       statusFilter === "Semua"
         ? true
-        : statusFilter === "Menunggu"
-        ? item.status === "Menunggu Approval" || item.status === "Menunggu SPV" || item.status === "Menunggu HRD"
+        : statusFilter === "Menunggu Approval" || statusFilter === "Menunggu"
+        ? isPendingStatus(item.status)
         : item.status === statusFilter;
     const matchesSearch =
       item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -407,7 +410,7 @@ export default function PengajuanCutiPage() {
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Menunggu Persetujuan</span>
                 <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  {myLeaves.filter((r) => r.status === "Menunggu Approval").length}
+                  {myLeaves.filter((r) => isPendingStatus(r.status)).length}
                 </p>
                 <span className="text-[10px] text-amber-600 font-medium">Dalam proses review atasan</span>
               </div>
@@ -550,9 +553,9 @@ export default function PengajuanCutiPage() {
                     <td className="px-5 py-4">
                       <div className="flex flex-col gap-1 items-start">
                         {getStatusBadge(item.status)}
-                        {item.status === "Menunggu Approval" && (
+                        {isPendingStatus(item.status) && (
                           <span className="text-[9px] text-gray-400">
-                            Approver: {item.currentApproverRole}
+                            Approver: {item.status === "Menunggu HRD" ? "HRD" : item.currentApproverRole || "Supervisor"}
                           </span>
                         )}
                       </div>
@@ -571,9 +574,7 @@ export default function PengajuanCutiPage() {
                         >
                           Rincian
                         </Button>
-                        {(item.status === "Menunggu SPV" ||
-                          item.status === "Menunggu HRD" ||
-                          item.status === "Menunggu Approval") && (
+                        {isPendingStatus(item.status) && (
                           <Button
                             type="button"
                             variant="destructive"
@@ -637,9 +638,7 @@ export default function PengajuanCutiPage() {
                     >
                       Lihat Rincian
                     </Button>
-                    {(item.status === "Menunggu SPV" ||
-                      item.status === "Menunggu HRD" ||
-                      item.status === "Menunggu Approval") && (
+                    {isPendingStatus(item.status) && (
                       <Button
                         type="button"
                         variant="destructive"
@@ -910,9 +909,7 @@ export default function PengajuanCutiPage() {
 
             {/* Tombol Aksi: Tutup / Batalkan Pengajuan */}
             <div className="mt-6 flex justify-between gap-2.5 pt-2 border-t border-gray-100 dark:border-gray-800">
-              {(selectedRequest.status === "Menunggu SPV" ||
-                selectedRequest.status === "Menunggu HRD" ||
-                selectedRequest.status === "Menunggu Approval") ? (
+              {isPendingStatus(selectedRequest.status) ? (
                 <Button
                   type="button"
                   variant="destructive"
