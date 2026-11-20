@@ -36,6 +36,8 @@ import {
   RefreshCw,
   Clock,
   Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { exportUserAccountsToExcel } from "@/lib/excel-export";
@@ -58,6 +60,10 @@ export default function UserAccountsPage() {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("ALL");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL");
   const [selectedDeviceFilter, setSelectedDeviceFilter] = useState("ALL");
+
+  // Pagination State (Halaman 1, 2, 3 dst.)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Notifikasi Toast
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -126,6 +132,41 @@ export default function UserAccountsPage() {
       return true;
     });
   }, [accounts, selectedDeptFilter, selectedStatusFilter, selectedDeviceFilter, searchQuery]);
+
+  // Total Halaman
+  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage) || 1;
+
+  // Pastikan currentPage selalu berada dalam rentang valid saat filter berubah
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  // Paginated Data
+  const paginatedAccounts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredAccounts.slice(start, start + itemsPerPage);
+  }, [filteredAccounts, currentPage, itemsPerPage]);
+
+  // Deretan Nomor Halaman (1, 2, 3...)
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Metrik Statistik
   const metrics = useMemo(() => {
@@ -344,7 +385,10 @@ export default function UserAccountsPage() {
               type="text"
               placeholder="Cari nama karyawan, NIK, username, jabatan, atau model HP..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-9 text-xs"
             />
           </div>
@@ -355,7 +399,10 @@ export default function UserAccountsPage() {
               <Building2 className="size-3.5 text-gray-400" />
               <select
                 value={selectedDeptFilter}
-                onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                onChange={(e) => {
+                  setSelectedDeptFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
               >
                 <option value="ALL">Semua Departemen ({departments.length})</option>
@@ -370,7 +417,10 @@ export default function UserAccountsPage() {
             {/* Filter Status Sandi */}
             <select
               value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             >
               <option value="ALL">Semua Status Akun</option>
@@ -382,7 +432,10 @@ export default function UserAccountsPage() {
             {/* Filter Device Binding */}
             <select
               value={selectedDeviceFilter}
-              onChange={(e) => setSelectedDeviceFilter(e.target.value)}
+              onChange={(e) => {
+                setSelectedDeviceFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             >
               <option value="ALL">Semua Status Device</option>
@@ -416,7 +469,7 @@ export default function UserAccountsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAccounts.map((acc) => (
+                  paginatedAccounts.map((acc) => (
                     <tr
                       key={acc.id}
                       className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
@@ -594,6 +647,105 @@ export default function UserAccountsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* PAGINATION FOOTER (Page 1, 2, 3 dst.) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 px-5 py-3.5 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+            {/* Info Range Data & Selector Items Per Page */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                Menampilkan{" "}
+                <strong className="text-gray-900 dark:text-white font-semibold">
+                  {filteredAccounts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
+                </strong>{" "}
+                -{" "}
+                <strong className="text-gray-900 dark:text-white font-semibold">
+                  {Math.min(currentPage * itemsPerPage, filteredAccounts.length)}
+                </strong>{" "}
+                dari{" "}
+                <strong className="text-gray-900 dark:text-white font-semibold">
+                  {filteredAccounts.length}
+                </strong>{" "}
+                akun pengguna
+              </span>
+
+              <span className="text-gray-300 dark:text-gray-700 hidden sm:inline">|</span>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px]">Tampilkan:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                >
+                  <option value={5}>5 baris</option>
+                  <option value={10}>10 baris</option>
+                  <option value={20}>20 baris</option>
+                  <option value={50}>50 baris</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tombol Angka Halaman (1, 2, 3 dst.) */}
+            <div className="flex items-center gap-1">
+              {/* Tombol Sebelumnya */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="size-3.5" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+              </button>
+
+              {/* Angka Halaman 1, 2, 3, dst */}
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pageNum, idx) => {
+                  if (pageNum === "...") {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="px-2 py-1 text-xs text-gray-400 select-none"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isCurrent = pageNum === currentPage;
+                  return (
+                    <button
+                      key={`page-${pageNum}`}
+                      type="button"
+                      onClick={() => setCurrentPage(Number(pageNum))}
+                      className={`min-w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
+                        isCurrent
+                          ? "bg-brand-500 text-white shadow-xs"
+                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tombol Selanjutnya */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                title="Halaman Selanjutnya"
+              >
+                <span className="hidden sm:inline">Selanjutnya</span>
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
           </div>
         </Card>
 

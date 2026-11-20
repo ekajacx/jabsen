@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,8 @@ import {
 } from "@/lib/company-profile";
 
 function PengaturanContent() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") || "perusahaan";
 
@@ -123,6 +124,17 @@ function PengaturanContent() {
     );
   };
 
+  if (!isAuthReady) {
+    return (
+      <AppLayout pageTitle="Pengaturan Sistem">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="mt-3 text-xs text-gray-400">Memverifikasi hak akses...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!isAuthorized) {
     return (
       <AppLayout pageTitle="Akses Dibatasi">
@@ -136,7 +148,7 @@ function PengaturanContent() {
               Halaman Pengaturan Umum & Geofence Lokasi hanya dapat dikelola oleh akun dengan wewenang Direktur Utama, Kepala HR, atau Admin IT.
             </p>
           </div>
-          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+          <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
             Kembali ke Dashboard
           </Button>
         </div>
@@ -672,9 +684,21 @@ function PengaturanContent() {
   );
 }
 
+function PengaturanSkeleton() {
+  return (
+    <AppLayout pageTitle="Pengaturan Sistem">
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 w-60 rounded-xl bg-gray-200 dark:bg-gray-800" />
+        <div className="h-10 w-full max-w-xs rounded-xl bg-gray-200 dark:bg-gray-800" />
+        <div className="h-80 w-full rounded-2xl bg-gray-100 dark:bg-gray-850 border border-gray-200 dark:border-gray-800" />
+      </div>
+    </AppLayout>
+  );
+}
+
 export default function PengaturanPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PengaturanSkeleton />}>
       <PengaturanContent />
     </Suspense>
   );

@@ -123,10 +123,10 @@ export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   },
   {
     id: "notif-spv-003",
-    title: "Monitoring Tim: 1 Anggota Belum Presensi",
+    title: "Presensi Tim: 1 Anggota Belum Presensi",
     message: "Terdapat 1 staf operasional yang belum clock-in melewati toleransi shift pagi (08:15).",
     category: "presensi",
-    targetUrl: "/monitoring",
+    targetUrl: "/laporan",
     createdAt: "2 jam yang lalu",
     timestamp: Date.now() - 2 * 60 * 60 * 1000,
     isRead: false,

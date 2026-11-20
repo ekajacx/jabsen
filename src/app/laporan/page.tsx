@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -312,7 +313,8 @@ const REPORT_DATA: AttendanceReportItem[] = [
 ];
 
 export default function LaporanPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
 
   // State Filter Periode
@@ -456,6 +458,17 @@ export default function LaporanPage() {
     }
   };
 
+  if (!isAuthReady) {
+    return (
+      <AppLayout pageTitle="Laporan Rekapitulasi Presensi">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="mt-3 text-xs text-gray-400">Memverifikasi hak akses...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const isAuthorized = ["HRD", "GM", "CEO", "Supervisor", "Admin IT"].includes(user?.role || "");
 
   if (!isAuthorized) {
@@ -471,7 +484,7 @@ export default function LaporanPage() {
               Laporan Rekapitulasi & Ekspor Data hanya dapat diakses oleh Manajemen, Pimpinan Unit, dan HRD. Staf dapat melihat riwayat presensi pribadi pada menu Riwayat Absensi.
             </p>
           </div>
-          <Button onClick={() => (window.location.href = "/riwayat")} size="sm" variant="secondary" className="rounded-full text-xs">
+          <Button onClick={() => router.push("/riwayat")} size="sm" variant="secondary" className="rounded-full text-xs">
             Buka Riwayat Absensi Saya
           </Button>
         </div>

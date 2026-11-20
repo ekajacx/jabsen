@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Menu,
   Bell,
@@ -110,6 +111,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
+  const router = useRouter();
   const { user, allProfiles, switchUser, switchRole } = useAuth();
   const [isPovModalOpen, setIsPovModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,7 +187,7 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
     loadNotifications();
     setIsNotifOpen(false);
     if (notif.targetUrl) {
-      window.location.href = notif.targetUrl;
+      router.push(notif.targetUrl);
     }
   };
 

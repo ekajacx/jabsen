@@ -148,7 +148,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
     setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // Keyboard Escape listener
+  // Keyboard Escape listener & Background Scroll Lock
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && modalState.isOpen) {
@@ -156,15 +156,26 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
       }
     };
     if (modalState.isOpen) {
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      const originalBodyPaddingRight = document.body.style.paddingRight;
+
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      if (scrollBarWidth > 0) {
+        document.body.style.paddingRight = `${scrollBarWidth}px`;
+      }
+
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
       window.addEventListener("keydown", handleKeyDown);
-    } else {
-      document.body.style.overflow = "unset";
+
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.paddingRight = originalBodyPaddingRight;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
-    return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
   }, [modalState.isOpen, closeModal]);
 
   return (
@@ -173,7 +184,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
 
       {/* RENDER MODAL DIALOG TEMPLATE JIKA AKTIF */}
       {modalState.isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200 overflow-hidden overscroll-contain">
           {/* Backdrop Blur Gelap */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
@@ -182,7 +193,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
 
           {/* Modal Card Berdasarkan Template J-Absen */}
           <div
-            className="relative z-10 w-full max-w-sm sm:max-w-md rounded-3xl border border-gray-200 bg-white p-6 sm:p-7 text-center shadow-theme-2xl dark:border-gray-800 dark:bg-gray-900 animate-in zoom-in-95 duration-200"
+            className="relative z-10 w-full max-w-sm sm:max-w-md max-h-[90vh] overflow-y-auto overscroll-contain rounded-3xl border border-gray-200 bg-white p-6 sm:p-7 text-center shadow-theme-2xl dark:border-gray-800 dark:bg-gray-900 animate-in zoom-in-95 duration-200"
             role="dialog"
             aria-modal="true"
           >

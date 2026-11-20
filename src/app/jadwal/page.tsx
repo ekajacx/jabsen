@@ -1193,6 +1193,7 @@ export default function JadwalPage() {
         onClose={() => setShowScheduleModal(false)}
         title={editingScheduleId ? "Edit Jadwal Kerja Mingguan" : "Buat Jadwal Kerja Mingguan Baru"}
         description="Atur penugasan shift kerja harian lengkap dari Senin s/d Minggu untuk karyawan."
+        className="max-w-2xl"
       >
         <form onSubmit={handleSaveSchedule} className="space-y-4 pt-2">
           {/* 1. Pilih Karyawan */}

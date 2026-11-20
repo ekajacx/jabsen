@@ -1,7 +1,65 @@
 "use client";
 
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { getCompanyProfile, CompanyProfile } from "@/lib/company-profile";
+
+// =========================================================================
+// PALET WARNA & KONFIGURASI TEMA KORPORAT RESMI SIAP CETAK (PRINT-READY)
+// =========================================================================
+
+const PALETTE = {
+  // Brand Header
+  primaryNavy: "1E3A8A",      // Deep Corporate Navy Blue
+  primaryAccent: "2563EB",    // Royal Blue
+  titleBg: "EFF6FF",          // Soft Blue Tint (Latar Banner Judul)
+  
+  // Table Header
+  tableHeaderBg: "1E3A8A",    // Navy Blue
+  tableHeaderText: "FFFFFF",  // Putih Bold
+  tableHeaderBorder: "0F172A",
+  
+  // Zebra Rows & Borders
+  rowEvenBg: "FFFFFF",        // Putih
+  rowOddBg: "F8FAFC",         // Abu-abu terang lembut (Slate 50)
+  cellBorder: "CBD5E1",       // Garis batas tipis rapi (Slate 300)
+  
+  // Metadata Box
+  metaHeaderBg: "E2E8F0",     // Slate 200
+  metaHeaderText: "0F172A",   // Slate 900
+  metaBodyBg: "F8FAFC",       // Slate 50
+  metaBorder: "CBD5E1",
+  
+  // Status Presensi (Kombinasi Latar Lembut + Teks Tegas Kontras)
+  statusSuccessBg: "DCFCE7",  // Emerald 100
+  statusSuccessText: "15803D",// Emerald 700
+  statusWarningBg: "FEF3C7",  // Amber 100
+  statusWarningText: "B45309",// Amber 700
+  statusInfoBg: "E0F2FE",     // Sky 100
+  statusInfoText: "0369A1",   // Sky 700
+  statusDangerBg: "FFE4E6",   // Rose 100
+  statusDangerText: "BE123C", // Rose 700
+  statusNeutralBg: "F1F5F9",  // Slate 100
+  statusNeutralText: "64748B",// Slate 500
+  
+  // Summary Metrik
+  summaryHeaderBg: "E0E7FF",  // Indigo 100
+  summaryHeaderText: "1E1B4B",// Indigo 950
+  summaryBorder: "C7D2FE",
+};
+
+const BORDER_THIN = {
+  top: { style: "thin", color: { rgb: PALETTE.cellBorder } },
+  bottom: { style: "thin", color: { rgb: PALETTE.cellBorder } },
+  left: { style: "thin", color: { rgb: PALETTE.cellBorder } },
+  right: { style: "thin", color: { rgb: PALETTE.cellBorder } },
+};
+
+const BORDER_HEADER = {
+  top: { style: "medium", color: { rgb: PALETTE.tableHeaderBorder } },
+  bottom: { style: "medium", color: { rgb: PALETTE.tableHeaderBorder } },
+  left: { style: "thin", color: { rgb: "334155" } },
+  right: { style: "thin", color: { rgb: "334155" } },
+};
 
 // =========================================================================
 // INTERFACE & TIPE EXPORT EXCEL RESMI HRIS
@@ -39,7 +97,6 @@ export interface GenericTableExportOptions extends BaseExportOptions {
 
 /**
  * Format timestamp sekarang ke format bahasa Indonesia resmi
- * Contoh: "19 November 2026, 22:30 WIB"
  */
 export function formatExportDateTime(date: Date = new Date()): string {
   const bulan = [
@@ -60,7 +117,6 @@ export function formatExportDateTime(date: Date = new Date()): string {
  */
 export function formatStandardDate(dateStr?: string): string {
   if (!dateStr || dateStr === "-") return "-";
-  // Jika format sudah YYYY-MM-DD
   const parts = dateStr.split("-");
   if (parts.length === 3 && parts[0].length === 4) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -70,7 +126,6 @@ export function formatStandardDate(dateStr?: string): string {
 
 /**
  * Format penamaan file Excel standar korporat
- * Contoh: "Data_Karyawan_Departemen_Operasional_2026-11-19.xlsx"
  */
 export function generateStandardExcelFilename(
   modulePrefix: string,
@@ -86,8 +141,113 @@ export function generateStandardExcelFilename(
 }
 
 /**
- * Service Utama Ekspor Dokumen Excel dengan Tata Letak Resmi Perusahaan
+ * Deteksi styling pintar untuk sel status presensi / otorisasi
  */
+function getStatusCellStyle(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim().toLowerCase();
+
+  // Status Positif / Sukses / Hadir (Hijau)
+  if (
+    str.includes("tepat waktu") ||
+    str === "hadir" ||
+    str.includes("disetujui") ||
+    str === "aktif" ||
+    str.includes("terverifikasi") ||
+    str.includes("valid") ||
+    str.includes("lolos") ||
+    str.includes("terkunci 1 hp") ||
+    str.includes("tetap")
+  ) {
+    return {
+      fill: { fgColor: { rgb: PALETTE.statusSuccessBg } },
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: PALETTE.statusSuccessText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: BORDER_THIN,
+    };
+  }
+
+  // Status Peringatan / Keterlambatan / Menunggu (Kuning Amber)
+  if (
+    str.includes("terlambat") ||
+    str.includes("menunggu") ||
+    str.includes("pending") ||
+    str.includes("wajib ganti") ||
+    str.includes("perlu revisi") ||
+    str.includes("kontrak") ||
+    str.includes("dw")
+  ) {
+    return {
+      fill: { fgColor: { rgb: PALETTE.statusWarningBg } },
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: PALETTE.statusWarningText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: BORDER_THIN,
+    };
+  }
+
+  // Status Izin / Cuti (Biru Langit)
+  if (
+    str.includes("cuti") ||
+    str.includes("izin") ||
+    str.includes("sakit") ||
+    str.includes("dinas")
+  ) {
+    return {
+      fill: { fgColor: { rgb: PALETTE.statusInfoBg } },
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: PALETTE.statusInfoText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: BORDER_THIN,
+    };
+  }
+
+  // Status Merah / Bahaya / Pelanggaran (Merah Rose)
+  if (
+    str.includes("alpha") ||
+    str.includes("ditolak") ||
+    str.includes("luar radius") ||
+    str.includes("nonaktif") ||
+    str.includes("terkunci") ||
+    str.includes("belum terikat") ||
+    str.includes("tidak valid") ||
+    str.includes("tinggi") ||
+    str.includes("kritis")
+  ) {
+    return {
+      fill: { fgColor: { rgb: PALETTE.statusDangerBg } },
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: PALETTE.statusDangerText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: BORDER_THIN,
+    };
+  }
+
+  // Status Netral / Libur / OFF (Abu-abu)
+  if (str.includes("off") || str.includes("libur")) {
+    return {
+      fill: { fgColor: { rgb: PALETTE.statusNeutralBg } },
+      font: { name: "Calibri", sz: 9, bold: false, color: { rgb: PALETTE.statusNeutralText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: BORDER_THIN,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Pastikan setiap sel dalam koordinat tertentu ada di lembar kerja
+ */
+function ensureCell(worksheet: any, r: number, c: number, defaultVal: any = "") {
+  const addr = XLSX.utils.encode_cell({ r, c });
+  if (!worksheet[addr]) {
+    worksheet[addr] = { t: typeof defaultVal === "number" ? "n" : "s", v: defaultVal };
+  }
+  return worksheet[addr];
+}
+
+// =========================================================================
+// ENGINE UTAMA EKSPOR DOKUMEN EXCEL BERGAYA EKSEKUTIF & SIAP CETAK (A4)
+// =========================================================================
+
 export function exportExcelDocument({
   documentTitle,
   documentSubtitle,
@@ -112,91 +272,100 @@ export function exportExcelDocument({
   const merges: XLSX.Range[] = [];
   const rowHeights: { hpt?: number }[] = [];
 
-  // 1. KOP DOKUMEN PERUSAHAAN (Row 0 - 3)
+  // 1. KOP PERUSAHAAN (Letterhead Resmi)
+  // Row 0: Nama Perusahaan
   rowsAOA.push([company.name.toUpperCase()]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastColIdx } });
   rowHeights.push({ hpt: 24 });
 
+  // Row 1: Legal Entity & Tagline
   rowsAOA.push([`${company.legalEntity} • ${company.tagline}`]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: lastColIdx } });
   rowHeights.push({ hpt: 16 });
 
+  // Row 2: Alamat & Kontak
   rowsAOA.push([
     `${company.address}, ${company.city} ${company.postalCode} | Telp: ${company.phone} | Email: ${company.email} | Web: ${company.website}`
   ]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: lastColIdx } });
-  rowHeights.push({ hpt: 16 });
+  rowHeights.push({ hpt: 15 });
 
-  // Garis Pembatas Kop Surat
-  rowsAOA.push(["━".repeat(90)]);
+  // Row 3: Garis Aksen Pembatas Kop Surat
+  rowsAOA.push([""]);
   merges.push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIdx } });
-  rowHeights.push({ hpt: 8 });
+  rowHeights.push({ hpt: 6 });
 
-  // Baris Kosong Pemisah
+  // Row 4: Baris Kosong Pemisah
   rowsAOA.push([]);
   rowHeights.push({ hpt: 10 });
 
-  // 2. JUDUL DOKUMEN & SUBJUDUL (Row 5 - 6)
+  // 2. BANNER JUDUL LAPORAN (Row 5 - 6)
+  const titleRowIndex = rowsAOA.length;
   rowsAOA.push([documentTitle.toUpperCase()]);
-  merges.push({ s: { r: 5, c: 0 }, e: { r: 5, c: lastColIdx } });
-  rowHeights.push({ hpt: 20 });
+  merges.push({ s: { r: titleRowIndex, c: 0 }, e: { r: titleRowIndex, c: lastColIdx } });
+  rowHeights.push({ hpt: 24 });
 
   if (documentSubtitle) {
+    const subtitleRowIndex = rowsAOA.length;
     rowsAOA.push([documentSubtitle]);
-    merges.push({ s: { r: 6, c: 0 }, e: { r: 6, c: lastColIdx } });
-    rowHeights.push({ hpt: 15 });
+    merges.push({ s: { r: subtitleRowIndex, c: 0 }, e: { r: subtitleRowIndex, c: lastColIdx } });
+    rowHeights.push({ hpt: 16 });
   } else {
     rowsAOA.push([]);
     rowHeights.push({ hpt: 8 });
   }
 
-  // Baris Kosong
+  // Baris Kosong Pemisah
   rowsAOA.push([]);
   rowHeights.push({ hpt: 8 });
 
-  // 3. BLOK PARAMETER & METADATA PENCETAKAN (2 Kolom Tabel Metadata)
-  // Baris 8: Header Metadata
-  rowsAOA.push(["PARAMETER DOKUMEN:", "", "", "METADATA PENCETAKAN:"]);
-  rowHeights.push({ hpt: 17 });
+  // 3. BLOK PARAMETER & METADATA PENCETAKAN (2 Kolom Kartu Ringkas)
+  const metaHeaderRowIndex = rowsAOA.length;
+  const midCol = Math.floor(totalCols / 2);
 
-  // Baris 9
-  rowsAOA.push([
-    "Nama Dokumen:",
-    documentTitle,
-    "",
-    "Waktu Cetak:",
-    formatExportDateTime()
-  ]);
+  // Baris Header Metadata
+  const metaHeaderRow = new Array(totalCols).fill("");
+  metaHeaderRow[0] = "PARAMETER DOKUMEN";
+  metaHeaderRow[midCol] = "METADATA PENCETAKAN";
+  rowsAOA.push(metaHeaderRow);
+  merges.push({ s: { r: metaHeaderRowIndex, c: 0 }, e: { r: metaHeaderRowIndex, c: midCol - 1 } });
+  merges.push({ s: { r: metaHeaderRowIndex, c: midCol }, e: { r: metaHeaderRowIndex, c: lastColIdx } });
+  rowHeights.push({ hpt: 18 });
+
+  // Baris 1 Metadata: Nama Dokumen & Waktu Cetak
+  const metaRow1 = new Array(totalCols).fill("");
+  metaRow1[0] = "Nama Dokumen:";
+  metaRow1[1] = documentTitle;
+  metaRow1[midCol] = "Waktu Cetak:";
+  metaRow1[midCol + 1] = formatExportDateTime();
+  rowsAOA.push(metaRow1);
   rowHeights.push({ hpt: 16 });
 
-  // Baris 10
-  rowsAOA.push([
-    "Departemen:",
-    departmentScope,
-    "",
-    "Dicetak Oleh:",
-    currentUser ? `${currentUser.name} (${currentUser.role})` : "Administrator Sistem"
-  ]);
+  // Baris 2 Metadata: Departemen & Dicetak Oleh
+  const metaRow2 = new Array(totalCols).fill("");
+  metaRow2[0] = "Departemen:";
+  metaRow2[1] = departmentScope;
+  metaRow2[midCol] = "Dicetak Oleh:";
+  metaRow2[midCol + 1] = currentUser ? `${currentUser.name} (${currentUser.role})` : "Administrator Sistem";
+  rowsAOA.push(metaRow2);
   rowHeights.push({ hpt: 16 });
 
-  // Baris 11
-  rowsAOA.push([
-    "Periode Laporan:",
-    periodScope,
-    "",
-    "Cakupan Lokasi:",
-    officeScope
-  ]);
+  // Baris 3 Metadata: Periode Laporan & Cakupan Lokasi
+  const metaRow3 = new Array(totalCols).fill("");
+  metaRow3[0] = "Periode Laporan:";
+  metaRow3[1] = periodScope;
+  metaRow3[midCol] = "Cakupan Lokasi:";
+  metaRow3[midCol + 1] = officeScope;
+  rowsAOA.push(metaRow3);
   rowHeights.push({ hpt: 16 });
 
-  // Baris 12
-  rowsAOA.push([
-    "Kriteria Filter:",
-    activeFiltersText,
-    "",
-    "Total Rekaman Data:",
-    `${data.length} baris data`
-  ]);
+  // Baris 4 Metadata: Kriteria Filter & Total Rekaman
+  const metaRow4 = new Array(totalCols).fill("");
+  metaRow4[0] = "Kriteria Filter:";
+  metaRow4[1] = activeFiltersText;
+  metaRow4[midCol] = "Total Rekaman:";
+  metaRow4[midCol + 1] = `${data.length} baris data (Siap Cetak)`;
+  rowsAOA.push(metaRow4);
   rowHeights.push({ hpt: 16 });
 
   // Baris Kosong sebelum Tabel Data
@@ -206,37 +375,50 @@ export function exportExcelDocument({
   // 4. HEADER TABEL DATA
   const tableHeaderRowIndex = rowsAOA.length;
   rowsAOA.push(headers);
-  rowHeights.push({ hpt: 26 }); // Baris header lebih tinggi & tegas
+  rowHeights.push({ hpt: 26 }); // Tinggi header tegas & profesional
 
   // 5. ISI DATA
+  const dataStartRowIndex = rowsAOA.length;
   data.forEach((row) => {
     rowsAOA.push(row.map((cell) => (cell === null || cell === undefined ? "-" : cell)));
-    rowHeights.push({ hpt: 19 });
+    rowHeights.push({ hpt: 20 }); // Baris data nyaman dibaca
   });
+  const dataEndRowIndex = rowsAOA.length - 1;
 
-  // 6. RINGKASAN & AGREGASI METRIK (JIKA ADA)
+  // 6. RINGKASAN METRIK (JIKA ADA)
+  let summaryStartRowIndex = -1;
+  let summaryEndRowIndex = -1;
   if (summaryMetrics && summaryMetrics.length > 0) {
     rowsAOA.push([]);
     rowHeights.push({ hpt: 12 });
 
-    rowsAOA.push(["RINGKASAN & AGREGASI METRIK LAPORAN:"]);
-    merges.push({ s: { r: rowsAOA.length - 1, c: 0 }, e: { r: rowsAOA.length - 1, c: 3 } });
-    rowHeights.push({ hpt: 18 });
+    summaryStartRowIndex = rowsAOA.length;
+    const summaryHeaderRow = new Array(totalCols).fill("");
+    summaryHeaderRow[0] = "RINGKASAN & AGREGASI METRIK LAPORAN";
+    rowsAOA.push(summaryHeaderRow);
+    merges.push({ s: { r: summaryStartRowIndex, c: 0 }, e: { r: summaryStartRowIndex, c: 3 } });
+    rowHeights.push({ hpt: 19 });
 
     summaryMetrics.forEach((metric) => {
-      rowsAOA.push([`• ${metric.label}:`, metric.value]);
-      rowHeights.push({ hpt: 16 });
+      const metricRow = new Array(totalCols).fill("");
+      metricRow[0] = metric.label;
+      metricRow[2] = metric.value;
+      rowsAOA.push(metricRow);
+      merges.push({ s: { r: rowsAOA.length - 1, c: 0 }, e: { r: rowsAOA.length - 1, c: 1 } });
+      rowHeights.push({ hpt: 17 });
     });
+    summaryEndRowIndex = rowsAOA.length - 1;
   }
 
   // 7. BLOK PENGESAHAN DOKUMEN / TANDA TANGAN RESMI
+  let signatureStartRowIndex = -1;
   if (includeSignatures) {
     rowsAOA.push([]);
     rowsAOA.push([]);
     rowHeights.push({ hpt: 14 });
     rowHeights.push({ hpt: 14 });
 
-    const sigStartRow = rowsAOA.length;
+    signatureStartRowIndex = rowsAOA.length;
     const rightCol = Math.max(headers.length - 2, 4);
 
     const sigRow1 = new Array(totalCols).fill("");
@@ -245,6 +427,7 @@ export function exportExcelDocument({
     rowsAOA.push(sigRow1);
     rowHeights.push({ hpt: 17 });
 
+    // Baris ruang kosong tanda tangan fisik / stempel
     rowsAOA.push(new Array(totalCols).fill(""));
     rowsAOA.push(new Array(totalCols).fill(""));
     rowsAOA.push(new Array(totalCols).fill(""));
@@ -268,30 +451,228 @@ export function exportExcelDocument({
   // Buat Sheet dari AOA
   const worksheet = XLSX.utils.aoa_to_sheet(rowsAOA);
 
-  // 8. PENGATURAN LEBAR KOLOM OTOMATIS
-  const computedCols: { wch: number }[] = [];
-  for (let c = 0; c < headers.length; c++) {
-    let maxLen = headers[c] ? headers[c].length : 8;
+  // =========================================================================
+  // PENERAPAN STYLING MENYELURUH (WARNA, BORDER, FONT, ZEBRA, PRINT LAYOUT)
+  // =========================================================================
 
-    // Cek panjang karakter dalam data (sampai 100 baris pertama untuk efisiensi)
-    const sampleLimit = Math.min(data.length, 100);
-    for (let r = 0; r < sampleLimit; r++) {
-      const cellVal = data[r][c];
-      if (cellVal !== null && cellVal !== undefined) {
-        const strVal = String(cellVal);
-        if (strVal.length > maxLen) {
-          maxLen = strVal.length;
+  // 1. Styling Kop Surat
+  // Row 0: Nama Perusahaan
+  ensureCell(worksheet, 0, 0).s = {
+    font: { name: "Calibri", sz: 14, bold: true, color: { rgb: PALETTE.primaryNavy } },
+    alignment: { horizontal: "left", vertical: "center" },
+  };
+  // Row 1: Legal Entity & Tagline
+  ensureCell(worksheet, 1, 0).s = {
+    font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: "475569" } },
+    alignment: { horizontal: "left", vertical: "center" },
+  };
+  // Row 2: Alamat & Kontak
+  ensureCell(worksheet, 2, 0).s = {
+    font: { name: "Calibri", sz: 8.5, italic: true, color: { rgb: "64748B" } },
+    alignment: { horizontal: "left", vertical: "center" },
+  };
+  // Row 3: Garis Aksen Kop Surat (Navy Border)
+  for (let c = 0; c < totalCols; c++) {
+    ensureCell(worksheet, 3, c).s = {
+      fill: { fgColor: { rgb: PALETTE.titleBg } },
+      border: {
+        bottom: { style: "medium", color: { rgb: PALETTE.primaryNavy } },
+      },
+    };
+  }
+
+  // 2. Styling Banner Judul Dokumen
+  for (let c = 0; c < totalCols; c++) {
+    ensureCell(worksheet, titleRowIndex, c).s = {
+      fill: { fgColor: { rgb: PALETTE.titleBg } },
+      font: { name: "Calibri", sz: 12.5, bold: true, color: { rgb: PALETTE.primaryNavy } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: "BFDBFE" } },
+        bottom: { style: "thin", color: { rgb: "BFDBFE" } },
+      },
+    };
+    if (documentSubtitle) {
+      ensureCell(worksheet, titleRowIndex + 1, c).s = {
+        font: { name: "Calibri", sz: 9, italic: true, color: { rgb: "64748B" } },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+    }
+  }
+
+  // 3. Styling Kotak Metadata & Parameter
+  for (let c = 0; c < totalCols; c++) {
+    const isLeftHeader = c < midCol;
+    ensureCell(worksheet, metaHeaderRowIndex, c).s = {
+      fill: { fgColor: { rgb: PALETTE.metaHeaderBg } },
+      font: { name: "Calibri", sz: 9, bold: true, color: { rgb: PALETTE.metaHeaderText } },
+      alignment: { horizontal: isLeftHeader ? "left" : "left", vertical: "center" },
+      border: BORDER_THIN,
+    };
+  }
+
+  for (let r = metaHeaderRowIndex + 1; r <= metaHeaderRowIndex + 4; r++) {
+    for (let c = 0; c < totalCols; c++) {
+      const isLabelCol = c === 0 || c === midCol;
+      ensureCell(worksheet, r, c).s = {
+        fill: { fgColor: { rgb: PALETTE.metaBodyBg } },
+        font: {
+          name: "Calibri",
+          sz: 8.5,
+          bold: isLabelCol,
+          color: { rgb: isLabelCol ? "475569" : "0F172A" },
+        },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: BORDER_THIN,
+      };
+    }
+  }
+
+  // 4. Styling Header Tabel Data (Navy Blue + White Text)
+  for (let c = 0; c < headers.length; c++) {
+    ensureCell(worksheet, tableHeaderRowIndex, c).s = {
+      fill: { fgColor: { rgb: PALETTE.tableHeaderBg } },
+      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: PALETTE.tableHeaderText } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: BORDER_HEADER,
+    };
+  }
+
+  // 5. Styling Baris Data (Zebra Striping + Border Penuh + Smart Status Colors)
+  for (let r = dataStartRowIndex; r <= dataEndRowIndex; r++) {
+    const isOdd = (r - dataStartRowIndex) % 2 === 1;
+    const rowBg = isOdd ? PALETTE.rowOddBg : PALETTE.rowEvenBg;
+
+    for (let c = 0; c < headers.length; c++) {
+      const cell = ensureCell(worksheet, r, c);
+      const val = cell.v;
+      const headerTitle = (headers[c] || "").toLowerCase();
+
+      // Cek apakah kolom ini merupakan kolom status
+      const isStatusCol =
+        headerTitle.includes("status") ||
+        headerTitle.includes("hasil") ||
+        headerTitle.includes("kriptografi") ||
+        headerTitle.includes("geofence") ||
+        headerTitle.includes("liveness");
+
+      const statusStyle = isStatusCol ? getStatusCellStyle(val) : null;
+
+      if (statusStyle) {
+        cell.s = statusStyle;
+      } else {
+        // Tentukan alignment yang rapi berdasarkan tipe konten kolom
+        let align: "center" | "left" | "right" = "left";
+        if (
+          c === 0 || // Kolom No
+          headerTitle.includes("nik") ||
+          headerTitle.includes("id ") ||
+          headerTitle.includes("tanggal") ||
+          headerTitle.includes("hari") ||
+          headerTitle.includes("jam") ||
+          headerTitle.includes("waktu") ||
+          headerTitle.includes("durasi") ||
+          headerTitle.includes("terlambat") ||
+          headerTitle.includes("level") ||
+          headerTitle.includes("total") ||
+          typeof val === "number"
+        ) {
+          align = "center";
         }
+
+        cell.s = {
+          fill: { fgColor: { rgb: rowBg } },
+          font: { name: "Calibri", sz: 9.5, color: { rgb: "1E293B" } },
+          alignment: { horizontal: align, vertical: "center" },
+          border: BORDER_THIN,
+        };
       }
     }
+  }
 
-    // Jika user memberikan override columnWidths
+  // 6. Styling Kotak Ringkasan Metrik
+  if (summaryStartRowIndex !== -1 && summaryEndRowIndex !== -1) {
+    for (let c = 0; c < totalCols; c++) {
+      ensureCell(worksheet, summaryStartRowIndex, c).s = {
+        fill: { fgColor: { rgb: PALETTE.summaryHeaderBg } },
+        font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: PALETTE.summaryHeaderText } },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: {
+          top: { style: "thin", color: { rgb: PALETTE.summaryBorder } },
+          bottom: { style: "thin", color: { rgb: PALETTE.summaryBorder } },
+          left: { style: "thin", color: { rgb: PALETTE.summaryBorder } },
+          right: { style: "thin", color: { rgb: PALETTE.summaryBorder } },
+        },
+      };
+    }
+
+    for (let r = summaryStartRowIndex + 1; r <= summaryEndRowIndex; r++) {
+      ensureCell(worksheet, r, 0).s = {
+        font: { name: "Calibri", sz: 9, bold: true, color: { rgb: "334155" } },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: BORDER_THIN,
+      };
+      ensureCell(worksheet, r, 1).s = {
+        border: BORDER_THIN,
+      };
+      ensureCell(worksheet, r, 2).s = {
+        font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: PALETTE.primaryNavy } },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: BORDER_THIN,
+      };
+    }
+  }
+
+  // 7. Styling Blok Tanda Tangan
+  if (signatureStartRowIndex !== -1) {
+    const rightCol = Math.max(headers.length - 2, 4);
+
+    ensureCell(worksheet, signatureStartRowIndex, 1).s = {
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: "0F172A" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+    ensureCell(worksheet, signatureStartRowIndex, rightCol).s = {
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: "0F172A" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+
+    ensureCell(worksheet, signatureStartRowIndex + 4, 1).s = {
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: "0F172A" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+    ensureCell(worksheet, signatureStartRowIndex + 4, rightCol).s = {
+      font: { name: "Calibri", sz: 9.5, bold: true, color: { rgb: "0F172A" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+
+    ensureCell(worksheet, signatureStartRowIndex + 5, 1).s = {
+      font: { name: "Calibri", sz: 8.5, italic: true, color: { rgb: "64748B" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+    ensureCell(worksheet, signatureStartRowIndex + 5, rightCol).s = {
+      font: { name: "Calibri", sz: 8.5, italic: true, color: { rgb: "64748B" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+  }
+
+  // 8. PENGATURAN LEBAR KOLOM OTOMATIS & PROPORSIONAL
+  const computedCols: { wch: number }[] = [];
+  for (let c = 0; c < headers.length; c++) {
     if (columnWidths && columnWidths[c]) {
       computedCols.push({ wch: columnWidths[c] });
     } else {
-      // Buffer aman + 4 karakter, minimal 10, maksimal 55 karakter
-      const colWidth = Math.min(Math.max(maxLen + 4, 10), 55);
-      computedCols.push({ wch: colWidth });
+      let maxLen = headers[c] ? headers[c].length : 8;
+      const sampleLimit = Math.min(data.length, 50);
+      for (let r = 0; r < sampleLimit; r++) {
+        const cellVal = data[r][c];
+        if (cellVal !== null && cellVal !== undefined) {
+          const strVal = String(cellVal);
+          if (strVal.length > maxLen) {
+            maxLen = strVal.length;
+          }
+        }
+      }
+      computedCols.push({ wch: Math.min(Math.max(maxLen + 3, 8), 35) });
     }
   }
 
@@ -299,7 +680,7 @@ export function exportExcelDocument({
   worksheet["!rows"] = rowHeights;
   worksheet["!merges"] = merges;
 
-  // 9. AKTIFKAN AUTO FILTER PADA HEADER TABEL DATA
+  // 9. AKTIFKAN AUTOFILTER PADA HEADER TABEL
   if (data.length > 0) {
     const startCol = XLSX.utils.encode_col(0);
     const endCol = XLSX.utils.encode_col(headers.length - 1);
@@ -307,7 +688,7 @@ export function exportExcelDocument({
     worksheet["!autofilter"] = { ref: filterRef };
   }
 
-  // 10. FREEZE PANES PADA BARIS HEADER TABEL
+  // 10. FREEZE PANES PADA HEADER TABEL DATA
   worksheet["!views"] = [
     {
       state: "frozen",
@@ -316,20 +697,39 @@ export function exportExcelDocument({
     },
   ];
 
-  // 11. BUAT WORKBOOK & SIMPAN FILE .XLSX
+  // 11. KONFIGURASI CETAK RESMI (PRINT-READY / A4 LANDSCAPE FIT 1 HALAMAN KE SAMPING)
+  worksheet["!pageSetup"] = {
+    orientation: "landscape",
+    paperSize: 9,      // A4 Paper
+    fitToWidth: 1,     // Muat 1 halaman lebar (tidak terpotong ke samping)
+    fitToHeight: 0,    // Tinggi menyesuaikan baris data
+  };
+  worksheet["!printOptions"] = {
+    gridLines: true,
+  };
+  worksheet["!margins"] = {
+    left: 0.4,
+    right: 0.4,
+    top: 0.5,
+    bottom: 0.5,
+    header: 0.3,
+    footer: 0.3,
+  };
+
+  // 12. BUAT WORKBOOK & UNDUH FILE .XLSX
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31)); // Batas nama sheet Excel 31 char
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
 
   const targetFileName = fileName || generateStandardExcelFilename(documentTitle, departmentScope);
   XLSX.writeFile(workbook, targetFileName);
 }
 
 // =========================================================================
-// HELPER KHUSUS PER MODUL (STANDARDIZED EXPORTERS)
+// STANDARDIZED EXPORTERS (DIPANGKAS RINGKAS & SIAP CETAK PER MODUL)
 // =========================================================================
 
 /**
- * 1. Ekspor Data Karyawan
+ * 1. Ekspor Data Karyawan (Tanpa NIK - Pas A4)
  */
 export function exportEmployeesToExcel(
   employees: any[],
@@ -343,34 +743,26 @@ export function exportEmployeesToExcel(
 ) {
   const headers = [
     "No",
-    "NIK",
     "Nama Karyawan",
     "Departemen",
     "Jabatan / Posisi",
-    "Level Struktur",
-    "Role Sistem",
     "Status Kerja",
     "Status Akun",
     "Tanggal Masuk",
     "No. Telepon",
     "Email Perusahaan",
-    "Alamat Lengkap",
   ];
 
   const data = employees.map((emp, index) => [
     index + 1,
-    emp.id || emp.nik || "-",
     emp.name || "-",
     emp.departmentName || emp.department || "-",
     emp.jobTitle || "-",
-    emp.level ? `Level ${emp.level}` : "-",
-    emp.role || "-",
     emp.employmentStatus || "Tetap",
     emp.status || "Aktif",
     formatStandardDate(emp.tanggalMasuk),
     emp.phone || "-",
     emp.email || "-",
-    emp.alamat || "-",
   ]);
 
   const activeFilters = [
@@ -395,17 +787,17 @@ export function exportEmployeesToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 14, 26, 22, 24, 16, 16, 14, 14, 14, 18, 28, 38],
+    columnWidths: [5, 26, 20, 22, 14, 14, 14, 18, 28],
     summaryMetrics: [
       { label: "Total Karyawan Terekam", value: `${employees.length} Orang` },
-      { label: "Karyawan Aktif", value: `${employees.filter((e) => e.status !== "Nonaktif").length} Orang` },
-      { label: "Karyawan Kontrak/DW", value: `${employees.filter((e) => e.employmentStatus === "Kontrak" || e.employmentStatus === "DW").length} Orang` },
+      { label: "Karyawan Status Aktif", value: `${employees.filter((e) => e.status !== "Nonaktif").length} Orang` },
+      { label: "Karyawan Tetap", value: `${employees.filter((e) => (e.employmentStatus || "Tetap") === "Tetap").length} Orang` },
     ],
   });
 }
 
 /**
- * 2. Ekspor Jadwal Kerja & Shift Mingguan
+ * 2. Ekspor Jadwal Kerja & Shift Mingguan (Tanpa NIK)
  */
 export function exportSchedulesToExcel(
   schedules: any[],
@@ -419,10 +811,8 @@ export function exportSchedulesToExcel(
 ) {
   const headers = [
     "No",
-    "NIK",
     "Nama Karyawan",
     "Departemen",
-    "Shift Default",
     "Senin",
     "Selasa",
     "Rabu",
@@ -430,7 +820,7 @@ export function exportSchedulesToExcel(
     "Jumat",
     "Sabtu",
     "Minggu",
-    "Total Hari Kerja",
+    "Total Masuk",
   ];
 
   const shiftMap = new Map<string, string>();
@@ -442,17 +832,17 @@ export function exportSchedulesToExcel(
     let workingDaysCount = 0;
     const dayCols = daysKey.map((d) => {
       const shiftId = sch[d];
-      if (!shiftId || shiftId === "OFF") return "OFF (Libur)";
+      if (!shiftId || shiftId === "OFF") return "OFF";
       workingDaysCount++;
-      return shiftMap.get(shiftId) || shiftId;
+      const fullShiftName = shiftMap.get(shiftId) || shiftId;
+      // Ringkas nama shift agar tidak memanjang ke samping
+      return fullShiftName.replace("Operasional", "").replace("Normal", "").trim();
     });
 
     return [
       index + 1,
-      sch.employeeId || "-",
       sch.employeeName || "-",
       sch.department || "-",
-      sch.defaultShiftName || "-",
       ...dayCols,
       `${workingDaysCount} Hari`,
     ];
@@ -470,7 +860,7 @@ export function exportSchedulesToExcel(
 
   exportExcelDocument({
     documentTitle: "LAPORAN JADWAL KERJA & ROSTER MINGGUAN",
-    documentSubtitle: "Alokasi Shift dan Jam Kerja Karyawan Berdasarkan Departemen",
+    documentSubtitle: "Alokasi Shift dan Roster Hari Kerja Karyawan Berdasarkan Departemen",
     departmentScope: options.departmentScope || "Semua Departemen (Global)",
     periodScope: "Roster Kerja Mingguan Aktif",
     activeFiltersText: activeFilters,
@@ -479,16 +869,16 @@ export function exportSchedulesToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 14, 26, 20, 22, 18, 18, 18, 18, 18, 18, 18, 18],
+    columnWidths: [5, 24, 20, 12, 12, 12, 12, 12, 12, 12, 12],
     summaryMetrics: [
-      { label: "Total Karyawan Terjadwal", value: `${schedules.length} Personel` },
-      { label: "Pola Shift Aktif", value: `${shifts.length} Konfigurasi Shift` },
+      { label: "Total Personel Terjadwal", value: `${schedules.length} Orang` },
+      { label: "Konfigurasi Shift Aktif", value: `${shifts.length} Pola Shift` },
     ],
   });
 }
 
 /**
- * 3. Ekspor Rekapitulasi Presensi & Kehadiran Lengkap (Halaman Laporan)
+ * 3. Ekspor Rekapitulasi Presensi & Kehadiran (Tanpa NIK - Pas A4 Landscape)
  */
 export function exportAttendanceReportToExcel(
   items: any[],
@@ -510,43 +900,50 @@ export function exportAttendanceReportToExcel(
     currentUser?: ExportUserInfo;
   }
 ) {
+  // Hanya tampilkan kolom yang esensial tanpa NIK agar pas dicetak di A4 Landscape tanpa terpotong
   const headers = [
     "No",
     "Tanggal",
-    "NIK",
     "Nama Karyawan",
     "Departemen",
-    "Lokasi Kantor",
-    "Shift Kerja",
+    "Pola Shift",
     "Jam Masuk",
     "Jam Pulang",
     "Durasi Kerja",
     "Keterlambatan",
     "Status Kehadiran",
-    "Lokasi Absensi",
-    "Validasi Geofence",
-    "Audit Trail (WORM)",
-    "Catatan",
   ];
 
-  const data = items.map((item, index) => [
-    index + 1,
-    formatStandardDate(item.date),
-    item.employeeId,
-    item.name,
-    item.department,
-    item.officeLocation,
-    item.shift,
-    item.clockIn || "-",
-    item.clockOut || "-",
-    item.workHours || "-",
-    item.lateMinutes > 0 ? `${item.lateMinutes} menit` : "0 menit",
-    item.status,
-    item.location || "-",
-    item.inGeofence ? "Valid (Dalam Radius)" : "Luar Radius",
-    item.wormHashValid ? "Terverifikasi (Valid)" : "Tidak Valid",
-    item.notes || "-",
-  ]);
+  const data = items.map((item, index) => {
+    // Tanggal presensi
+    const tgl = item.dateFormatted || formatStandardDate(item.date) || "-";
+    // Nama karyawan
+    const nama = item.name || item.employeeName || item.applicantName || "-";
+    // Departemen
+    const dept = item.department || item.departmentName || "-";
+    // Ringkas teks shift (misal: "Shift 1 Pagi (06:00 - 14:00)" -> "Shift 1 Pagi")
+    const cleanShift = (item.shift || item.shiftName || "Reguler")
+      .split("(")[0]
+      .trim();
+    // Jam Masuk & Pulang
+    const isCuti = item.status === "Izin / Cuti" || item.status === "Cuti";
+    const masuk = item.clockIn || item.checkIn || (isCuti ? "Cuti Resmi" : "-");
+    const pulang = item.clockOut || item.checkOut || (isCuti ? "Cuti Resmi" : "-");
+    const durasi = item.workHours && item.workHours !== "0j" ? item.workHours : isCuti ? "Bebas Tugas" : "-";
+
+    return [
+      index + 1,
+      tgl,
+      nama,
+      dept,
+      cleanShift,
+      masuk,
+      pulang,
+      durasi,
+      item.lateMinutes > 0 ? `${item.lateMinutes} menit` : "0 menit",
+      item.status,
+    ];
+  });
 
   const activeFilters = [
     `Status: ${options.statusFilter || "Semua"}`,
@@ -554,14 +951,14 @@ export function exportAttendanceReportToExcel(
   ].join(" | ");
 
   const fileName = generateStandardExcelFilename(
-    "Laporan_Absensi",
+    "Laporan_Rekap_Presensi",
     options.departmentScope || "Global",
     `${options.startDate}_sd_${options.endDate}`
   );
 
   exportExcelDocument({
     documentTitle: "LAPORAN REKAPITULASI KEHADIRAN KARYAWAN",
-    documentSubtitle: "Sistem Absensi Biometrik Wajah dan Validasi Geofencing — J-Absen",
+    documentSubtitle: "Sistem Presensi Biometrik Wajah dan Validasi Geofencing — J-Absen HRIS",
     departmentScope: options.departmentScope || "Semua Departemen (Global)",
     periodScope: `${formatStandardDate(options.startDate)} s.d. ${formatStandardDate(options.endDate)}`,
     officeScope: options.officeScope || "Semua Lokasi",
@@ -571,21 +968,20 @@ export function exportAttendanceReportToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 13, 14, 25, 20, 22, 22, 13, 13, 14, 16, 18, 25, 22, 22, 28],
+    columnWidths: [5, 13, 26, 20, 14, 12, 12, 12, 14, 16],
     summaryMetrics: [
-      { label: "Total Kehadiran Terekam", value: `${stats.onTime + stats.late} Transaksi` },
-      { label: "Hadir Tepat Waktu", value: `${stats.onTime} Transaksi` },
-      { label: "Hadir Terlambat", value: `${stats.late} Transaksi` },
+      { label: "Total Transaksi Presensi", value: `${stats.onTime + stats.late} Baris` },
+      { label: "Presensi Tepat Waktu", value: `${stats.onTime} Transaksi` },
+      { label: "Presensi Terlambat", value: `${stats.late} Transaksi` },
       { label: "Total Izin / Cuti", value: `${stats.leave} Hari` },
-      { label: "Total Alpha / Tanpa Ket", value: `${stats.absent} Kali` },
-      { label: "Akumulasi Keterlambatan", value: `${stats.totalLateMinutes} Menit` },
-      { label: "Tingkat Kehadiran Keseluruhan", value: `${stats.onTimeRate}%` },
+      { label: "Akumulasi Waktu Terlambat", value: `${stats.totalLateMinutes} Menit` },
+      { label: "Tingkat Kedisiplinan Keseluruhan", value: `${stats.onTimeRate}%` },
     ],
   });
 }
 
 /**
- * 4. Ekspor Rekap Permohonan Cuti & Izin
+ * 4. Ekspor Rekap Permohonan Cuti & Izin (Tanpa NIK)
  */
 export function exportLeaveRequestsToExcel(
   leaves: any[],
@@ -598,38 +994,28 @@ export function exportLeaveRequestsToExcel(
 ) {
   const headers = [
     "No",
-    "ID Permohonan",
-    "Tanggal Pengajuan",
-    "NIK Pemohon",
+    "Tgl Pengajuan",
     "Nama Karyawan",
     "Departemen",
-    "Jenis Cuti / Izin",
+    "Jenis Cuti",
     "Tanggal Mulai",
     "Tanggal Selesai",
-    "Durasi (Hari)",
-    "Potong Kuota Cuti",
+    "Durasi",
     "Alasan Permohonan",
     "Status Persetujuan",
-    "Posisi Verifikator",
-    "Catatan Approver",
   ];
 
   const data = leaves.map((lv, index) => [
     index + 1,
-    lv.id,
     lv.submittedAt || "-",
-    lv.applicantId,
-    lv.applicantName,
-    lv.department,
-    lv.leaveType,
-    formatStandardDate(lv.startDate),
-    formatStandardDate(lv.endDate),
-    `${lv.durationDays} Hari`,
-    lv.quotaImpact ? "Ya (Potong Saldo)" : "Tidak (Non-Quota)",
-    lv.reason,
-    lv.status,
-    lv.currentApproverRole || "-",
-    lv.approverNotes || "-",
+    lv.applicantName || lv.name || "-",
+    lv.department || "-",
+    lv.leaveType || "-",
+    formatStandardDate(lv.startDate) || "-",
+    formatStandardDate(lv.endDate) || "-",
+    `${lv.durationDays || 1} Hari`,
+    lv.reason || "-",
+    lv.status || "-",
   ]);
 
   const fileName = generateStandardExcelFilename(
@@ -648,18 +1034,17 @@ export function exportLeaveRequestsToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 18, 20, 14, 25, 20, 20, 14, 14, 14, 18, 34, 20, 20, 28],
+    columnWidths: [5, 16, 24, 18, 16, 14, 14, 12, 28, 18],
     summaryMetrics: [
       { label: "Total Permohonan Cuti", value: `${leaves.length} Pengajuan` },
-      { label: "Cuti Disetujui", value: `${leaves.filter((l) => l.status === "Disetujui").length} Pengajuan` },
+      { label: "Permohonan Disetujui", value: `${leaves.filter((l) => l.status === "Disetujui").length} Pengajuan` },
       { label: "Menunggu Persetujuan", value: `${leaves.filter((l) => l.status === "Menunggu Approval").length} Pengajuan` },
-      { label: "Cuti Ditolak", value: `${leaves.filter((l) => l.status === "Ditolak").length} Pengajuan` },
     ],
   });
 }
 
 /**
- * 5. Ekspor Rekap Permohonan Koreksi Absensi
+ * 5. Ekspor Rekap Permohonan Koreksi Absensi (Tanpa ID & NIK - 100% Terisi Sesuai Web)
  */
 export function exportCorrectionsToExcel(
   corrections: any[],
@@ -670,43 +1055,55 @@ export function exportCorrectionsToExcel(
 ) {
   const headers = [
     "No",
-    "ID Pengajuan",
     "Tanggal Presensi",
-    "NIK Karyawan",
     "Nama Karyawan",
     "Departemen",
-    "Jam Semula (Mesin)",
-    "Koreksi Jam Masuk",
-    "Koreksi Jam Pulang",
+    "Jam Tercatat (Awal)",
+    "Usulan Koreksi",
     "Alasan Koreksi",
-    "Lampiran Bukti",
-    "Status Approval",
-    "Verifikator",
-    "Catatan Verifikasi",
+    "Tahap / Status Approval",
   ];
 
-  const data = corrections.map((cor, index) => [
-    index + 1,
-    cor.id,
-    formatStandardDate(cor.date),
-    cor.employeeId,
-    cor.name,
-    cor.department,
-    cor.originalClockIn ? `${cor.originalClockIn} - ${cor.originalClockOut || "N/A"}` : "Tidak Ada Record",
-    cor.proposedClockIn || "-",
-    cor.proposedClockOut || "-",
-    cor.reason,
-    cor.attachmentName || "-",
-    cor.status,
-    cor.approverRole || "-",
-    cor.approverNotes || "-",
-  ]);
+  const data = corrections.map((cor, index) => {
+    // Tanggal presensi (mendukung targetDate maupun date)
+    const tanggal = cor.targetDate || formatStandardDate(cor.date) || "-";
+
+    // Nama karyawan (mendukung applicantName maupun name)
+    const nama = cor.applicantName || cor.name || "-";
+
+    // Jam awal tercatat
+    const awalMasuk = cor.originalCheckIn || cor.originalClockIn || "--:--";
+    const awalPulang = cor.originalCheckOut || cor.originalClockOut || "--:--";
+    const jamAwal =
+      awalMasuk !== "--:--" || awalPulang !== "--:--"
+        ? `${awalMasuk} - ${awalPulang}`
+        : "Tidak Ada Rekaman";
+
+    // Usulan jam koreksi
+    const usulanMasuk = cor.proposedCheckIn || cor.proposedClockIn || "08:00 WIB";
+    const usulanPulang = cor.proposedCheckOut || cor.proposedClockOut || "17:00 WIB";
+    const jamUsulan = `${usulanMasuk} - ${usulanPulang}`;
+
+    // Status / Tahap approval
+    const status = cor.status || cor.stage || "-";
+
+    return [
+      index + 1,
+      tanggal,
+      nama,
+      cor.department || "-",
+      jamAwal,
+      jamUsulan,
+      cor.reason || "-",
+      status,
+    ];
+  });
 
   const fileName = generateStandardExcelFilename("Laporan_Koreksi_Presensi", "Global");
 
   exportExcelDocument({
     documentTitle: "LAPORAN PERMOHONAN KOREKSI PRESENSI",
-    documentSubtitle: "Rekapitulasi Penyesuaian Jam Kehadiran dengan Bukti Fisik dan Verifikasi Berjenjang",
+    documentSubtitle: "Rekapitulasi Penyesuaian Jam Kehadiran dengan Verifikasi Atasan Langsung",
     departmentScope: "Semua Departemen (Global)",
     activeFiltersText: `Status: ${options.statusFilter || "Semua"}`,
     currentUser: options.currentUser,
@@ -714,17 +1111,17 @@ export function exportCorrectionsToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 18, 14, 14, 25, 20, 22, 18, 18, 30, 25, 20, 20, 25],
+    columnWidths: [5, 18, 24, 18, 24, 24, 34, 20],
     summaryMetrics: [
       { label: "Total Permohonan Koreksi", value: `${corrections.length} Berkas` },
-      { label: "Koreksi Disetujui", value: `${corrections.filter((c) => c.status === "Disetujui").length} Berkas` },
-      { label: "Menunggu Peninjauan", value: `${corrections.filter((c) => c.status === "Menunggu Approval").length} Berkas` },
+      { label: "Koreksi Disetujui", value: `${corrections.filter((c) => c.status === "Disetujui" || c.status === "Disetujui Final").length} Berkas` },
+      { label: "Menunggu Peninjauan", value: `${corrections.filter((c) => c.status?.includes("Menunggu")).length} Berkas` },
     ],
   });
 }
 
 /**
- * 6. Ekspor Real-Time Monitoring Tim Hari Ini
+ * 6. Ekspor Real-Time Monitoring Tim (Tanpa NIK)
  */
 export function exportRealtimeMonitoringToExcel(
   members: any[],
@@ -736,30 +1133,24 @@ export function exportRealtimeMonitoringToExcel(
 ) {
   const headers = [
     "No",
-    "NIK",
     "Nama Karyawan",
     "Departemen",
     "Jabatan",
     "Jam Masuk",
     "Jam Pulang",
     "Status Kehadiran",
-    "Lokasi Presensi Terkini",
-    "Status Radius Geofence",
-    "Verifikasi Liveness Wajah",
+    "Radius Geofence",
   ];
 
   const data = members.map((m, index) => [
     index + 1,
-    m.employeeId,
     m.name,
     m.department,
     m.role || "-",
     m.clockIn || "-",
     m.clockOut || "-",
     m.status,
-    m.location || "-",
-    m.inGeofence ? "Valid (Dalam Radius)" : m.clockIn ? "Luar Radius" : "-",
-    m.livenessVerified ? "Lolos 4/4 Challenge ✓" : m.clockIn ? "Tidak Terverifikasi" : "-",
+    m.inGeofence ? "Valid (Dalam Radius 50m)" : m.clockIn ? "Luar Radius" : "-",
   ]);
 
   const fileName = generateStandardExcelFilename(
@@ -778,80 +1169,80 @@ export function exportRealtimeMonitoringToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 14, 25, 20, 20, 14, 14, 18, 26, 24, 24],
+    columnWidths: [5, 26, 20, 20, 12, 12, 16, 22],
     summaryMetrics: [
       { label: "Total Personel Dipantau", value: `${members.length} Orang` },
       { label: "Telah Hadir di Tempat", value: `${members.filter((m) => m.status === "Hadir").length} Orang` },
       { label: "Hadir Terlambat", value: `${members.filter((m) => m.status === "Terlambat").length} Orang` },
       { label: "Cuti / Izin", value: `${members.filter((m) => m.status === "Cuti" || m.status === "Izin").length} Orang` },
-      { label: "Belum Melakukan Presensi", value: `${members.filter((m) => m.status === "Belum Absen").length} Orang` },
     ],
   });
 }
 
 /**
- * 7. Ekspor Jejak Audit WORM Keamanan Sistem
+ * 7. Ekspor Jejak Audit WORM Keamanan Sistem (Tanpa NIK - Tanpa Hash Panjang)
  */
 export function exportAuditLogsToExcel(
   logs: any[],
   options: {
     moduleFilter?: string;
     riskFilter?: string;
+    dateRangeText?: string;
     currentUser?: ExportUserInfo;
   }
 ) {
   const headers = [
     "No",
-    "ID Log WORM",
     "Waktu Transaksi (WIB)",
-    "Nama Pengguna (Aktor)",
+    "Aktor (Pengguna)",
     "Role Sistem",
-    "IP Address",
     "Aktivitas / Aksi",
     "Modul Sistem",
-    "Objek Sasaran",
     "Tingkat Risiko",
-    "Hasil Operasi",
-    "Kriptografi Hash WORM (SHA-256)",
+    "Status Kriptografi",
   ];
 
   const data = logs.map((log, index) => [
     index + 1,
-    log.id,
-    log.timestamp,
-    log.actorName,
-    log.actorRole,
-    log.ipAddress,
-    log.actionName,
-    log.module,
-    log.targetObject,
-    log.riskLevel,
-    log.status,
-    log.hash,
+    log.timestamp || "-",
+    log.actorName || "-",
+    log.actorRole || "-",
+    log.actionName || "-",
+    log.module || "-",
+    log.riskLevel || "-",
+    "SHA-256 Valid",
   ]);
 
   const fileName = generateStandardExcelFilename("Audit_Log_Keamanan_WORM", "Sistem");
+
+  const filterParts = [
+    `Modul: ${options.moduleFilter || "Semua"}`,
+    `Risiko: ${options.riskFilter || "Semua"}`,
+  ];
+  if (options.dateRangeText) {
+    filterParts.push(`Periode: ${options.dateRangeText}`);
+  }
 
   exportExcelDocument({
     documentTitle: "LAPORAN JEJAK AUDIT SISTEM KEAMANAN (WORM AUDIT TRAIL)",
     documentSubtitle: "Integritas Catatan Append-Only Terenkripsi Hash Kriptografi SHA-256 Standar Regulasi",
     departmentScope: "Infrastruktur Keamanan & Manajemen Akses",
-    activeFiltersText: `Modul: ${options.moduleFilter || "Semua"} | Risiko: ${options.riskFilter || "Semua"}`,
+    activeFiltersText: filterParts.join(" | "),
     currentUser: options.currentUser,
     sheetName: "Jejak Audit WORM",
     fileName,
     headers,
     data,
-    columnWidths: [6, 18, 20, 24, 16, 16, 32, 20, 26, 16, 14, 68],
+    columnWidths: [5, 18, 22, 16, 32, 18, 14, 18],
     summaryMetrics: [
       { label: "Total Rekaman Audit Terpilih", value: `${logs.length} Baris Log` },
-      { label: "Status Verifikasi Hash Kriptografi", value: "100% Valid & Tidak Termodifikasi (Append-Only)" },
+      { label: "Status Verifikasi Kriptografi", value: "100% Valid (Zero Tampering)" },
     ],
   });
 }
 
 /**
- * 8. Ekspor Akun Pengguna & Ikatan Device HP (User Management)
+ * 8. Ekspor Akun Pengguna & Ikatan Device HP (Tanpa NIK)
  */
 export function exportUserAccountsToExcel(
   accounts: any[],
@@ -863,32 +1254,26 @@ export function exportUserAccountsToExcel(
 ) {
   const headers = [
     "No",
-    "NIK",
     "Nama Karyawan",
     "Email Akun",
     "Role Pengguna",
     "Departemen",
     "Status Akun",
-    "Wajib Ganti Password",
-    "Status Ikatan Perangkat (Device)",
+    "Ikatan Device",
     "Model HP Terdaftar",
-    "Device ID Karyawan",
     "Login Terakhir",
   ];
 
   const data = accounts.map((acc, index) => [
     index + 1,
-    acc.nik,
     acc.name,
     acc.email,
     acc.role,
     acc.department,
     acc.status,
-    acc.mustChangePassword ? "Wajib (Login Pertama)" : "Normal",
-    acc.deviceBound ? "Terkunci 1 HP Pribadi" : "Belum Terikat",
+    acc.deviceBound ? "Terkunci 1 HP" : "Bebas",
     acc.boundDeviceModel || "-",
-    acc.boundDeviceId || "-",
-    acc.lastLoginAt || "Belum Pernah Login",
+    acc.lastLoginAt || "Belum Login",
   ]);
 
   const fileName = generateStandardExcelFilename("Data_Akun_Pengguna", "Sistem");
@@ -903,17 +1288,16 @@ export function exportUserAccountsToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 14, 25, 28, 16, 20, 14, 22, 25, 22, 25, 20],
+    columnWidths: [5, 26, 26, 14, 18, 14, 16, 22, 18],
     summaryMetrics: [
       { label: "Total Akun Terdaftar", value: `${accounts.length} Akun` },
       { label: "Akun dengan HP Terikat", value: `${accounts.filter((a) => a.deviceBound).length} Akun` },
-      { label: "Akun Wajib Ganti Password", value: `${accounts.filter((a) => a.mustChangePassword).length} Akun` },
     ],
   });
 }
 
 /**
- * 9. Ekspor Riwayat Presensi Pribadi Karyawan
+ * 9. Ekspor Riwayat Presensi Pribadi Karyawan (Tanpa NIK)
  */
 export function exportAttendanceHistoryToExcel(
   historyItems: any[],
@@ -935,9 +1319,6 @@ export function exportAttendanceHistoryToExcel(
     "Durasi Kerja",
     "Keterlambatan",
     "Status Kehadiran",
-    "Lokasi Presensi",
-    "Validasi Geofence",
-    "Audit Hash WORM",
     "Catatan",
   ];
 
@@ -951,9 +1332,6 @@ export function exportAttendanceHistoryToExcel(
     item.workHours || "-",
     item.lateMinutes ? `${item.lateMinutes} menit` : "0 menit",
     item.status,
-    item.location || "-",
-    item.inGeofence ? "Valid (Dalam Radius)" : "Luar Radius",
-    item.wormHashValid ? "Terverifikasi ✓" : "Tidak Valid",
     item.notes || "-",
   ]);
 
@@ -965,7 +1343,7 @@ export function exportAttendanceHistoryToExcel(
 
   exportExcelDocument({
     documentTitle: "LAPORAN RIWAYAT PRESENSI & KEHADIRAN PRIBADI",
-    documentSubtitle: `Rekam Jejak Kehadiran Karyawan: ${targetName} (${options.employeeNik || "-"})`,
+    documentSubtitle: `Rekam Jejak Kehadiran Karyawan: ${targetName}`,
     departmentScope: options.department || "Pribadi",
     periodScope: options.periodText || "Bulan Berjalan",
     currentUser: options.currentUser,
@@ -973,17 +1351,17 @@ export function exportAttendanceHistoryToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 14, 12, 22, 13, 13, 14, 16, 18, 25, 22, 18, 28],
+    columnWidths: [5, 13, 10, 15, 12, 12, 12, 14, 16, 22],
     summaryMetrics: [
       { label: "Total Hari Terekam", value: `${historyItems.length} Hari Kerja` },
       { label: "Hadir Tepat Waktu", value: `${historyItems.filter((h) => h.status === "Tepat Waktu").length} Hari` },
-      { label: "Terlambat", value: `${historyItems.filter((h) => h.status === "Terlambat").length} Hari` },
+      { label: "Hadir Terlambat", value: `${historyItems.filter((h) => h.status === "Terlambat").length} Hari` },
     ],
   });
 }
 
 /**
- * 10. Ekspor Master Departemen & Posisi Organisasi
+ * 10. Ekspor Master Departemen & Posisi Organisasi (6 Kolom Ringkas)
  */
 export function exportDepartmentsToExcel(
   departments: any[],
@@ -993,20 +1371,20 @@ export function exportDepartmentsToExcel(
 ) {
   const headers = [
     "No",
-    "Kode Departemen",
+    "Kode",
     "Nama Departemen",
-    "Deskripsi Departemen",
     "Kepala Departemen",
-    "Jumlah Anggota / Personel",
+    "Jumlah Personel",
+    "Deskripsi Singkat",
   ];
 
   const data = departments.map((d, index) => [
     index + 1,
     d.code,
     d.name,
-    d.description || "-",
     d.headName || "-",
     `${d.employeeCount || 0} Orang`,
+    d.description || "-",
   ]);
 
   const fileName = generateStandardExcelFilename("Data_Master_Departemen", "Struktur_Organisasi");
@@ -1020,7 +1398,7 @@ export function exportDepartmentsToExcel(
     fileName,
     headers,
     data,
-    columnWidths: [6, 18, 26, 38, 25, 20],
+    columnWidths: [5, 10, 24, 22, 16, 32],
     summaryMetrics: [
       { label: "Total Departemen Terdaftar", value: `${departments.length} Departemen` },
     ],

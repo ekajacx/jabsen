@@ -25,7 +25,12 @@ import {
   Briefcase,
   Save,
   UserPlus,
+  Download,
+  Printer,
+  Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
+import html2canvas from "html2canvas";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { useModal } from "@/context/modal-context";
@@ -64,6 +69,10 @@ export default function OrganisasiPage() {
   // Zoom Canvas (Default 85% agar muat 6 kolom dengan leluasa)
   const [zoomLevel, setZoomLevel] = useState<number>(85);
 
+  // Ref Bagan Organisasi & Status Ekspor Gambar/PDF
+  const chartRef = React.useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
   // Modal State Edit Jabatan
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPosition, setEditingPosition] = useState<PositionNode | null>(null);
@@ -72,7 +81,6 @@ export default function OrganisasiPage() {
   const [formTitle, setFormTitle] = useState("");
   const [formDeptId, setFormDeptId] = useState("");
   const [formParentId, setFormParentId] = useState<string>("");
-  const [formIsConnected, setFormIsConnected] = useState(true);
   const [formHolderName, setFormHolderName] = useState("");
 
   // Modal State Tambah Karyawan Baru di Hirarki (+ pada kotak biru departemen)
@@ -99,17 +107,49 @@ export default function OrganisasiPage() {
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  // Toggle Koneksi Hijau / Hitam
-  const handleToggleConnection = (id: string) => {
-    togglePositionConnection(id);
-    const target = positions.find((p) => p.id === id);
-    const willBe = target ? !target.isConnected : true;
-    showToast(
-      "success",
-      `Garis koneksi jabatan '${target?.title || "Jabatan"}' diubah menjadi: ${
-        willBe ? "🟢 TERKONEKSI (Garis Hijau)" : "⚫ TIDAK TERKONEKSI (Garis Hitam)"
-      }.`
-    );
+  // Ekspor Bagan ke Gambar (.png) Resolusi Tinggi (2x Retina)
+  const handleExportImage = async () => {
+    if (!chartRef.current) return;
+    setIsExporting(true);
+    try {
+      const chartEl = chartRef.current;
+      const originalTransform = chartEl.style.transform;
+      
+      // Kembalikan scale ke 100% sementara agar gambar ter-render jernih & proporsional
+      chartEl.style.transform = "scale(1)";
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const canvas = await html2canvas(chartEl, {
+        scale: 2, // Resolusi tinggi (Retina)
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: chartEl.scrollWidth + 80,
+        windowHeight: chartEl.scrollHeight + 80,
+      });
+
+      // Kembalikan style zoom yang aktif
+      chartEl.style.transform = originalTransform;
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.download = `Bagan_Struktur_Organisasi_${timestamp}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      showToast("success", "Bagan Struktur Organisasi berhasil diunduh sebagai Gambar (.png) resolusi tinggi.");
+    } catch (err) {
+      console.error("Gagal ekspor gambar bagan:", err);
+      showToast("error", "Gagal mengekspor bagan ke file gambar.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Cetak atau Simpan sebagai PDF melalui Browser Print Engine
+  const handlePrintPdf = () => {
+    window.print();
   };
 
   // Buka Modal Edit
@@ -118,7 +158,6 @@ export default function OrganisasiPage() {
     setFormTitle(pos.title);
     setFormDeptId(pos.departmentId);
     setFormParentId(pos.parentId || "");
-    setFormIsConnected(pos.isConnected);
     setFormHolderName(pos.holder.name);
     setIsModalOpen(true);
   };
@@ -132,7 +171,7 @@ export default function OrganisasiPage() {
       title: formTitle,
       departmentId: formDeptId,
       parentId: formParentId || null,
-      isConnected: formIsConnected,
+      isConnected: true,
       holder: {
         ...editingPosition.holder,
         name: formHolderName,
@@ -373,18 +412,16 @@ export default function OrganisasiPage() {
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Jalur Hirarki Terkoneksi</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Status Bagan Hirarki</span>
                 <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {positions.filter((p) => p.isConnected).length}
+                  Resmi Aktif
                 </p>
                 <span className="text-[10px] text-emerald-600 font-medium">
-                  {positions.filter((p) => !p.isConnected).length > 0
-                    ? `${positions.filter((p) => !p.isConnected).length} Belum Terhubung`
-                    : "Semua Jalur Terhubung"}
+                  Struktur Organisasi Terintegrasi
                 </span>
               </div>
               <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-                <Network className="size-5" />
+                <CheckCircle2 className="size-5" />
               </div>
             </CardContent>
           </Card>
@@ -394,7 +431,7 @@ export default function OrganisasiPage() {
         {/* BAGAN STRUKTUR ORGANISASI VISUAL                         */}
         {/* ======================================================== */}
         <div className="space-y-4">
-            {/* TOOLBAR FILTER & LEGENDA WARNA */}
+            {/* TOOLBAR FILTER & AKSI EKSPOR */}
             <Card className="border-gray-200 dark:border-gray-800">
               <CardContent className="p-3.5 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                 {/* Filter Departemen */}
@@ -428,18 +465,38 @@ export default function OrganisasiPage() {
                   ))}
                 </div>
 
-                {/* Legenda Garis Hijau vs Hitam & Zoom Controls */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-3 rounded-full bg-gray-50 dark:bg-gray-800/80 px-3.5 py-1 text-[11px] border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
-                      <span className="inline-block w-3.5 h-1 rounded bg-emerald-500 shadow-xs shadow-emerald-500/50"></span>
-                      <span>Garis Hijau: Terkoneksi</span>
-                    </div>
-                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                    <div className="flex items-center gap-1.5 font-semibold text-gray-900 dark:text-gray-200">
-                      <span className="inline-block w-3.5 h-1 rounded bg-black dark:bg-white shadow-xs"></span>
-                      <span>Garis Hitam: Belum Terkoneksi</span>
-                    </div>
+                {/* Ekspor Bagan (Gambar / PDF) & Zoom Controls */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Tombol Ekspor Gambar & Cetak/PDF */}
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportImage}
+                      disabled={isExporting}
+                      className="h-8 text-xs font-semibold border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                      title="Unduh bagan struktur organisasi sebagai file gambar PNG beresolusi tinggi (2x Retina)"
+                    >
+                      {isExporting ? (
+                        <Loader2 className="size-3.5 animate-spin text-blue-600" />
+                      ) : (
+                        <ImageIcon className="size-3.5 text-blue-600 dark:text-blue-400" />
+                      )}
+                      <span>{isExporting ? "Memproses..." : "Ekspor Gambar (.png)"}</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePrintPdf}
+                      className="h-8 text-xs font-semibold border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                      title="Cetak atau simpan struktur organisasi sebagai dokumen PDF (A4 Landscape)"
+                    >
+                      <Printer className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Cetak / PDF</span>
+                    </Button>
                   </div>
 
                   {/* Zoom Controls */}
@@ -476,32 +533,27 @@ export default function OrganisasiPage() {
               </CardContent>
             </Card>
 
-            {/* CANVAS UTAMA STRUKTUR ORGANISASI PERSIS REFERENSI GAMBAR */}
+            {/* CANVAS UTAMA STRUKTUR ORGANISASI */}
             <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 p-6 overflow-x-auto min-h-[680px] flex justify-center shadow-xs">
               <div
+                id="printable-org-chart"
+                ref={chartRef}
                 style={{
                   transform: `scale(${zoomLevel / 100})`,
                   transformOrigin: "top center",
                   transition: "transform 0.2s ease-in-out",
                 }}
                 className={cn(
-                  "flex flex-col items-center select-none py-4",
+                  "flex flex-col items-center select-none py-4 bg-white dark:bg-gray-950 p-4 rounded-xl",
                   visibleDepts.length > 5 ? "min-w-[1380px]" : "min-w-[980px]"
                 )}
               >
                 {/* ----------------------------------------------------------------- */}
-                {/* 1. NODE PUNCAK: DIREKTUR UTAMA (DARK BLUE PILL/BOX) */}
+                {/* 1. NODE PUNCAK: DIREKTUR UTAMA (DARK BLUE BOX) */}
                 {/* ----------------------------------------------------------------- */}
                 {dirutNode && (
                   <div className="flex flex-col items-center">
-                    <div
-                      className={cn(
-                        "relative w-72 rounded-2xl p-4 text-center text-white transition-all shadow-md border-2",
-                        dirutNode.isConnected
-                          ? "bg-[#0B3B7B] border-[#0B3B7B] shadow-[#0B3B7B]/20"
-                          : "bg-black border-black"
-                      )}
-                    >
+                    <div className="relative w-72 rounded-2xl p-4 text-center text-white transition-all shadow-md border-2 bg-[#0B3B7B] border-[#0B3B7B] shadow-[#0B3B7B]/20">
                       <div className="text-base font-extrabold tracking-tight">Direktur Utama</div>
                       <div className="mt-2.5 flex items-center justify-center gap-2.5 pt-2 border-t border-white/20">
                         <img
@@ -515,29 +567,21 @@ export default function OrganisasiPage() {
                         </div>
                       </div>
 
-                      {/* Tombol Toggle Garis Hijau / Hitam */}
+                      {/* Tombol Edit Icon Pensil Direktur Utama */}
                       {canManageOrg && (
                         <button
                           type="button"
-                          onClick={() => handleToggleConnection(dirutNode.id)}
-                          title="Klik untuk beralih warna garis hijau / hitam"
-                          className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white hover:bg-white/30"
+                          onClick={() => handleOpenEditModal(dirutNode)}
+                          title="Edit Direktur Utama"
+                          className="absolute top-2.5 right-2.5 flex items-center justify-center size-6 rounded-full bg-white/20 hover:bg-white/35 text-white transition-all shadow-xs cursor-pointer"
                         >
-                          <span className={cn("size-1.5 rounded-full", dirutNode.isConnected ? "bg-emerald-400" : "bg-gray-300")} />
-                          {dirutNode.isConnected ? "Konek" : "Putus"}
+                          <Edit2 className="size-3" />
                         </button>
                       )}
                     </div>
 
                     {/* GARIS VERTIKAL DARI DIRUT KE MANAJER UMUM */}
-                    <div
-                      className={cn(
-                        "w-1 h-7 transition-colors",
-                        dirutNode.isConnected && gmNode?.isConnected
-                          ? "bg-emerald-500 shadow-xs shadow-emerald-500/50"
-                          : "bg-black dark:bg-white"
-                      )}
-                    />
+                    <div className="w-1 h-7 bg-blue-600 dark:bg-blue-500 rounded-full shadow-xs" />
                   </div>
                 )}
 
@@ -546,14 +590,7 @@ export default function OrganisasiPage() {
                 {/* ----------------------------------------------------------------- */}
                 {gmNode && (
                   <div className="flex flex-col items-center">
-                    <div
-                      className={cn(
-                        "relative w-72 rounded-2xl p-4 text-center text-white transition-all shadow-md border-2",
-                        gmNode.isConnected
-                          ? "bg-[#4D88E3] border-[#4D88E3] shadow-[#4D88E3]/20"
-                          : "bg-black border-black"
-                      )}
-                    >
+                    <div className="relative w-72 rounded-2xl p-4 text-center text-white transition-all shadow-md border-2 bg-[#2563EB] border-[#2563EB] shadow-blue-500/20">
                       <div className="text-base font-extrabold tracking-tight">Manajer Umum</div>
                       <div className="text-[11px] font-medium text-blue-100">(General Manager)</div>
                       <div className="mt-2.5 flex items-center justify-center gap-2.5 pt-2 border-t border-white/20">
@@ -568,26 +605,21 @@ export default function OrganisasiPage() {
                         </div>
                       </div>
 
+                      {/* Tombol Edit Icon Pensil Manajer Umum */}
                       {canManageOrg && (
                         <button
                           type="button"
-                          onClick={() => handleToggleConnection(gmNode.id)}
-                          title="Klik untuk beralih warna garis hijau / hitam"
-                          className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-semibold text-white hover:bg-white/30"
+                          onClick={() => handleOpenEditModal(gmNode)}
+                          title="Edit Manajer Umum"
+                          className="absolute top-2.5 right-2.5 flex items-center justify-center size-6 rounded-full bg-white/20 hover:bg-white/35 text-white transition-all shadow-xs cursor-pointer"
                         >
-                          <span className={cn("size-1.5 rounded-full", gmNode.isConnected ? "bg-emerald-400" : "bg-gray-300")} />
-                          {gmNode.isConnected ? "Konek" : "Putus"}
+                          <Edit2 className="size-3" />
                         </button>
                       )}
                     </div>
 
                     {/* GARIS VERTIKAL DARI GM TURUN KE JALUR DISTRIBUSI DEPARTEMEN */}
-                    <div
-                      className={cn(
-                        "w-1 h-7 transition-colors",
-                        gmNode.isConnected ? "bg-emerald-500 shadow-xs shadow-emerald-500/50" : "bg-black dark:bg-white"
-                      )}
-                    />
+                    <div className="w-1 h-7 bg-blue-600 dark:bg-blue-500 rounded-full shadow-xs" />
                   </div>
                 )}
 
@@ -599,9 +631,8 @@ export default function OrganisasiPage() {
                   {visibleDepts.length > 1 && (
                     <div
                       className={cn(
-                        "h-1 transition-colors rounded-full mb-0",
-                        visibleDepts.length >= 6 ? "w-[94%]" : "w-3/4",
-                        gmNode?.isConnected ? "bg-emerald-500 shadow-xs shadow-emerald-500/40" : "bg-black dark:bg-white"
+                        "h-1 rounded-full mb-0 bg-blue-600 dark:bg-blue-500 shadow-xs",
+                        visibleDepts.length >= 6 ? "w-[94%]" : "w-3/4"
                       )}
                     />
                   )}
@@ -620,12 +651,7 @@ export default function OrganisasiPage() {
                         <div key={dept.id} className="flex flex-col items-center w-52 shrink-0">
                           {/* Garis Vertikal Cabang Turun dari Bus ke Header Departemen */}
                           {visibleDepts.length > 1 && (
-                            <div
-                              className={cn(
-                                "w-1 h-6 transition-colors",
-                                gmNode?.isConnected ? "bg-emerald-500" : "bg-black dark:bg-white"
-                              )}
-                            />
+                            <div className="w-1 h-6 bg-blue-600 dark:bg-blue-500 rounded-full" />
                           )}
 
                           {/* KOTAK HEADER DEPARTEMEN (DARK BLUE SESUAI GAMBAR) DENGAN TANDA + */}
@@ -647,19 +673,13 @@ export default function OrganisasiPage() {
                           </div>
 
                           {/* Garis Turun dari Header Dept ke Kepala Departemen */}
-                          <div
-                            className={cn(
-                              "w-0.5 h-5 transition-colors",
-                              kepalaNode?.isConnected ? "bg-emerald-500" : "bg-black dark:bg-white"
-                            )}
-                          />
+                          <div className="w-0.5 h-5 bg-blue-600 dark:bg-blue-500 rounded-full" />
 
                           {/* KARTU KEPALA DEPARTEMEN */}
                           {kepalaNode ? (
                             <NodeCard
                               node={kepalaNode}
                               onEdit={() => handleOpenEditModal(kepalaNode)}
-                              onToggleConnect={() => handleToggleConnection(kepalaNode.id)}
                               onRemoveHolder={(idx) => removeHolderFromPosition(kepalaNode.id, idx)}
                               isHead
                               canEdit={canManageOrg}
@@ -683,18 +703,12 @@ export default function OrganisasiPage() {
                           {staffList.map((staff) => (
                             <React.Fragment key={staff.id}>
                               {/* Garis Konektor Vertikal Antar Staf */}
-                              <div
-                                className={cn(
-                                  "w-0.5 h-5 transition-colors",
-                                  staff.isConnected ? "bg-emerald-500" : "bg-black dark:bg-white"
-                                )}
-                              />
+                              <div className="w-0.5 h-5 bg-blue-600 dark:bg-blue-500 rounded-full" />
 
                               {/* Kartu Staf */}
                               <NodeCard
                                 node={staff}
                                 onEdit={() => handleOpenEditModal(staff)}
-                                onToggleConnect={() => handleToggleConnection(staff.id)}
                                 onRemoveHolder={(idx) => removeHolderFromPosition(staff.id, idx)}
                                 canEdit={canManageOrg}
                               />
@@ -1015,7 +1029,7 @@ export default function OrganisasiPage() {
           open={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           title="Edit Relasi Jabatan & Karyawan"
-          description="Sesuaikan nama karyawan pemegang jabatan dan status garis koneksi."
+          description="Sesuaikan nama jabatan dan nama personel pemegang jabatan."
           className="max-w-md text-xs"
         >
           <form onSubmit={handleSavePosition} className="space-y-3.5 pt-2">
@@ -1043,34 +1057,6 @@ export default function OrganisasiPage() {
               />
             </div>
 
-            {/* SAKELAR KONEKSI GARIS HIJAU / HITAM */}
-            <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-3 dark:border-gray-800 dark:bg-gray-800/50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-gray-900 dark:text-white text-xs block">
-                    Status Garis Koneksi
-                  </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                    {formIsConnected
-                      ? "🟢 Garis Hijau: Jalur approval aktif & terhubung"
-                      : "⚫ Garis Hitam: Jalur belum terhubung / putus"}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormIsConnected(!formIsConnected)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-bold transition-all shadow-xs",
-                    formIsConnected
-                      ? "bg-emerald-600 text-white"
-                      : "bg-black text-white dark:bg-gray-950 dark:border dark:border-gray-700"
-                  )}
-                >
-                  {formIsConnected ? "Hijau (Konek)" : "Hitam (Putus)"}
-                </button>
-              </div>
-            </div>
-
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
               <Button
                 type="button"
@@ -1088,6 +1074,33 @@ export default function OrganisasiPage() {
             </div>
           </form>
         </Dialog>
+
+        {/* CSS Cetak / PDF Khusus Dokumen Bagan */}
+        <style jsx global>{`
+          @media print {
+            body {
+              background: #ffffff !important;
+              color: #000000 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            header, aside, nav, .no-print, [role="navigation"], button {
+              display: none !important;
+            }
+            #printable-org-chart {
+              transform: scale(0.85) !important;
+              transform-origin: top center !important;
+              width: 100% !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+            }
+            @page {
+              size: landscape;
+              margin: 8mm;
+            }
+          }
+        `}</style>
       </div>
     </AppLayout>
   );
@@ -1100,7 +1113,6 @@ export default function OrganisasiPage() {
 interface NodeCardProps {
   node: PositionNode;
   onEdit: () => void;
-  onToggleConnect: () => void;
   onRemoveHolder?: (holderIndex: number) => void;
   isHead?: boolean;
   canEdit?: boolean;
@@ -1109,7 +1121,6 @@ interface NodeCardProps {
 function NodeCard({
   node,
   onEdit,
-  onToggleConnect,
   onRemoveHolder,
   isHead = false,
   canEdit = true,
@@ -1120,13 +1131,10 @@ function NodeCard({
   return (
     <div
       className={cn(
-        "group relative w-full rounded-xl p-2.5 text-center transition-all shadow-xs border-2 select-none",
+        "group relative w-full rounded-xl p-2.5 text-center transition-all shadow-xs border select-none",
         isHead
-          ? "bg-blue-50/90 dark:bg-blue-950/40"
-          : "bg-white dark:bg-gray-900",
-        node.isConnected
-          ? "border-emerald-500 shadow-emerald-500/10 dark:border-emerald-500"
-          : "border-black dark:border-white shadow-black/10"
+          ? "bg-blue-50/90 border-blue-300 dark:bg-blue-950/40 dark:border-blue-800"
+          : "bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-800 hover:border-blue-400 dark:hover:border-blue-600"
       )}
     >
       <div className="flex items-center justify-center gap-1.5">
@@ -1219,24 +1227,11 @@ function NodeCard({
         <div className="absolute -top-2 right-1 hidden group-hover:flex items-center gap-1 bg-white/95 dark:bg-gray-900/95 rounded-full p-0.5 shadow-md border border-gray-200 dark:border-gray-700 z-10">
           <button
             type="button"
-            onClick={onToggleConnect}
-            title={`Garis saat ini: ${
-              node.isConnected ? "Hijau (Terkoneksi)" : "Hitam (Terputus)"
-            }. Klik untuk beralih.`}
-            className={cn(
-              "size-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white",
-              node.isConnected ? "bg-emerald-500" : "bg-black"
-            )}
-          >
-            {node.isConnected ? "✓" : "✕"}
-          </button>
-          <button
-            type="button"
             onClick={onEdit}
             title="Edit Karyawan / Jabatan"
-            className="size-4 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+            className="size-5 rounded-full flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-800 text-gray-500 transition-colors"
           >
-            <Edit2 className="size-2.5" />
+            <Edit2 className="size-3" />
           </button>
         </div>
       )}

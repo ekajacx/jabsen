@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,7 @@ interface AttendanceRecord {
 }
 
 export default function AbsenPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { showAlert } = useModal();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -586,7 +588,7 @@ export default function AbsenPage() {
                   type="button"
                   variant="default"
                   className="flex-1"
-                  onClick={() => (window.location.href = "/dashboard")}
+                  onClick={() => router.push("/dashboard")}
                 >
                   Kembali ke Dashboard
                 </Button>
@@ -648,7 +650,7 @@ export default function AbsenPage() {
                   type="button"
                   variant="default"
                   className="w-full justify-center"
-                  onClick={() => (window.location.href = "/dashboard")}
+                  onClick={() => router.push("/dashboard")}
                 >
                   Kembali ke Dashboard
                 </Button>
@@ -1132,7 +1134,7 @@ export default function AbsenPage() {
                 className="flex-1 gap-1.5"
                 onClick={() => {
                   setShowSuccessModal(false);
-                  window.location.href = "/dashboard";
+                  router.push("/dashboard");
                 }}
               >
                 Ke Dashboard

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,8 @@ import { useModal } from "@/context/modal-context";
 import { useOrgData, Department } from "@/lib/org-data";
 
 export default function DepartemenPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
   const { showConfirm } = useModal();
   const isAuthorized = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
@@ -119,6 +121,17 @@ export default function DepartemenPage() {
     return d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q) || d.description.toLowerCase().includes(q);
   });
 
+  if (!isAuthReady) {
+    return (
+      <AppLayout pageTitle="Manajemen Departemen">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="mt-3 text-xs text-gray-400">Memverifikasi hak akses...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!isAuthorized) {
     return (
       <AppLayout pageTitle="Akses Dibatasi">
@@ -132,7 +145,7 @@ export default function DepartemenPage() {
               Manajemen Departemen hanya dapat dikelola oleh akun dengan wewenang Direktur Utama, General Manager, Kepala HR, atau Admin IT.
             </p>
           </div>
-          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+          <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
             Kembali ke Dashboard
           </Button>
         </div>

@@ -339,16 +339,20 @@ export default function RiwayatPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Hari Kerja</span>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totalHadir}</p>
-              <span className="text-[10px] text-emerald-600 font-medium">Bulan Berjalan</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Hari Masuk</span>
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                {totalHadir} <span className="text-xs font-normal text-gray-500">Hari</span>
+              </p>
+              <span className="text-[10px] text-emerald-600 font-medium">Bulan Ini (November 2026)</span>
             </CardContent>
           </Card>
 
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Tepat Waktu</span>
-              <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{tepatWaktu}</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {tepatWaktu} <span className="text-xs font-normal text-emerald-600/70">Hari</span>
+              </p>
               <span className="text-[10px] text-emerald-600 font-medium">95% Rasio Kedisiplinan</span>
             </CardContent>
           </Card>
@@ -356,7 +360,9 @@ export default function RiwayatPage() {
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Terlambat</span>
-              <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">{terlambat}</p>
+              <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+                {terlambat} <span className="text-xs font-normal text-amber-600/70">Hari</span>
+              </p>
               <span className="text-[10px] text-amber-600 font-medium">Dapat diajukan koreksi</span>
             </CardContent>
           </Card>
@@ -364,7 +370,9 @@ export default function RiwayatPage() {
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Cuti / Izin</span>
-              <p className="mt-1 text-2xl font-bold text-brand-600 dark:text-brand-400">{cutiIzin}</p>
+              <p className="mt-1 text-2xl font-bold text-brand-600 dark:text-brand-400">
+                {cutiIzin} <span className="text-xs font-normal text-brand-600/70">Hari</span>
+              </p>
               <span className="text-[10px] text-gray-400 font-medium">Tersisa 10 hari saldo</span>
             </CardContent>
           </Card>

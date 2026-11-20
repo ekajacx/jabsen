@@ -31,6 +31,7 @@ export function MobileNav({ onOpenSidebar }: MobileNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className="group flex flex-col items-center justify-center -mt-5"
             >
               <div className="flex size-12 items-center justify-center rounded-full bg-brand-500 text-white shadow-theme-md shadow-brand-500/30 ring-4 ring-white dark:ring-gray-900 transition-transform active:scale-95">
@@ -47,6 +48,7 @@ export function MobileNav({ onOpenSidebar }: MobileNavProps) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             className={cn(
               "flex flex-col items-center justify-center px-3 py-1 transition-colors select-none",
               isActive

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
-import * as XLSX from "xlsx";
 import { exportAuditLogsToExcel } from "@/lib/excel-export";
 import {
   ShieldAlert,
@@ -31,6 +31,9 @@ import {
   XCircle,
   Database,
   Crown,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export interface AuditLogEntry {
@@ -56,6 +59,203 @@ export interface AuditLogEntry {
 }
 
 const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
+  // 20 November 2026 (Hari Ini)
+  {
+    id: "WORM-20261120-0105",
+    timestamp: "2026-11-20 08:02:15",
+    actorName: "Budi Santoso",
+    actorRole: "Staff",
+    actorEmail: "budi.santoso@perusahaan.co.id",
+    ipAddress: "182.253.110.12",
+    actionName: "Presensi Masuk (Clock-In Mobile)",
+    module: "Absensi & Kehadiran",
+    targetObject: "LOG-20261120-001",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "d7a90f14b62e49c812d9f43058b76e104938a12bc9a4f89d3c52e89b41a7d0e6",
+    prevHash: "c6e89d03a51d38b701c8e32f47a65d0f3827901ab8e54c82b41d78902781a9f5",
+    details: {
+      description: "Absensi masuk dengan verifikasi wajah 4 gerakan acak dan GNSS GPS di dalam geofence kantor.",
+      after: { jamMasuk: "08:02:15", lateMinutes: 2, status: "Terlambat", inGeofence: true },
+    },
+  },
+  {
+    id: "WORM-20261120-0104",
+    timestamp: "2026-11-20 07:45:10",
+    actorName: "Siti Rahmawati",
+    actorRole: "Supervisor",
+    actorEmail: "siti.rahmawati@perusahaan.co.id",
+    ipAddress: "192.168.1.28",
+    actionName: "Verifikasi Pengajuan Koreksi Absensi (Tahap 1)",
+    module: "Koreksi Absensi",
+    targetObject: "CORR-20261119-002 (Budi Santoso)",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "c6e89d03a51d38b701c8e32f47a65d0f3827901ab8e54c82b41d78902781a9f5",
+    prevHash: "b5d78c92940c27a690b7d21e36954c0e27168909a7d43b71a30c6789167098e4",
+    details: {
+      description: "Verifikasi kewajaran permohonan koreksi absensi keterlambatan staf operasional sesuai riwayat log.",
+      after: { status: "Pending HRD", approvalStep: 1, verifier: "Supervisor" },
+    },
+  },
+  {
+    id: "WORM-20261120-0103",
+    timestamp: "2026-11-20 07:15:32",
+    actorName: "Bambang Sutrisno",
+    actorRole: "CEO",
+    actorEmail: "bambang.sutrisno@perusahaan.co.id",
+    ipAddress: "192.168.1.10",
+    actionName: "Pemeriksaan Audit Log Pengawasan Independen",
+    module: "Audit Log WORM",
+    targetObject: "Seluruh Jejak Audit Sistem",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "b5d78c92940c27a690b7d21e36954c0e27168909a7d43b71a30c6789167098e4",
+    prevHash: "a4c67b8183fb16958fa6c10d25843b0d160578f896c32a6092fb5678056f87d3",
+    details: {
+      description: "Inspeksi integritas rantai kriptografi harian dan audit berkas sistem keamanan WORM (P-15).",
+      after: { scope: "Org", actorFilter: "Semua", totalAudited: 25 },
+    },
+  },
+  {
+    id: "WORM-20261120-0102",
+    timestamp: "2026-11-20 06:55:00",
+    actorName: "Hendra Wijaya",
+    actorRole: "GM",
+    actorEmail: "hendra.wijaya@perusahaan.co.id",
+    ipAddress: "192.168.1.15",
+    actionName: "Penerbitan Jadwal Roster Shift Mingguan",
+    module: "Shift & Geofence",
+    targetObject: "Dept: Operasional (Roster W-47)",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "a4c67b8183fb16958fa6c10d25843b0d160578f896c32a6092fb5678056f87d3",
+    prevHash: "93b56a7072ea05847e95b0fc14732a0c05f467e785b2195f81ea4567f45e76c2",
+    details: {
+      description: "Penerbitan jadwal roster shift kerja mingguan untuk 27 karyawan operasional.",
+      after: { weekNumber: 47, totalAssigned: 27, status: "Published" },
+    },
+  },
+  {
+    id: "WORM-20261120-0101",
+    timestamp: "2026-11-20 06:30:18",
+    actorName: "Dewi Lestari",
+    actorRole: "HRD",
+    actorEmail: "dewi.lestari@perusahaan.co.id",
+    ipAddress: "192.168.1.44",
+    actionName: "Ekspor Laporan Rekapitulasi Presensi Mingguan",
+    module: "Laporan & Ekspor",
+    targetObject: "Semua Karyawan (Periode W-47)",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "93b56a7072ea05847e95b0fc14732a0c05f467e785b2195f81ea4567f45e76c2",
+    prevHash: "82a4596f61d9f4736d84afeb036219fb94e356d674a1084e70d93456e34d65b1",
+    details: {
+      description: "Unduh rekapitulasi data kehadiran berformat Excel standar administrasi perusahaan.",
+      after: { totalRows: 27, format: "xlsx", scope: "Global" },
+    },
+  },
+
+  // 19 November 2026 (Kemarin)
+  {
+    id: "WORM-20261119-0100",
+    timestamp: "2026-11-19 18:22:10",
+    actorName: "Dewi Lestari",
+    actorRole: "HRD",
+    actorEmail: "dewi.lestari@perusahaan.co.id",
+    ipAddress: "192.168.1.44",
+    actionName: "Pengaktifan Kembali Status Karyawan",
+    module: "Manajemen Karyawan",
+    targetObject: "EMP-007 (Rian Hidayat)",
+    riskLevel: "WARNING",
+    status: "SUCCESS",
+    hash: "82a4596f61d9f4736d84afeb036219fb94e356d674a1084e70d93456e34d65b1",
+    prevHash: "7193485e50c8e3625c739eda925108ea83d245c56390f73d6fc82345d23c54a0",
+    details: {
+      description: "Aktivasi kembali akun dan status kepegawaian karyawan dari status resign ke aktif.",
+      before: { status: "Nonaktif (Resign)" },
+      after: { status: "Aktif", department: "IT & Security" },
+    },
+  },
+  {
+    id: "WORM-20261119-0099",
+    timestamp: "2026-11-19 17:10:45",
+    actorName: "Rian Saputra (Primary IT)",
+    actorRole: "Admin IT",
+    actorEmail: "admin.it@perusahaan.co.id",
+    ipAddress: "192.168.1.105",
+    actionName: "Konfigurasi Radius Geofence Lokasi Kantor",
+    module: "Shift & Geofence",
+    targetObject: "Kantor Pusat Jakarta (Radius 100m)",
+    riskLevel: "CRITICAL",
+    status: "SUCCESS",
+    hash: "7193485e50c8e3625c739eda925108ea83d245c56390f73d6fc82345d23c54a0",
+    prevHash: "6082374d4fb7d2514b628dc98140f7d972c134b4528fe62c5eb71234c12b439f",
+    details: {
+      description: "Pembaruan toleransi perimeter geofence kantor pusat dari 80m menjadi 100m.",
+      before: { radiusMeters: 80 },
+      after: { radiusMeters: 100 },
+    },
+  },
+  {
+    id: "WORM-20261119-0098",
+    timestamp: "2026-11-19 16:55:12",
+    actorName: "Rian Hidayat",
+    actorRole: "Staff",
+    actorEmail: "rian.it@perusahaan.co.id",
+    ipAddress: "192.168.1.110",
+    actionName: "Presensi Pulang (Clock-Out Mobile)",
+    module: "Absensi & Kehadiran",
+    targetObject: "LOG-20261119-003",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "6082374d4fb7d2514b628dc98140f7d972c134b4528fe62c5eb71234c12b439f",
+    prevHash: "5f71263c3ea6c1403a517cb8703fe6c861b023a3417ed51b4da60123b01a328e",
+    details: {
+      description: "Absensi kepulangan berhasil diverifikasi melalui kecocokan biometrik wajah dan radius valid.",
+      after: { jamPulang: "16:55:12", inGeofence: true, workHours: "8j 55m" },
+    },
+  },
+  {
+    id: "WORM-20261119-0097",
+    timestamp: "2026-11-19 14:12:00",
+    actorName: "User Anonim / External Client",
+    actorRole: "Tamu",
+    actorEmail: "external@unknown-device.net",
+    ipAddress: "103.111.45.12",
+    actionName: "Percobaan Akses Multi-Device Ilegal",
+    module: "Autentikasi",
+    targetObject: "Akun: budi.santoso",
+    riskLevel: "WARNING",
+    status: "BLOCKED",
+    hash: "5f71263c3ea6c1403a517cb8703fe6c861b023a3417ed51b4da60123b01a328e",
+    prevHash: "4e60152b2d95b03f29406ba76f2ed5b750af1292306dc40a3c95f012af09217d",
+    details: {
+      description: "Sistem mendeteksi login dari perangkat yang belum terikat (Device Binding Protection).",
+      reason: "Device Fingerprint tidak terdaftar pada whitelist akun karyawan bersangkutan.",
+    },
+  },
+  {
+    id: "WORM-20261119-0096",
+    timestamp: "2026-11-19 11:30:20",
+    actorName: "Dewi Lestari",
+    actorRole: "HRD",
+    actorEmail: "dewi.lestari@perusahaan.co.id",
+    ipAddress: "192.168.1.44",
+    actionName: "Persetujuan Review Sampel Biometrik Wajah",
+    module: "Biometrik Wajah",
+    targetObject: "EMP-003 (Dewi Lestari)",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "4e60152b2d95b03f29406ba76f2ed5b750af1292306dc40a3c95f012af09217d",
+    prevHash: "a4f89d3c52e89b41a7d0e6538c29b71a2e49c812d9f43058b76e104938a12bc9",
+    details: {
+      description: "Verifikasi dan validasi 3 sampel sudut pengambilan foto selfie biometrik wajah.",
+      after: { status: "Disetujui", qualityScore: "96%", reviewer: "HRD" },
+    },
+  },
+
+  // 18 November 2026
   {
     id: "WORM-20261118-0091",
     timestamp: "2026-11-18 20:38:21",
@@ -73,7 +273,7 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     details: {
       description: "Pembaruan izin mandiri dan penyederhanaan antarmuka sakelar instan matriks hak akses.",
       before: { rbacVersion: "v1.0-alpha", mode: "complex-scope" },
-      after: { rbacVersion: "v1.0-final", mode: "instant-toggle", rulesCount: 41 },
+      after: { rbacVersion: "v1.0-final", mode: "instant-toggle", rulesCount: 50 },
       reason: "Permintaan optimalisasi kode dan antarmuka oleh pengguna.",
     },
   },
@@ -249,15 +449,122 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
       after: { scope: "Org", actorFilter: "Admin IT" },
     },
   },
+
+  // 17 November 2026
+  {
+    id: "WORM-20261117-0081",
+    timestamp: "2026-11-17 14:20:15",
+    actorName: "Budi Santoso",
+    actorRole: "Staff",
+    actorEmail: "budi.santoso@perusahaan.co.id",
+    ipAddress: "182.253.110.12",
+    actionName: "Pengajuan Permohonan Cuti Tahunan",
+    module: "Approval Cuti",
+    targetObject: "CUTI-202611-002",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "e4a2303f5b246c07122f3268543a5cb106db3f283542645019268342502f2356",
+    prevHash: "d391202e4a135b06011e215743294ba005ca2e172431534f081572314f1e1245",
+    details: {
+      description: "Permohonan cuti tahunan selama 2 hari kerja untuk keperluan pemeriksaan kesehatan.",
+      after: { startDate: "2026-11-19", endDate: "2026-11-20", duration: 2 },
+    },
+  },
+  {
+    id: "WORM-20261117-0080",
+    timestamp: "2026-11-17 10:15:00",
+    actorName: "Dewi Lestari",
+    actorRole: "HRD",
+    actorEmail: "dewi.lestari@perusahaan.co.id",
+    ipAddress: "192.168.1.44",
+    actionName: "Pendaftaran Karyawan Baru ke Struktur",
+    module: "Manajemen Karyawan",
+    targetObject: "EMP-008 (Ratna Sari)",
+    riskLevel: "INFO",
+    status: "SUCCESS",
+    hash: "d391202e4a135b06011e215743294ba005ca2e172431534f081572314f1e1245",
+    prevHash: "c280191d39024a95f00d104632183a9ff4b91d061320423e970461203e0d0134",
+    details: {
+      description: "Penambahan data personil baru dan penerbitan akun kredensial awal sistem HRIS.",
+      after: { employeeId: "EMP-008", name: "Ratna Sari", role: "Staff" },
+    },
+  },
+  {
+    id: "WORM-20261117-0079",
+    timestamp: "2026-11-17 09:05:40",
+    actorName: "Rian Saputra (Primary IT)",
+    actorRole: "Admin IT",
+    actorEmail: "admin.it@perusahaan.co.id",
+    ipAddress: "192.168.1.105",
+    actionName: "Reset Kredensial & Ikatan Perangkat HP",
+    module: "Autentikasi",
+    targetObject: "EMP-001 (Budi Santoso)",
+    riskLevel: "WARNING",
+    status: "SUCCESS",
+    hash: "c280191d39024a95f00d104632183a9ff4b91d061320423e970461203e0d0134",
+    prevHash: "b17f080c28913984ef9c0f352107298ee3a80c95021f312d86f3501f2d9cf023",
+    details: {
+      description: "Reset pengikatan perangkat (Device Binding Reset) karena pergantian ponsel dinas.",
+      reason: "Permintaan resmi karyawan dengan persetujuan atasan langsung.",
+    },
+  },
+
+  // 16 November 2026
+  {
+    id: "WORM-20261116-0078",
+    timestamp: "2026-11-16 15:30:00",
+    actorName: "Hendra Wijaya",
+    actorRole: "GM",
+    actorEmail: "hendra.wijaya@perusahaan.co.id",
+    ipAddress: "192.168.1.15",
+    actionName: "Pembuatan Unit Departemen Baru",
+    module: "Manajemen Departemen",
+    targetObject: "Departemen Marketing & Sales",
+    riskLevel: "CRITICAL",
+    status: "SUCCESS",
+    hash: "b17f080c28913984ef9c0f352107298ee3a80c95021f312d86f3501f2d9cf023",
+    prevHash: "0000000000000000000000000000000000000000000000000000000000000000",
+    details: {
+      description: "Pendaftaran unit departemen operasional baru ke dalam bagan hierarki organisasi.",
+      after: { code: "DEPT-MKT", name: "Marketing & Sales", head: "Hendra Wijaya" },
+    },
+  },
+  {
+    id: "WORM-20261116-0077",
+    timestamp: "2026-11-16 08:00:00",
+    actorName: "Eka Jacx (Primary IT)",
+    actorRole: "Admin IT",
+    actorEmail: "admin.it@perusahaan.co.id",
+    ipAddress: "192.168.1.105",
+    actionName: "Inisialisasi Kunci Hash Genesis WORM Block",
+    module: "Audit Log WORM",
+    targetObject: "Blok Genesis Integritas WORM",
+    riskLevel: "CRITICAL",
+    status: "SUCCESS",
+    hash: "0000000000000000000000000000000000000000000000000000000000000000",
+    prevHash: "GENESIS_BLOCK_ROOT_SECURITY_KEY_J_ABSEN_HRIS_2026_AUDIT_COMPLIANCE",
+    details: {
+      description: "Inisialisasi rantai log audit WORM (Write Once, Read Many) berbasis SHA-256 berstandar perbankan.",
+      after: { version: "2.0-secure", algorithm: "SHA-256", appendOnly: true },
+    },
+  },
 ];
 
 export default function AuditLogPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
 
-  // Filter States: Hanya 2 Filter (Modul & Tingkat Risiko) + Pencarian
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  // Filter States: Tanggal, Modul, Risiko, dan Pencarian
+  const [datePreset, setDatePreset] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [selectedModule, setSelectedModule] = useState<string>("Semua");
   const [selectedRisk, setSelectedRisk] = useState<string>("Semua");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // State Detail Modal
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
@@ -271,12 +578,55 @@ export default function AuditLogPage() {
     chainIntegrity: string;
   } | null>(null);
 
+  // Handler Ganti Preset Tanggal
+  const handlePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    setCurrentPage(1);
+
+    if (preset === "all") {
+      setStartDate("");
+      setEndDate("");
+    } else if (preset === "today") {
+      setStartDate("2026-11-20");
+      setEndDate("2026-11-20");
+    } else if (preset === "yesterday") {
+      setStartDate("2026-11-19");
+      setEndDate("2026-11-19");
+    } else if (preset === "7days") {
+      setStartDate("2026-11-14");
+      setEndDate("2026-11-20");
+    } else if (preset === "thisMonth") {
+      setStartDate("2026-11-01");
+      setEndDate("2026-11-20");
+    }
+  };
+
+  // Reset Semua Filter
+  const handleResetFilters = () => {
+    setDatePreset("all");
+    setStartDate("");
+    setEndDate("");
+    setSelectedModule("Semua");
+    setSelectedRisk("Semua");
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
+
   // Filtered Logs
   const filteredLogs = useMemo(() => {
     return INITIAL_AUDIT_LOGS.filter((log) => {
+      // 1. Filter Tanggal
+      const logDate = log.timestamp.slice(0, 10);
+      if (startDate && logDate < startDate) return false;
+      if (endDate && logDate > endDate) return false;
+
+      // 2. Filter Modul
       if (selectedModule !== "Semua" && log.module !== selectedModule) return false;
+
+      // 3. Filter Tingkat Risiko
       if (selectedRisk !== "Semua" && log.riskLevel !== selectedRisk) return false;
 
+      // 4. Pencarian Cepat
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -290,7 +640,42 @@ export default function AuditLogPage() {
       }
       return true;
     });
-  }, [searchQuery, selectedModule, selectedRisk]);
+  }, [searchQuery, selectedModule, selectedRisk, startDate, endDate]);
+
+  // Total Halaman
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
+
+  // Pastikan currentPage selalu berada dalam rentang valid saat filter berubah
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  // Paginated Data
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredLogs.slice(start, start + itemsPerPage);
+  }, [filteredLogs, currentPage, itemsPerPage]);
+
+  // Deretan Nomor Halaman (1, 2, 3...)
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Handler Verifikasi Rantai Hash Kriptografi WORM (P-15)
   const handleVerifyChain = () => {
@@ -310,12 +695,33 @@ export default function AuditLogPage() {
 
   // Handler Ekspor Audit Log ke File Excel (.xlsx) Standar Korporat
   const handleExportExcel = () => {
+    let dateRangeText = "Semua Tanggal";
+    if (startDate && endDate) {
+      dateRangeText = `${startDate} s/d ${endDate}`;
+    } else if (startDate) {
+      dateRangeText = `Mulai ${startDate}`;
+    } else if (endDate) {
+      dateRangeText = `Hingga ${endDate}`;
+    }
+
     exportAuditLogsToExcel(filteredLogs, {
       moduleFilter: selectedModule,
       riskFilter: selectedRisk,
+      dateRangeText,
       currentUser: user ? { name: user.name, role: user.role } : undefined,
     });
   };
+
+  if (!isAuthReady) {
+    return (
+      <AppLayout pageTitle="Audit Log WORM">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="mt-3 text-xs text-gray-400">Memverifikasi hak akses...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const isAuthorized = ["Admin IT", "CEO"].includes(user?.role || "");
 
@@ -332,7 +738,7 @@ export default function AuditLogPage() {
               Jejak Forensik & Audit Log Keamanan Sistem hanya dapat diakses oleh Admin IT dan Direktur Utama.
             </p>
           </div>
-          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+          <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
             Kembali ke Dashboard
           </Button>
         </div>
@@ -477,91 +883,175 @@ export default function AuditLogPage() {
           </Card>
         </div>
 
-        {/* PANEL FILTER TERSTRUKTUR: HANYA 2 FILTER (MODUL & TINGKAT RISIKO) */}
-        <Card className="border-gray-200 dark:border-gray-800">
-          <CardContent className="p-4">
+        {/* PANEL FILTER TERSTRUKTUR & RAPI */}
+        <Card className="border-gray-200 dark:border-gray-800 shadow-2xs">
+          <CardHeader className="pb-3 border-b border-gray-100 dark:border-gray-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                  <Filter className="size-3.5" />
+                </div>
+                <div>
+                  <CardTitle className="text-xs sm:text-sm font-semibold">
+                    Filter & Parameter Pencarian
+                  </CardTitle>
+                </div>
+              </div>
+
+              {/* QUICK PRESETS PERIODE & RESET BUTTON */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: "all", label: "Semua Waktu" },
+                  { id: "today", label: "Hari Ini" },
+                  { id: "yesterday", label: "Kemarin" },
+                  { id: "7days", label: "7 Hari" },
+                  { id: "thisMonth", label: "Bulan Ini" },
+                ].map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handlePresetChange(preset.id)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                      datePreset === preset.id
+                        ? "bg-brand-600 text-white shadow-2xs dark:bg-brand-500"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  title="Reset Semua Filter"
+                  className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-750 transition-colors ml-1"
+                >
+                  <RotateCcw className="size-3" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-              {/* Filter 1: Modul Kejadian */}
-              <div className="lg:col-span-4">
+              {/* 1. Dari Tanggal */}
+              <div className="lg:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  Dari Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setDatePreset("custom");
+                    setCurrentPage(1);
+                  }}
+                  className="w-full h-9 rounded-xl border border-gray-300 bg-white px-3 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              {/* 2. Sampai Tanggal */}
+              <div className="lg:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  Sampai Tanggal
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setDatePreset("custom");
+                    setCurrentPage(1);
+                  }}
+                  className="w-full h-9 rounded-xl border border-gray-300 bg-white px-3 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              {/* 3. Modul Kejadian */}
+              <div className="lg:col-span-3">
                 <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Modul Kejadian
                 </label>
                 <select
                   value={selectedModule}
-                  onChange={(e) => setSelectedModule(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  onChange={(e) => {
+                    setSelectedModule(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full h-9 rounded-xl border border-gray-300 bg-white px-3 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
                   <option value="Semua">Semua Modul</option>
                   <option value="Hak Akses & RBAC">Hak Akses & RBAC</option>
                   <option value="Laporan & Ekspor">Laporan & Ekspor</option>
                   <option value="Biometrik Wajah">Biometrik Wajah</option>
                   <option value="Approval Cuti">Approval Cuti</option>
+                  <option value="Koreksi Absensi">Koreksi Absensi</option>
                   <option value="Absensi & Kehadiran">Absensi & Kehadiran</option>
                   <option value="Autentikasi">Autentikasi</option>
                   <option value="Shift & Geofence">Shift & Geofence</option>
+                  <option value="Manajemen Karyawan">Manajemen Karyawan</option>
+                  <option value="Manajemen Departemen">Manajemen Departemen</option>
                   <option value="Audit Log WORM">Audit Log WORM</option>
                 </select>
               </div>
 
-              {/* Filter 2: Tingkat Risiko */}
-              <div className="lg:col-span-3">
+              {/* 4. Tingkat Risiko */}
+              <div className="lg:col-span-2">
                 <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Tingkat Risiko
                 </label>
                 <select
                   value={selectedRisk}
-                  onChange={(e) => setSelectedRisk(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  onChange={(e) => {
+                    setSelectedRisk(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full h-9 rounded-xl border border-gray-300 bg-white px-3 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
-                  <option value="Semua">Semua Tingkat Risiko</option>
-                  <option value="INFO">Info (Aktivitas Standar)</option>
-                  <option value="WARNING">Peringatan (Warning)</option>
-                  <option value="CRITICAL">Kritis (Tindakan Kritis)</option>
+                  <option value="Semua">Semua Tingkat</option>
+                  <option value="INFO">Info (Standar)</option>
+                  <option value="WARNING">Peringatan</option>
+                  <option value="CRITICAL">Kritis</option>
                 </select>
               </div>
 
-              {/* Search Box */}
-              <div className="lg:col-span-4">
+              {/* 5. Pencarian Cepat */}
+              <div className="lg:col-span-3">
                 <label className="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
                   Pencarian Cepat
                 </label>
                 <div className="relative">
                   <Search className="absolute left-3 top-2.5 size-3.5 text-gray-400" />
-                  <Input
-                    placeholder="Cari aktor, aksi, IP, atau ID log..."
+                  <input
+                    type="text"
+                    placeholder="Cari aktor, IP, ID..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 text-xs rounded-xl"
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full h-9 rounded-xl border border-gray-300 bg-white pl-9 pr-3 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                   />
                 </div>
-              </div>
-
-              {/* Reset Filter Button */}
-              <div className="lg:col-span-1 flex items-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedModule("Semua");
-                    setSelectedRisk("Semua");
-                    setSearchQuery("");
-                  }}
-                  title="Reset Filter"
-                  className="w-full h-9 flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 transition-colors font-medium"
-                >
-                  <RotateCcw className="size-3.5 text-gray-400" />
-                  <span className="lg:hidden">Reset</span>
-                </button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* TABEL LOG AUDIT KRONOLOGIS */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        {/* TABEL LOG AUDIT KRONOLOGIS DENGAN PAGINASI */}
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
           <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">
                 Catatan Jejak Audit ({filteredLogs.length})
+                {totalPages > 1 && (
+                  <span className="ml-2 text-xs font-normal text-gray-400">
+                    — Halaman {currentPage} dari {totalPages}
+                  </span>
+                )}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Seluruh aktivitas terindeks dengan stempel waktu dan tanda tangan hash kriptografi
@@ -586,14 +1076,14 @@ export default function AuditLogPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredLogs.length === 0 ? (
+                {paginatedLogs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
-                      Tidak ada catatan audit yang cocok dengan filter.
+                      Tidak ada catatan audit yang cocok dengan filter tanggal atau kata kunci yang dipilih.
                     </td>
                   </tr>
                 ) : (
-                  filteredLogs.map((log) => (
+                  paginatedLogs.map((log) => (
                     <tr
                       key={log.id}
                       onClick={() => setSelectedLog(log)}
@@ -671,6 +1161,105 @@ export default function AuditLogPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* PAGINATION FOOTER (Page 1, 2, 3 dst.) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 px-5 py-3.5 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+            {/* Info Range Data & Selector Items Per Page */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                Menampilkan{" "}
+                <strong className="text-gray-900 dark:text-white font-semibold">
+                  {filteredLogs.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
+                </strong>{" "}
+                -{" "}
+                <strong className="text-gray-900 dark:text-white font-semibold">
+                  {Math.min(currentPage * itemsPerPage, filteredLogs.length)}
+                </strong>{" "}
+                dari{" "}
+                <strong className="text-gray-900 dark:text-white font-semibold">
+                  {filteredLogs.length}
+                </strong>{" "}
+                catatan log
+              </span>
+
+              <span className="text-gray-300 dark:text-gray-700 hidden sm:inline">|</span>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px]">Tampilkan:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                >
+                  <option value={5}>5 baris</option>
+                  <option value={10}>10 baris</option>
+                  <option value={20}>20 baris</option>
+                  <option value={50}>50 baris</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tombol Angka Halaman (1, 2, 3 dst.) */}
+            <div className="flex items-center gap-1">
+              {/* Tombol Sebelumnya */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="size-3.5" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+              </button>
+
+              {/* Angka Halaman 1, 2, 3, dst */}
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pageNum, idx) => {
+                  if (pageNum === "...") {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="px-2 py-1 text-xs text-gray-400 select-none"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isCurrent = pageNum === currentPage;
+                  return (
+                    <button
+                      key={`page-${pageNum}`}
+                      type="button"
+                      onClick={() => setCurrentPage(Number(pageNum))}
+                      className={`min-w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
+                        isCurrent
+                          ? "bg-brand-500 text-white shadow-xs"
+                          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tombol Selanjutnya */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                title="Halaman Selanjutnya"
+              >
+                <span className="hidden sm:inline">Selanjutnya</span>
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 

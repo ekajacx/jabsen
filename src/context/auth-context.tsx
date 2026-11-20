@@ -429,6 +429,7 @@ interface AuthContextType {
   user: UserProfile;
   allProfiles: UserProfile[];
   isAuthenticated: boolean;
+  isAuthReady: boolean;
   login: (username: string, role?: UserRole, employeeId?: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
@@ -437,30 +438,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile>(DEMO_PROFILES["Staff"]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+// Helper pencarian profil fleksibel (mendukung profil bawaan & akun karyawan baru)
+export const findProfile = (identifier: string): UserProfile | undefined => {
+  const clean = identifier.trim().toLowerCase();
+  const staticMatch = ALL_EMPLOYEE_PROFILES.find(
+    (p) =>
+      p.id.toLowerCase() === clean ||
+      p.nik.toLowerCase() === clean ||
+      p.username.toLowerCase() === clean ||
+      p.name.toLowerCase() === clean ||
+      // Alias backward compatibility
+      (clean === "emp-001" && p.nik === "OPS-302") ||
+      (clean === "emp-002" && p.nik === "OPS-301") ||
+      (clean === "emp-003" && p.nik === "HR-501") ||
+      (clean === "emp-004" && p.nik === "DIR-002") ||
+      (clean === "emp-005" && p.nik === "DIR-001") ||
+      (clean === "emp-006" && p.nik === "ADM-001")
+  );
+  if (staticMatch) return staticMatch;
 
-  // Helper pencarian profil fleksibel (mendukung profil bawaan & akun karyawan baru)
-  const findProfile = (identifier: string): UserProfile | undefined => {
-    const clean = identifier.trim().toLowerCase();
-    const staticMatch = ALL_EMPLOYEE_PROFILES.find(
-      (p) =>
-        p.id.toLowerCase() === clean ||
-        p.nik.toLowerCase() === clean ||
-        p.username.toLowerCase() === clean ||
-        p.name.toLowerCase() === clean ||
-        // Alias backward compatibility
-        (clean === "emp-001" && p.nik === "OPS-302") ||
-        (clean === "emp-002" && p.nik === "OPS-301") ||
-        (clean === "emp-003" && p.nik === "HR-501") ||
-        (clean === "emp-004" && p.nik === "DIR-002") ||
-        (clean === "emp-005" && p.nik === "DIR-001") ||
-        (clean === "emp-006" && p.nik === "ADM-001")
-    );
-    if (staticMatch) return staticMatch;
-
-    // Cek juga pada daftar akun dinamis (LocalStorage)
+  // Cek juga pada daftar akun dinamis (LocalStorage)
+  if (typeof window !== "undefined") {
     try {
       const storedAccounts = getStoredUserAccounts();
       const dynamicMatch = storedAccounts.find(
@@ -487,11 +485,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
     } catch {}
+  }
 
-    return undefined;
-  };
+  return undefined;
+};
+
+// Ambil profil awal tersimpan secara sinkron di browser untuk cegah jeda hak akses
+function getInitialProfile(): UserProfile {
+  if (typeof window !== "undefined") {
+    try {
+      const savedUserId = localStorage.getItem("j_absen_user_id");
+      if (savedUserId) {
+        const profile = findProfile(savedUserId);
+        if (profile) return profile;
+      }
+
+      const savedRole = localStorage.getItem("j_absen_role") as UserRole | null;
+      if (savedRole && DEMO_PROFILES[savedRole]) {
+        return DEMO_PROFILES[savedRole];
+      }
+    } catch {}
+  }
+  return DEMO_PROFILES["Staff"];
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile>(getInitialProfile);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
 
   useEffect(() => {
+    setIsAuthReady(true);
     // 1. Cek apakah ada POV spesifik karyawan yang tersimpan
     const savedUserId = localStorage.getItem("j_absen_user_id");
     if (savedUserId) {
@@ -605,6 +629,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         allProfiles: mergedProfiles,
         isAuthenticated,
+        isAuthReady,
         login,
         logout,
         switchRole,

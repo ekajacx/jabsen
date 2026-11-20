@@ -11,7 +11,6 @@ import {
   FileCheck2,
   FileEdit,
   ScanFace,
-  Activity,
   FileSpreadsheet,
   ShieldCheck,
   ChevronLeft,
@@ -20,6 +19,7 @@ import {
   LogOut,
   User as UserIcon,
   Shield,
+  Server,
   Settings as SettingsIcon,
   FileText,
   Network,
@@ -148,12 +148,6 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           icon: ScanFace,
           badge: "Baru",
           allowedRoles: ["HRD", "Admin IT", "CEO"],
-        },
-        {
-          title: "Monitoring Tim",
-          href: "/monitoring",
-          icon: Activity,
-          allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
       ],
     },
@@ -313,6 +307,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           {!collapsed && (
             <Link
               href="/dashboard"
+              prefetch={true}
               onClick={handleMenuClick}
               className="flex items-center gap-3 overflow-hidden"
             >
@@ -373,6 +368,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                     <Link
                       key={item.href}
                       href={item.href}
+                      prefetch={true}
                       onClick={handleMenuClick}
                       data-active={isActive ? "true" : undefined}
                       className={cn(
@@ -416,7 +412,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                 title={collapsed ? "Sistem" : undefined}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <SettingsIcon className="size-5 shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
+                  <Server className="size-5 shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
                   {!collapsed && (
                     <span className="font-semibold text-gray-800 dark:text-gray-200">
                       Sistem
@@ -448,6 +444,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                       <Link
                         key={item.href}
                         href={item.href}
+                        prefetch={true}
                         onClick={handleMenuClick}
                         data-active={isActive ? "true" : undefined}
                         className={cn(

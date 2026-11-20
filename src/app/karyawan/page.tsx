@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +52,8 @@ import {
 } from "@/lib/user-account-data";
 
 export default function KaryawanPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
   const { showAlert, showConfirm } = useModal();
   const canManageEmployees = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
@@ -327,6 +329,17 @@ export default function KaryawanPage() {
   const resignCount = allEmployees.filter((e) => e.status === "Nonaktif").length;
   const tetapCount = allEmployees.filter((e) => e.employmentStatus === "Tetap").length;
 
+  if (!isAuthReady) {
+    return (
+      <AppLayout pageTitle="Data Karyawan">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="mt-3 text-xs text-gray-400">Memverifikasi hak akses...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const isAuthorized = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
 
   if (!isAuthorized) {
@@ -342,7 +355,7 @@ export default function KaryawanPage() {
               Direktori Karyawan hanya dapat diakses oleh akun Supervisor, General Manager, HRD, Direktur Utama, atau Admin IT.
             </p>
           </div>
-          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+          <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
             Kembali ke Dashboard
           </Button>
         </div>

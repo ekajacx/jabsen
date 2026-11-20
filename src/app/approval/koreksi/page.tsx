@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,7 +122,8 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
 ];
 
 export default function ApprovalKoreksiPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
   const [corrections, setCorrections] = useState<CorrectionRequest[]>(INITIAL_CORRECTIONS);
   const [statusFilter, setStatusFilter] = useState("Semua");
@@ -236,6 +238,17 @@ export default function ApprovalKoreksiPage() {
     }, 600);
   };
 
+  if (!isAuthReady) {
+    return (
+      <AppLayout pageTitle="Approval Koreksi Absensi">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <p className="mt-3 text-xs text-gray-400">Memverifikasi hak akses...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const isAuthorized = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
 
   if (!isAuthorized) {
@@ -251,7 +264,7 @@ export default function ApprovalKoreksiPage() {
               Modul Approval Koreksi Absensi hanya dapat diakses oleh level Atasan / Pimpinan Unit, Kepala HR, dan Manajemen.
             </p>
           </div>
-          <Button onClick={() => (window.location.href = "/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+          <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
             Kembali ke Dashboard
           </Button>
         </div>
