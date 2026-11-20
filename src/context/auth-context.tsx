@@ -34,7 +34,7 @@ export const ALL_EMPLOYEE_PROFILES: UserProfile[] = [
     jobTitle: "Direktur Utama",
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
     officeLocation: "Kantor Pusat Bali",
-    email: "ceo.ekajacx@perusahaan.co.id",
+    email: "eka.jacx@perusahaan.co.id",
     phone: "+62 811-1234-5678",
   },
   {
@@ -56,7 +56,7 @@ export const ALL_EMPLOYEE_PROFILES: UserProfile[] = [
   {
     id: "TI-101",
     nik: "TI-101",
-    name: "Eka Jacx, S.Kom, M.T",
+    name: "Arya Wijaya, S.Kom, M.T",
     username: "spv.ti",
     role: "Supervisor",
     department: "Teknologi Informasi",
@@ -64,7 +64,7 @@ export const ALL_EMPLOYEE_PROFILES: UserProfile[] = [
     jobTitle: "Kepala TI",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
     officeLocation: "Kantor Pusat Bali",
-    email: "eka.jacx@perusahaan.co.id",
+    email: "arya.wijaya@perusahaan.co.id",
     phone: "+62 812-3456-7890",
   },
   {
@@ -120,7 +120,7 @@ export const ALL_EMPLOYEE_PROFILES: UserProfile[] = [
     jobTitle: "Administrator Sistem & IT",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
     officeLocation: "Kantor Pusat Bali",
-    email: "admin.it@perusahaan.co.id",
+    email: "rian.saputra@perusahaan.co.id",
     phone: "+62 811-9988-7766",
   },
 
@@ -451,6 +451,7 @@ export const findProfile = (identifier: string): UserProfile | undefined => {
       p.id.toLowerCase() === clean ||
       p.nik.toLowerCase() === clean ||
       p.username.toLowerCase() === clean ||
+      p.email.toLowerCase() === clean ||
       p.name.toLowerCase() === clean ||
       // Alias backward compatibility
       (clean === "emp-001" && p.nik === "OPS-302") ||

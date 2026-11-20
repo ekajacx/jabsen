@@ -17,12 +17,13 @@ export async function POST(req: NextRequest) {
 
     const cleanIdentifier = String(identifier).trim();
 
-    // 1. Cari user di database PostgreSQL
+    // 1. Cari user di database PostgreSQL (mendukung Username, NIK, atau Email)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
           { username: { equals: cleanIdentifier, mode: "insensitive" } },
           { employeeId: { equals: cleanIdentifier, mode: "insensitive" } },
+          { employee: { email: { equals: cleanIdentifier, mode: "insensitive" } } },
         ],
       },
       include: {
