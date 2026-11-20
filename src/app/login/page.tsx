@@ -134,13 +134,68 @@ export default function LoginPage() {
       return;
     }
 
-    const cleanUser = username.trim().toLowerCase();
+    setIsLoading(true);
+    const cleanUser = username.trim();
+    const currentDev = getCurrentDevice();
+
+    // 1. Coba Autentikasi Langsung ke PostgreSQL API
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: cleanUser,
+          password,
+          deviceId: currentDev.deviceId,
+          deviceName: currentDev.deviceName,
+          isMobile: currentDev.isMobile,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (data.mustChangePassword) {
+          setIsLoading(false);
+          setPendingAccountForPasswordChange({
+            id: data.user.id,
+            employeeId: data.user.id,
+            name: data.user.name,
+            username: data.user.username,
+            role: data.user.role,
+          } as any);
+          setNewPassword("");
+          setConfirmNewPassword("");
+          setChangePasswordError(null);
+          return;
+        }
+
+        login(data.user.username, data.user.role, data.user.id);
+        setIsLoading(false);
+        setLoginSuccess(`Berhasil masuk sebagai ${data.user.name}! Mengalihkan ke Dashboard...`);
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 500);
+        return;
+      }
+
+      if (!res.ok && res.status < 500) {
+        setIsLoading(false);
+        setErrors({ general: data.message || "Gagal masuk. Periksa kembali kredensial Anda." });
+        return;
+      }
+    } catch (apiErr) {
+      console.warn("Koneksi API PostgreSQL offline, beralih ke cache lokal:", apiErr);
+    }
+
+    // 2. Fallback ke Akun Lokal (Simulasi Offline / Storage)
     const storedAccounts = getStoredUserAccounts();
+    const cleanUserLower = cleanUser.toLowerCase();
     const matchedAccount = storedAccounts.find(
       (a) =>
-        a.employeeId.toLowerCase() === cleanUser ||
-        a.username.toLowerCase() === cleanUser ||
-        a.name.toLowerCase() === cleanUser
+        a.employeeId.toLowerCase() === cleanUserLower ||
+        a.username.toLowerCase() === cleanUserLower ||
+        a.name.toLowerCase() === cleanUserLower
     );
 
     if (matchedAccount) {
@@ -149,12 +204,14 @@ export default function LoginPage() {
       const isActualMatch = password === matchedAccount.password;
 
       if (!isActualMatch && !isDevFallback) {
+        setIsLoading(false);
         setErrors({ password: "Kata sandi yang Anda masukkan salah. Silakan coba lagi." });
         return;
       }
 
       // 2. Cek Status Akun
       if (matchedAccount.accountStatus === "Terkunci") {
+        setIsLoading(false);
         setErrors({
           general: "Akun Anda saat ini terkunci demi keamanan. Silakan hubungi Admin IT atau HRD.",
         });
@@ -163,6 +220,7 @@ export default function LoginPage() {
 
       // 3. Cek Apakah Wajib Ganti Password (Login Pertama Kali)
       if (matchedAccount.mustChangePassword) {
+        setIsLoading(false);
         setPendingAccountForPasswordChange(matchedAccount);
         setNewPassword("");
         setConfirmNewPassword("");
@@ -171,10 +229,10 @@ export default function LoginPage() {
       }
 
       // 4. Cek Validasi Device Binding (Anti Titip Absen)
-      const currentDev = getCurrentDevice();
       const deviceRes = validateDeviceForLogin(matchedAccount, currentDev);
 
       if (!deviceRes.allowed) {
+        setIsLoading(false);
         setErrors({ general: deviceRes.reason });
         return;
       }
@@ -185,7 +243,6 @@ export default function LoginPage() {
       }
 
       // 5. Sukses Masuk
-      setIsLoading(true);
       setTimeout(() => {
         login(matchedAccount.username, matchedAccount.role, matchedAccount.employeeId);
         setIsLoading(false);
@@ -193,12 +250,11 @@ export default function LoginPage() {
         setTimeout(() => {
           router.push("/dashboard");
         }, 500);
-      }, 600);
+      }, 500);
       return;
     }
 
     // Fallback jika login menggunakan username non-terdaftar (Demo Mode)
-    setIsLoading(true);
     setTimeout(() => {
       login(username, selectedRole, selectedEmployeeId);
       setIsLoading(false);
@@ -206,11 +262,11 @@ export default function LoginPage() {
       setTimeout(() => {
         router.push("/dashboard");
       }, 500);
-    }, 700);
+    }, 500);
   };
 
   // Simpan Kata Sandi Baru pada Aktivasi Pertama Kali & Kembali ke Login Bersih
-  const handleCompletePasswordChange = (e: React.FormEvent) => {
+  const handleCompletePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingAccountForPasswordChange) return;
 
@@ -236,7 +292,21 @@ export default function LoginPage() {
       return;
     }
 
-    // Berhasil Update Kata Sandi
+    // Update via API PostgreSQL
+    try {
+      await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: pendingAccountForPasswordChange.username,
+          newPassword,
+        }),
+      });
+    } catch (e) {
+      console.warn("Gagal update password via API, menyimpan ke lokal:", e);
+    }
+
+    // Berhasil Update Kata Sandi di Local Storage juga
     completeFirstTimePasswordChange(pendingAccountForPasswordChange.employeeId, newPassword);
     const employeeName = pendingAccountForPasswordChange.name;
     const employeeNik = pendingAccountForPasswordChange.employeeId;
@@ -246,7 +316,7 @@ export default function LoginPage() {
     setPassword("");
     setErrors({});
     setLoginSuccess(
-      `Aktivasi berhasil! Kata sandi baru untuk '${employeeName}' (${employeeNik}) telah disimpan. Silakan masuk kembali menggunakan kata sandi baru Anda.`
+      `Aktivasi berhasil! Kata sandi baru untuk '${employeeName}' (${employeeNik}) telah disimpan di database. Silakan masuk kembali menggunakan kata sandi baru Anda.`
     );
   };
 

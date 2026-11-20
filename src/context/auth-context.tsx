@@ -490,22 +490,8 @@ export const findProfile = (identifier: string): UserProfile | undefined => {
   return undefined;
 };
 
-// Ambil profil awal tersimpan secara sinkron di browser untuk cegah jeda hak akses
+// Ambil profil awal tersimpan secara deterministik untuk SSR konsisten
 function getInitialProfile(): UserProfile {
-  if (typeof window !== "undefined") {
-    try {
-      const savedUserId = localStorage.getItem("j_absen_user_id");
-      if (savedUserId) {
-        const profile = findProfile(savedUserId);
-        if (profile) return profile;
-      }
-
-      const savedRole = localStorage.getItem("j_absen_role") as UserRole | null;
-      if (savedRole && DEMO_PROFILES[savedRole]) {
-        return DEMO_PROFILES[savedRole];
-      }
-    } catch {}
-  }
   return DEMO_PROFILES["Staff"];
 }
 

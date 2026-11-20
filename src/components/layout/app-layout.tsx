@@ -12,15 +12,17 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, pageTitle = "Dashboard" }: AppLayoutProps) {
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem("sidebar_collapsed") === "true";
-      } catch {}
-    }
-    return false;
-  });
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar_collapsed");
+      if (saved !== null) {
+        setCollapsed(saved === "true");
+      }
+    } catch {}
+  }, []);
 
   const handleSetCollapsed = (val: boolean) => {
     setCollapsed(val);

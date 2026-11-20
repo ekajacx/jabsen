@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -369,9 +369,33 @@ export default function LaporanPage() {
     setCurrentPage(1);
   };
 
+  const [reportList, setReportList] = useState<AttendanceReportItem[]>(REPORT_DATA);
+
+  // Ambil data laporan agregasi real-time dari PostgreSQL API
+  useEffect(() => {
+    let isMounted = true;
+    const fetchReports = async () => {
+      try {
+        const res = await fetch("/api/laporan");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted && Array.isArray(data.reports) && data.reports.length > 0) {
+            setReportList(data.reports);
+          }
+        }
+      } catch (err) {
+        console.warn("Gagal mengambil laporan dari API:", err);
+      }
+    };
+    fetchReports();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filter Data
   const filteredData = useMemo(() => {
-    return REPORT_DATA.filter((item) => {
+    return reportList.filter((item) => {
       // Filter Tanggal
       if (startDate && item.date < startDate) return false;
       if (endDate && item.date > endDate) return false;

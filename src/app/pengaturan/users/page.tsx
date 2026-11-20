@@ -79,7 +79,20 @@ export default function UserAccountsPage() {
   // Modal Konfirmasi Reset Device
   const [confirmResetDeviceTarget, setConfirmResetDeviceTarget] = useState<UserAccount | null>(null);
 
-  const loadAccounts = () => {
+  const loadAccounts = async () => {
+    try {
+      const res = await fetch("/api/users");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.users) && data.users.length > 0) {
+          setAccounts(data.users);
+          saveStoredUserAccounts(data.users);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal fetch akun dari API:", e);
+    }
     setAccounts(getStoredUserAccounts());
   };
 
@@ -178,38 +191,85 @@ export default function UserAccountsPage() {
     return { total, active, waitingChange, boundDevices, locked };
   }, [accounts]);
 
-  // Handler: Reset Password Sementara (8 Karakter)
-  const handleTriggerResetPassword = (acc: UserAccount) => {
-    const res = resetEmployeePassword(acc.employeeId);
-    if (res) {
-      loadAccounts();
-      setResetPassModal({ account: res.account, newPass: res.newTempPassword });
+  // Handler: Reset Password Terkoneksi Database PostgreSQL
+  const handleTriggerResetPassword = async (acc: UserAccount) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "RESET_PASSWORD",
+          employeeId: acc.employeeId,
+          actorName: user?.name,
+          actorRole: user?.role,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.message);
+
+      const localRes = resetEmployeePassword(acc.employeeId);
+      await loadAccounts();
+      if (localRes) {
+        setResetPassModal({ account: localRes.account, newPass: "password123" });
+      }
       setHasCopiedPass(false);
       setHasCopiedWa(false);
-      showToast("success", `Kata sandi untuk '${acc.name}' berhasil di-reset menjadi kata sandi acak baru.`);
+      showToast("success", data.message || `Kata sandi untuk '${acc.name}' berhasil di-reset di PostgreSQL.`);
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal mereset kata sandi.");
     }
   };
 
-  // Handler: Eksekusi Reset Device Binding
-  const handleExecuteResetDevice = () => {
+  // Handler: Eksekusi Reset Device Binding Terkoneksi Database PostgreSQL
+  const handleExecuteResetDevice = async () => {
     if (!confirmResetDeviceTarget) return;
-    const ok = resetDeviceBinding(confirmResetDeviceTarget.employeeId);
-    if (ok) {
-      loadAccounts();
-      showToast("success", `Ikatan perangkat HP untuk '${confirmResetDeviceTarget.name}' berhasil dilepas. Karyawan dapat mengikat HP baru saat login berikutnya.`);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "RESET_DEVICE",
+          employeeId: confirmResetDeviceTarget.employeeId,
+          actorName: user?.name,
+          actorRole: user?.role,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.message);
+
+      resetDeviceBinding(confirmResetDeviceTarget.employeeId);
+      await loadAccounts();
+      showToast("success", data.message || `Ikatan perangkat HP untuk '${confirmResetDeviceTarget.name}' berhasil dilepas di PostgreSQL.`);
       setConfirmResetDeviceTarget(null);
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal melepas ikatan perangkat.");
     }
   };
 
-  // Handler: Toggle Kunci Akun
-  const handleToggleLock = (acc: UserAccount) => {
-    const newStatus = toggleAccountLockStatus(acc.employeeId);
-    if (newStatus) {
-      loadAccounts();
+  // Handler: Toggle Kunci Akun Terkoneksi Database PostgreSQL
+  const handleToggleLock = async (acc: UserAccount) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "TOGGLE_LOCK",
+          employeeId: acc.employeeId,
+          actorName: user?.name,
+          actorRole: user?.role,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.message);
+
+      toggleAccountLockStatus(acc.employeeId);
+      await loadAccounts();
       showToast(
-        newStatus === "Terkunci" ? "error" : "success",
-        `Akun '${acc.name}' berhasil di-${newStatus === "Terkunci" ? "KUNCI" : "BUKA KEMBALI"}.`
+        data.newStatus === "Terkunci" ? "error" : "success",
+        data.message || `Status akun '${acc.name}' berhasil diubah di PostgreSQL.`
       );
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal mengubah status akun.");
     }
   };
 

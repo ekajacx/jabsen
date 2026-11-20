@@ -78,6 +78,18 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     badgeVariant: "default",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
+  {
+    id: "mod-cuti",
+    title: "Pengajuan Cuti",
+    category: "Presensi",
+    href: "/cuti",
+    icon: FileCheck2,
+    description: "Pengajuan permohonan cuti tahunan mandiri, cek kuota saldo, dan pantau status persetujuan.",
+    permissionNote: "Hak Cuti Tahunan Pribadi",
+    badge: "Kuota 10 Hari",
+    badgeVariant: "success",
+    allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
+  },
 
   // 2. Persetujuan (Approval)
   {
@@ -86,7 +98,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Persetujuan",
     href: "/approval/cuti",
     icon: FileCheck2,
-    description: "Pengajuan dan wewenang persetujuan cuti berjenjang (SPV, HRD, Direksi).",
+    description: "Pemeriksaan dan wewenang persetujuan cuti berjenjang bawahan (SPV, HRD, Direksi).",
     permissionNote: "Wewenang Review & Keputusan",
     badge: "3 Pending",
     badgeVariant: "warning",
@@ -264,6 +276,7 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {permittedModules.map((item) => {
             const Icon = item.icon;
+
             return (
               <div
                 key={item.id}

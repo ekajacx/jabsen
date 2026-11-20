@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================================
+// 1. STRUKTUR ORGANISASI: DEPARTEMEN & JABATAN
+// ========================================================
+
+model Department {
+  id          String     @id
+  name        String     @unique
+  code        String     @unique
+  description String?
+  color       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  positions   Position[]
+  employees   Employee[]
+
+  @@map("departments")
+}
+
+model Position {
+  id           String      @id
+  title        String
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Position?   @relation("PositionHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Position[]  @relation("PositionHierarchy")
+  level        Int         // 1: CEO, 2: GM, 3: Kepala Departemen, 4: Staff
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  employees    Employee[]
+
+  @@map("positions")
+}
+
+// ========================================================
+// 2. KARYAWAN & AKUN PENGGUNA (AUTENTIKASI & RBAC)
+// ========================================================
+
+model Employee {
+  id               String       @id // NIK, misal: "DIR-001", "TI-101"
+  name             String
+  email            String?      @unique
+  phone            String?
+  positionId       String?
+  position         Position?    @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  departmentId     String?
+  department       Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  employmentStatus String       @default("Tetap") // "Tetap" | "Kontrak" | "DW" | "Magang"
+  joinDate         DateTime?    @db.Date
+  avatarUrl        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user             User?
+  attendanceRecords AttendanceRecord[]
+  leaveRequests    LeaveRequest[]
+  scheduleAssignments ScheduleAssignment[]
+  corrections      AttendanceCorrection[]
+  faceEnrollments  FaceEnrollment[]
+
+  @@map("employees")
+}
+
+model User {
+  id                    String         @id @default(cuid())
+  employeeId            String         @unique
+  employee              Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  username              String         @unique
+  passwordHash          String
+  role                  String         @default("Staff") // "Staff" | "Supervisor" | "HRD" | "GM" | "CEO" | "Admin IT"
+  mustChangePassword    Boolean        @default(false)
+  passwordLastChangedAt DateTime?
+  status                String         @default("Aktif") // "Aktif" | "Terkunci" | "Nonaktif"
+  lastLoginAt           DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  deviceBinding         DeviceBinding?
+  auditLogs             AuditLog[]
+
+  @@map("users")
+}
+
+model DeviceBinding {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId            String   // UUID / Hardware Fingerprint
+  deviceName          String   // Contoh: "Samsung Galaxy S23 Ultra (Android 14)"
+  deviceBindingStatus String   @default("TERIKAT") // "TERIKAT" | "BEBAS"
+  boundAt             DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("device_bindings")
+}
+
+// ========================================================
+// 3. LOKASI KANTOR & GEOFENCING
+// ========================================================
+
+model OfficeLocation {
+  id           String             @id @default(cuid())
+  name         String             // "Kantor Pusat Bali"
+  address      String?
+  latitude     Float
+  longitude    Float
+  radiusMeters Int                @default(50)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  attendanceRecords AttendanceRecord[]
+
+  @@map("office_locations")
+}
+
+// ========================================================
+// 4. PRESENSI & RIWAYAT KEHADIRAN (BIOMETRIK & GPS)
+// ========================================================
+
+model AttendanceRecord {
+  id               String          @id // "REC-20261120-001"
+  employeeId       String
+  employee         Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  officeId         String?
+  office           OfficeLocation? @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  date             DateTime        @db.Date
+  type             String          // "masuk" | "pulang"
+  timestamp        DateTime        @default(now())
+  timeFormatted    String          // "07:54:12 WIB"
+  distanceMeters   Int
+  latitude         Float
+  longitude        Float
+  isWithinRadius   Boolean
+  photoUrl         String?         @db.Text
+  verificationHash String          // Hash SHA-256 WORM
+  status           String          // "Tepat Waktu" | "Terlambat" | "Pulang Cepat" | "Luar Radius"
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([employeeId, date])
+  @@map("attendance_records")
+}
+
+// ========================================================
+// 5. CUTI & KOREKSI ABSENSI (WORKFLOW BERJENJANG)
+// ========================================================
+
+model LeaveRequest {
+  id              String    @id // "CUTI-202611-001"
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType       String    // "Cuti Tahunan" | "Cuti Sakit" | "Izin Khusus"
+  startDate       DateTime  @db.Date
+  endDate         DateTime  @db.Date
+  daysCount       Int
+  reason          String
+  status          String    @default("Menunggu SPV") // "Menunggu SPV" | "Menunggu HRD" | "Disetujui" | "Ditolak"
+  approvalNotes   String?
+  approvedBySpvAt DateTime?
+  approvedByHrdAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("leave_requests")
+}
+
+model AttendanceCorrection {
+  id                   String    @id // "KOR-202611-001"
+  employeeId           String
+  employee             Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  targetDate           DateTime  @db.Date
+  originalClockIn      String?
+  proposedClockIn      String?
+  originalClockOut     String?
+  proposedClockOut     String?
+  reason               String
+  status               String    @default("Menunggu SPV") // "Menunggu SPV" | "Menunggu HRD" | "Disetujui Final" | "Ditolak"
+  supervisorNotes      String?
+  supervisorApprovedAt DateTime?
+  hrdNotes             String?
+  hrdApprovedAt        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("attendance_corrections")
+}
+
+// ========================================================
+// 6. JADWAL SHIFT & ROSTER KERJA
+// ========================================================
+
+model Shift {
+  id        String   @id // "shift-reguler", "shift-1-pagi", dll
+  name      String
+  startTime String   // "08:00"
+  endTime   String   // "17:00"
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scheduleAssignments ScheduleAssignment[]
+
+  @@map("shifts")
+}
+
+model ScheduleAssignment {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId    String
+  shift      Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  date       DateTime @db.Date
+  isOffDay   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@map("schedule_assignments")
+}
+
+// ========================================================
+// 7. AUDIT LOG INTEGRITAS WORM (APPEND-ONLY LEDGER)
+// ========================================================
+
+model AuditLog {
+  id           String   @id // "WORM-20261120-0105"
+  timestamp    DateTime @default(now())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actorName    String
+  actorRole    String
+  actorEmail   String
+  ipAddress    String
+  actionName   String
+  module       String
+  targetObject String
+  riskLevel    String   // "INFO" | "WARNING" | "CRITICAL"
+  status       String   // "SUCCESS" | "FAILED" | "BLOCKED"
+  hash         String   // SHA-256 dari baris log saat ini
+  prevHash     String   // SHA-256 dari baris log sebelumnya
+  details      Json?    // Metadata detil sebelum/sesudah perubahan (JSONB)
+  createdAt    DateTime @default(now())
+
+  @@index([hash])
+  @@map("audit_logs")
+}
+
+// ========================================================
+// 8. PROFIL RESMI PERUSAHAAN & KOP SURAT
+// ========================================================
+
+model CompanyProfile {
+  id            String   @id @default("default-company")
+  name          String   @default("PT ANTIGRAVITY INOVASI DIGITAL")
+  legalEntity   String   @default("Perseroan Terbatas (PT)")
+  businessField String   @default("Enterprise Biometric Attendance & Workforce Management Solution")
+  address       String   @default("Jl. Sunset Road No. 88, Kuta, Badung, Denpasar / Badung, Bali 80361")
+  phone         String   @default("(0361) 849-8800")
+  email         String   @default("corporate@antigravity.co.id")
+  website       String   @default("https://www.antigravity.co.id")
+  updatedAt     DateTime @updatedAt
+
+  @@map("company_profiles")
+}
+
+// ========================================================
+// 9. PENDAFTARAN BIOMETRIK WAJAH (ENROLLMENT)
+// ========================================================
+
+model FaceEnrollment {
+  id              String    @id // "ENR-202611-001"
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  submissionDate  DateTime  @default(now())
+  sampleFront     String    @db.Text
+  sampleLeft      String    @db.Text
+  sampleRight     String    @db.Text
+  qualityScore    Int       @default(95)
+  lightingQuality String    @default("Optimal")
+  landmarkCount   Int       @default(68)
+  status          String    @default("Menunggu Review") // "Menunggu Review" | "Disetujui" | "Ditolak"
+  hrNotes         String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("face_enrollments")
+}
+
+// ========================================================
+// 10. MATRIKS HAK AKSES & OTORISASI (RBAC)
+// ========================================================
+
+model RolePermission {
+  id          String   @id @default(cuid())
+  role        String   // "CEO", "GM", "HRD", "Supervisor", "Staff", "Admin IT"
+  permission  String   // Permission ID
+  isAllowed   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([role, permission])
+  @@map("role_permissions")
+}

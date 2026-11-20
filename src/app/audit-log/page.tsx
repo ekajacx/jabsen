@@ -612,9 +612,37 @@ export default function AuditLogPage() {
     setCurrentPage(1);
   };
 
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
+
+  // Ambil baris audit log riil dari PostgreSQL API
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAuditLogs = async () => {
+      try {
+        const res = await fetch("/api/audit-log");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted && Array.isArray(data.logs) && data.logs.length > 0) {
+            setAuditLogs((prev) => {
+              const dbIds = new Set(data.logs.map((l: any) => l.id));
+              const remaining = prev.filter((p) => !dbIds.has(p.id));
+              return [...data.logs, ...remaining];
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Gagal mengambil audit log dari API:", e);
+      }
+    };
+    fetchAuditLogs();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Filtered Logs
   const filteredLogs = useMemo(() => {
-    return INITIAL_AUDIT_LOGS.filter((log) => {
+    return auditLogs.filter((log) => {
       // 1. Filter Tanggal
       const logDate = log.timestamp.slice(0, 10);
       if (startDate && logDate < startDate) return false;

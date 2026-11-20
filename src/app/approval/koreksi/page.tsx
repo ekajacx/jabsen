@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +58,7 @@ export interface CorrectionRequest {
 const INITIAL_CORRECTIONS: CorrectionRequest[] = [
   {
     id: "KOR-202611-001",
-    applicantId: "EMP-001",
+    applicantId: "OPS-302",
     applicantName: "Budi Santoso",
     applicantRole: "Staff",
     department: "Operasional",
@@ -74,10 +74,10 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
   },
   {
     id: "KOR-202611-002",
-    applicantId: "EMP-005",
+    applicantId: "TI-102",
     applicantName: "Rian Hidayat",
     applicantRole: "Staff",
-    department: "Operasional",
+    department: "Departemen TI",
     targetDate: "Kamis, 12 Nov 2026",
     originalCheckIn: "08:00 WIB",
     originalCheckOut: "--:-- WIB",
@@ -87,7 +87,7 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
     stage: "Tahap 2: HRD",
     status: "Menunggu HRD",
     supervisorApproval: {
-      approvedBy: "Siti Rahmawati (SPV)",
+      approvedBy: "Supervisor Operasional",
       approvedAt: "13 Nov 2026, 09:15 WIB",
       notes: "Tervalidasi. Jam lembur sesuai surat perintah tugas.",
     },
@@ -95,7 +95,7 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
   },
   {
     id: "KOR-202610-003",
-    applicantId: "EMP-001",
+    applicantId: "OPS-302",
     applicantName: "Budi Santoso",
     applicantRole: "Staff",
     department: "Operasional",
@@ -108,7 +108,7 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
     stage: "Selesai",
     status: "Disetujui Final",
     supervisorApproval: {
-      approvedBy: "Siti Rahmawati (SPV)",
+      approvedBy: "Supervisor Operasional",
       approvedAt: "27 Okt 2026, 10:00 WIB",
       notes: "Sesuai rekam CCTV parkir.",
     },
@@ -128,6 +128,28 @@ export default function ApprovalKoreksiPage() {
   const [corrections, setCorrections] = useState<CorrectionRequest[]>(INITIAL_CORRECTIONS);
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Ambil data koreksi dari database PostgreSQL via API
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCorrections = async () => {
+      try {
+        const res = await fetch("/api/approval/koreksi");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted && Array.isArray(data.corrections)) {
+            setCorrections(data.corrections);
+          }
+        }
+      } catch (e) {
+        console.warn("Gagal fetch koreksi dari API:", e);
+      }
+    };
+    fetchCorrections();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Modal Review
   const [selectedReq, setSelectedReq] = useState<CorrectionRequest | null>(null);
@@ -163,11 +185,32 @@ export default function ApprovalKoreksiPage() {
   };
 
   // Eksekusi Persetujuan Koreksi (PRD P-3: 2 Tahap Sequential SPV -> HRD)
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedReq) return;
     setIsProcessing(true);
 
-    setTimeout(() => {
+    const action = selectedReq.status === "Menunggu SPV" ? "SPV_APPROVE" : "HRD_APPROVE";
+
+    try {
+      const res = await fetch("/api/approval/koreksi", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedReq.id,
+          action,
+          actorName: user.name,
+          actorRole: user.role,
+          notes: reviewNote || (action === "SPV_APPROVE" ? "Disetujui oleh Supervisor" : "Finalisasi data koreksi selesai"),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal memperbarui status koreksi di server.");
+      }
+
+      // Update state setelah tersimpan di database
       setCorrections((prev) =>
         prev.map((item) => {
           if (item.id !== selectedReq.id) return item;
@@ -180,7 +223,13 @@ export default function ApprovalKoreksiPage() {
               status: "Menunggu HRD",
               supervisorApproval: {
                 approvedBy: `${user.name} (${user.role})`,
-                approvedAt: new Date().toLocaleDateString("id-ID") + ", " + new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
+                approvedAt: new Intl.DateTimeFormat("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date()) + " WIB",
                 notes: reviewNote || "Disetujui oleh Supervisor",
               },
             };
@@ -194,7 +243,13 @@ export default function ApprovalKoreksiPage() {
               status: "Disetujui Final",
               hrdApproval: {
                 approvedBy: `${user.name} (${user.role})`,
-                approvedAt: new Date().toLocaleDateString("id-ID") + ", " + new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
+                approvedAt: new Intl.DateTimeFormat("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date()) + " WIB",
                 notes: reviewNote || "Finalisasi data koreksi selesai",
               },
             };
@@ -204,22 +259,50 @@ export default function ApprovalKoreksiPage() {
         })
       );
 
-      setIsProcessing(false);
       setShowReviewModal(false);
       setReviewNote("");
       showAlert({
         title: "Koreksi Disetujui",
-        message: `Permohonan koreksi ${selectedReq.id} telah berhasil disetujui.`,
+        message: data.message || `Permohonan koreksi ${selectedReq.id} telah berhasil disetujui di database PostgreSQL.`,
         type: "success",
       });
-    }, 600);
+    } catch (e: any) {
+      console.error("Gagal approve koreksi via API:", e);
+      showAlert({
+        title: "Gagal Menyetujui Koreksi",
+        message: e.message || "Terjadi kesalahan saat memproses approval ke database.",
+        type: "error",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedReq) return;
     setIsProcessing(true);
 
-    setTimeout(() => {
+    const action = selectedReq.status === "Menunggu SPV" ? "SPV_REJECT" : "HRD_REJECT";
+
+    try {
+      const res = await fetch("/api/approval/koreksi", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedReq.id,
+          action,
+          actorName: user.name,
+          actorRole: user.role,
+          notes: reviewNote || (action === "SPV_REJECT" ? "Ditolak oleh Supervisor" : "Ditolak oleh HRD"),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal menolak koreksi di server.");
+      }
+
       setCorrections((prev) =>
         prev.map((item) =>
           item.id === selectedReq.id
@@ -227,15 +310,23 @@ export default function ApprovalKoreksiPage() {
             : item
         )
       );
-      setIsProcessing(false);
       setShowReviewModal(false);
       setReviewNote("");
       showAlert({
         title: "Koreksi Ditolak",
-        message: `Permohonan koreksi ${selectedReq.id} telah ditolak.`,
+        message: data.message || `Permohonan koreksi ${selectedReq.id} telah ditolak di database.`,
         type: "error",
       });
-    }, 600);
+    } catch (e: any) {
+      console.error("Gagal reject koreksi via API:", e);
+      showAlert({
+        title: "Gagal Menolak Koreksi",
+        message: e.message || "Terjadi kesalahan saat memproses penolakan ke database.",
+        type: "error",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!isAuthReady) {

@@ -116,6 +116,24 @@ export default function EnrollmentReviewPage() {
   const [hrRejectReason, setHrRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const fetchEnrollments = async () => {
+    try {
+      const res = await fetch("/api/enrollment");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
+          setEnrollments(data.enrollments);
+        }
+      }
+    } catch (e) {
+      console.warn("Falling back to initial enrollments:", e);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchEnrollments();
+  }, []);
+
   // Filter Data
   const filtered = enrollments.filter((enr) => {
     const matchesStatus =
@@ -129,35 +147,53 @@ export default function EnrollmentReviewPage() {
   });
 
   // Eksekusi Persetujuan HRD
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedEnr) return;
     setIsProcessing(true);
 
-    setTimeout(() => {
-      setEnrollments((prev) =>
-        prev.map((item) =>
-          item.id === selectedEnr.id
-            ? {
-                ...item,
-                status: "Disetujui",
-                hrNotes: "Sampel disetujui HRD. Model embedding wajah telah diaktifkan untuk absensi live.",
-                reviewedBy: `${user.name} (${user.role})`,
-              }
-            : item
-        )
-      );
-      setIsProcessing(false);
-      setShowReviewModal(false);
-      showAlert({
-        title: "Sampel Wajah Disetujui",
-        message: `Sukses! Sampel wajah ${selectedEnr.employeeName} (${selectedEnr.employeeId}) telah DISETUJUI.\nKaryawan kini dapat melakukan presensi wajah di aplikasi smartphone.`,
-        type: "success",
+    try {
+      const notes = "Sampel disetujui HRD. Model embedding wajah telah diaktifkan untuk absensi live.";
+      const res = await fetch("/api/enrollment", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedEnr.id,
+          status: "Disetujui",
+          hrNotes: notes,
+          reviewerName: user?.name || "HRD",
+          reviewerRole: user?.role || "HRD",
+        }),
       });
-    }, 700);
+
+      if (res.ok) {
+        setEnrollments((prev) =>
+          prev.map((item) =>
+            item.id === selectedEnr.id
+              ? {
+                  ...item,
+                  status: "Disetujui",
+                  hrNotes: notes,
+                  reviewedBy: `${user.name} (${user.role})`,
+                }
+              : item
+          )
+        );
+        setShowReviewModal(false);
+        showAlert({
+          title: "Sampel Wajah Disetujui",
+          message: `Sukses! Sampel wajah ${selectedEnr.employeeName} (${selectedEnr.employeeId}) telah DISETUJUI dan tersimpan di database PostgreSQL.\nKaryawan kini dapat melakukan presensi wajah.`,
+          type: "success",
+        });
+      }
+    } catch (err: any) {
+      showAlert({ title: "Gagal Menyetujui", message: err.message, type: "error" });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Eksekusi Penolakan HRD
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedEnr) return;
     if (!hrRejectReason.trim()) {
       showAlert({
@@ -169,28 +205,45 @@ export default function EnrollmentReviewPage() {
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
-      setEnrollments((prev) =>
-        prev.map((item) =>
-          item.id === selectedEnr.id
-            ? {
-                ...item,
-                status: "Ditolak",
-                hrNotes: hrRejectReason,
-                reviewedBy: `${user.name} (${user.role})`,
-              }
-            : item
-        )
-      );
-      setIsProcessing(false);
-      setShowReviewModal(false);
-      setHrRejectReason("");
-      showAlert({
-        title: "Sampel Wajah Ditolak",
-        message: `Sampel wajah ${selectedEnr.employeeName} DITOLAK. Karyawan akan diminta registrasi ulang.`,
-        type: "error",
+    try {
+      const res = await fetch("/api/enrollment", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedEnr.id,
+          status: "Ditolak",
+          hrNotes: hrRejectReason,
+          reviewerName: user?.name || "HRD",
+          reviewerRole: user?.role || "HRD",
+        }),
       });
-    }, 700);
+
+      if (res.ok) {
+        setEnrollments((prev) =>
+          prev.map((item) =>
+            item.id === selectedEnr.id
+              ? {
+                  ...item,
+                  status: "Ditolak",
+                  hrNotes: hrRejectReason,
+                  reviewedBy: `${user.name} (${user.role})`,
+                }
+              : item
+          )
+        );
+        setShowReviewModal(false);
+        setHrRejectReason("");
+        showAlert({
+          title: "Sampel Wajah Ditolak",
+          message: `Sampel wajah ${selectedEnr.employeeName} DITOLAK di database PostgreSQL. Karyawan akan diminta registrasi ulang.`,
+          type: "info",
+        });
+      }
+    } catch (err: any) {
+      showAlert({ title: "Gagal Menolak", message: err.message, type: "error" });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!isAuthReady) {

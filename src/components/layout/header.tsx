@@ -278,7 +278,7 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
               {pageTitle}
             </h1>
             <span className="hidden sm:inline-block text-gray-300 dark:text-gray-700">|</span>
-            <span className="hidden sm:inline-block text-xs text-gray-500 dark:text-gray-400">
+            <span suppressHydrationWarning className="hidden sm:inline-block text-xs text-gray-500 dark:text-gray-400">
               {user.officeLocation}
             </span>
           </div>
@@ -307,13 +307,15 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
 
           {/* POV Switcher Button */}
           <button
+            suppressHydrationWarning
             type="button"
             onClick={() => setIsPovModalOpen(true)}
             className="group flex items-center gap-2 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/80 via-blue-50/70 to-indigo-50/80 px-2.5 py-1.5 text-xs font-medium text-indigo-950 shadow-sm hover:border-indigo-300 hover:from-indigo-100 hover:to-blue-100 transition-all dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-200"
             title="Buka Selector POV (27 Karyawan)"
           >
-            <div className="relative">
+            <div suppressHydrationWarning className="relative">
               <img
+                suppressHydrationWarning
                 src={user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
                 alt={user.name}
                 className="size-7 rounded-lg object-cover ring-2 ring-indigo-300 dark:ring-indigo-700 shadow-sm"
@@ -322,15 +324,15 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
             </div>
 
             <div className="flex flex-col text-left">
-              <div className="flex items-center gap-1.5 leading-none mb-0.5">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 dark:text-indigo-400">
+              <div suppressHydrationWarning className="flex items-center gap-1.5 leading-none mb-0.5">
+                <span suppressHydrationWarning className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 dark:text-indigo-400">
                   POV: {ROLE_LABELS[user.role] || user.role}
                 </span>
-                <span className="rounded bg-indigo-200/70 px-1 py-0.2 text-[9px] font-bold text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
+                <span suppressHydrationWarning className="rounded bg-indigo-200/70 px-1 py-0.2 text-[9px] font-bold text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
                   {user.nik || user.id}
                 </span>
               </div>
-              <span className="font-semibold text-gray-900 dark:text-white max-w-[120px] sm:max-w-[180px] truncate leading-tight group-hover:text-indigo-600 transition-colors">
+              <span suppressHydrationWarning className="font-semibold text-gray-900 dark:text-white max-w-[120px] sm:max-w-[180px] truncate leading-tight group-hover:text-indigo-600 transition-colors">
                 {user.name}
               </span>
             </div>

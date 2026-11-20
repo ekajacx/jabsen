@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
@@ -15,18 +16,9 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Send,
-  Plus,
-  Filter,
   Search,
-  User,
   FileText,
-  Upload,
   Check,
-  Building,
-  ChevronRight,
-  ShieldAlert,
-  Sparkles,
   Download,
 } from "lucide-react";
 import { exportLeaveRequestsToExcel } from "@/lib/excel-export";
@@ -37,29 +29,12 @@ import {
 } from "@/lib/leave-data";
 
 export default function ApprovalCutiPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { showAlert } = useModal();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<"inbox" | "my_leaves">("inbox");
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    setLeaveRequests(getStoredLeaveRequests());
-  }, []);
-
-  // Kuota Cuti Tahunan Pengguna (PRD P-10: default 12 hari)
-  const [annualLeaveBalance, setAnnualLeaveBalance] = useState<number>(10); // Tersisa 10 hari
-
-  // State Modal Pengajuan Cuti Baru
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [newLeaveType, setNewLeaveType] = useState<LeaveRequest["leaveType"]>("Cuti Tahunan");
-  const [newStartDate, setNewStartDate] = useState("");
-  const [newEndDate, setNewEndDate] = useState("");
-  const [newReason, setNewReason] = useState("");
-  const [newAttachment, setNewAttachment] = useState<string>("");
-  const [calculatedDays, setCalculatedDays] = useState<number>(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State Modal Review Approval oleh Atasan / HRD
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
@@ -67,172 +42,149 @@ export default function ApprovalCutiPage() {
   const [reviewNote, setReviewNote] = useState("");
   const [isProcessingApproval, setIsProcessingApproval] = useState(false);
 
-  // Hitung durasi hari otomatis saat tanggal diubah
+  const isPendingApproval = (status: LeaveRequest["status"]) =>
+    status === "Menunggu Approval" || status === "Menunggu SPV" || status === "Menunggu HRD";
+
+  // Ambil data cuti dari database PostgreSQL atau local storage
   useEffect(() => {
-    if (newStartDate && newEndDate) {
-      const start = new Date(newStartDate);
-      const end = new Date(newEndDate);
-      if (end >= start) {
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        setCalculatedDays(diffDays);
-      } else {
-        setCalculatedDays(0);
+    let isMounted = true;
+    const fetchLeaves = async () => {
+      try {
+        const res = await fetch("/api/approval/cuti");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted && Array.isArray(data.leaves)) {
+            setLeaveRequests(data.leaves);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Gagal fetch cuti via API:", e);
       }
-    }
-  }, [newStartDate, newEndDate]);
+      if (isMounted) {
+        setLeaveRequests(getStoredLeaveRequests());
+      }
+    };
+    fetchLeaves();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  // Hak akses review: Supervisor, GM, HRD, CEO
-  const isApprover = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user.role);
-
-  // Set default tab: Staff langsung ke 'my_leaves', Atasan/HRD ke 'inbox'
-  useEffect(() => {
-    if (!isApprover) {
-      setActiveTab("my_leaves");
-    }
-  }, [isApprover]);
-
-  // Submit Pengajuan Cuti Baru (Karyawan)
-  const handleApplyLeave = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!newStartDate || !newEndDate) {
-      showAlert({
-        title: "Pilihan Tanggal Belum Lengkap",
-        message: "Harap tentukan tanggal mulai dan tanggal selesai permohonan cuti Anda.",
-        type: "warning",
-      });
-      return;
-    }
-
-    if (calculatedDays <= 0) {
-      showAlert({
-        title: "Rentang Tanggal Tidak Valid",
-        message: "Tanggal selesai cuti tidak boleh lebih awal dari tanggal mulai cuti.",
-        type: "warning",
-      });
-      return;
-    }
-
-    if (!newReason.trim()) {
-      showAlert({
-        title: "Alasan Permohonan Wajib Diisi",
-        message: "Harap sertakan penjelasan keperluan cuti agar verifikator dapat meninjau permohonan Anda.",
-        type: "warning",
-      });
-      return;
-    }
-
-    // Validasi Saldo Cuti (PRD Final P-10)
-    const isAnnual = newLeaveType === "Cuti Tahunan";
-    if (isAnnual && calculatedDays > annualLeaveBalance) {
-      showAlert({
-        title: "Saldo Cuti Tidak Mencukupi (PRD P-10)",
-        message: `Permintaan: ${calculatedDays} hari kerja.\nSisa Saldo Anda: ${annualLeaveBalance} hari.\nSistem menolak pengajuan dengan saldo negatif/minus.`,
-        type: "error",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    setTimeout(() => {
-      // Tentukan target approver berdasarkan hierarki P-3
-      let targetApprover: UserRole = "Supervisor";
-      if (user.role === "Supervisor") targetApprover = "GM";
-      if (user.role === "GM") targetApprover = "CEO";
-      if (user.role === "CEO" || user.role === "Admin IT") targetApprover = "HRD";
-
-      const newReq: LeaveRequest = {
-        id: "CUTI-" + Date.now().toString(36).toUpperCase(),
-        applicantId: user.id,
-        applicantName: user.name,
-        applicantRole: user.role,
-        department: user.department,
-        leaveType: newLeaveType,
-        startDate: newStartDate,
-        endDate: newEndDate,
-        durationDays: calculatedDays,
-        reason: newReason,
-        attachmentName: newAttachment || undefined,
-        status: "Menunggu Approval",
-        currentApproverRole: targetApprover,
-        submittedAt: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) + ", " + new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
-        quotaImpact: isAnnual,
-      };
-
-      const updated = [newReq, ...leaveRequests];
-      setLeaveRequests(updated);
-      saveStoredLeaveRequests(updated);
-      setIsSubmitting(false);
-      setShowApplyModal(false);
-      // Reset form
-      setNewStartDate("");
-      setNewEndDate("");
-      setNewReason("");
-      setNewAttachment("");
-
-      showAlert({
-        title: "Permohonan Cuti Terkirim",
-        message: `Pengajuan cuti (${newReq.durationDays} hari) berhasil diajukan ke antrean sistem dan menunggu persetujuan dari ${targetApprover}.`,
-        type: "success",
-      });
-    }, 800);
-  };
-
-  // Eksekusi Persetujuan (Approve / Reject / Revise)
-  const handleDecision = (decision: "Disetujui" | "Ditolak" | "Perlu Revisi") => {
+  // Eksekusi Persetujuan Terkoneksi Database PostgreSQL (Approve / Reject / Revise)
+  const handleDecision = async (decision: "Disetujui" | "Ditolak" | "Perlu Revisi") => {
     if (!selectedRequest) return;
 
     setIsProcessingApproval(true);
-    setTimeout(() => {
+
+    let action = "SPV_APPROVE";
+    if (decision === "Disetujui") {
+      action = (user.role === "Supervisor" || user.role === "GM") && selectedRequest.status === "Menunggu SPV"
+        ? "SPV_APPROVE"
+        : "HRD_APPROVE";
+    } else if (decision === "Ditolak") {
+      action = (user.role === "Supervisor" || user.role === "GM") && selectedRequest.status === "Menunggu SPV"
+        ? "SPV_REJECT"
+        : "HRD_REJECT";
+    } else {
+      action = "REVISE";
+    }
+
+    try {
+      const res = await fetch("/api/approval/cuti", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedRequest.id,
+          action,
+          actorName: user.name,
+          actorRole: user.role,
+          notes: reviewNote || (decision === "Disetujui" ? "Disetujui tanpa catatan" : "Ditolak"),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal memproses persetujuan cuti di server.");
+      }
+
+      let nextStatus: LeaveRequest["status"] = decision;
+      let nextApprover: UserRole = selectedRequest.currentApproverRole;
+
+      if (decision === "Disetujui") {
+        if ((user.role === "Supervisor" || user.role === "GM") && selectedRequest.status === "Menunggu SPV") {
+          nextStatus = "Menunggu HRD";
+          nextApprover = "HRD";
+        } else {
+          nextStatus = "Disetujui";
+        }
+      } else if (decision === "Ditolak") {
+        nextStatus = "Ditolak";
+      } else {
+        nextStatus = "Perlu Revisi";
+      }
+
       const updated = leaveRequests.map((req) =>
         req.id === selectedRequest.id
           ? {
               ...req,
-              status: decision,
+              status: nextStatus,
+              currentApproverRole: nextApprover,
               approverNotes: reviewNote || (decision === "Disetujui" ? "Disetujui tanpa catatan" : "Ditolak"),
             }
           : req
       );
+
       setLeaveRequests(updated);
       saveStoredLeaveRequests(updated);
-
-      // Jika disetujui dan memotong kuota pelamar
-      if (decision === "Disetujui" && selectedRequest.quotaImpact && selectedRequest.applicantId === user.id) {
-        setAnnualLeaveBalance((prev) => Math.max(0, prev - selectedRequest.durationDays));
-      }
-
-      setIsProcessingApproval(false);
       setShowReviewModal(false);
       setReviewNote("");
 
       showAlert({
-        title: decision === "Disetujui" ? "Permohonan Cuti Disetujui" : decision === "Ditolak" ? "Permohonan Cuti Ditolak" : "Permohonan Cuti Dikembalikan",
-        message: `Permohonan cuti ${selectedRequest.id} atas nama ${selectedRequest.applicantName} telah diubah menjadi: ${decision}.`,
+        title:
+          decision === "Disetujui"
+            ? (nextStatus === "Menunggu HRD" ? "Diteruskan ke HRD" : "Permohonan Cuti Disetujui")
+            : decision === "Ditolak"
+            ? "Permohonan Cuti Ditolak"
+            : "Permohonan Cuti Dikembalikan",
+        message: data.message || `Permohonan cuti ${selectedRequest.id} atas nama ${selectedRequest.applicantName} telah diubah menjadi: ${nextStatus}.`,
         type: decision === "Disetujui" ? "success" : decision === "Ditolak" ? "error" : "warning",
       });
-    }, 600);
+    } catch (e: any) {
+      console.error("Gagal update cuti via API:", e);
+      showAlert({
+        title: "Gagal Memproses Cuti",
+        message: e.message || "Terjadi kesalahan saat menyimpan perubahan ke database.",
+        type: "error",
+      });
+    } finally {
+      setIsProcessingApproval(false);
+    }
   };
 
-  // Filter Data
+  // Filter Data Khusus Antrean Approval Masuk
   const displayedRequests = leaveRequests.filter((item) => {
-    const isTargetTab =
-      activeTab === "my_leaves"
-        ? item.applicantId === user.id || item.applicantName === user.name
-        : // Tab Inbox: Muncul jika role user adalah approver yang dituju, atau jika role HRD/Admin IT (dapat melihat semua)
-          user.role === "HRD" || user.role === "Admin IT"
-          ? true
-          : item.currentApproverRole === user.role;
+    // Tab Inbox: Muncul jika role user adalah approver yang dituju, atau jika role HRD/Admin IT (dapat melihat semua)
+    const isTargetItem =
+      user.role === "HRD" || user.role === "Admin IT"
+        ? true
+        : item.currentApproverRole === user.role;
 
     const matchesStatus =
-      statusFilter === "Semua" ? true : item.status === statusFilter;
+      statusFilter === "Semua"
+        ? true
+        : statusFilter === "Menunggu Approval"
+        ? isPendingApproval(item.status)
+        : item.status === statusFilter;
 
     const matchesSearch =
       item.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.leaveType.toLowerCase().includes(searchQuery.toLowerCase());
+      item.leaveType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.department.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return isTargetTab && matchesStatus && matchesSearch;
+    return isTargetItem && matchesStatus && matchesSearch;
   });
 
   const getStatusBadge = (status: LeaveRequest["status"]) => {
@@ -243,23 +195,52 @@ export default function ApprovalCutiPage() {
         return <Badge variant="destructive">{status}</Badge>;
       case "Perlu Revisi":
         return <Badge variant="warning">{status}</Badge>;
+      case "Menunggu SPV":
+        return <Badge variant="warning">{status}</Badge>;
+      case "Menunggu HRD":
+        return <Badge variant="info">{status}</Badge>;
       default:
         return <Badge variant="secondary" className="animate-pulse">{status}</Badge>;
     }
   };
 
+  // Jika akun adalah Staff, arahkan dengan pesan ramah ke menu Pengajuan Cuti
+  if (user?.role === "Staff") {
+    return (
+      <AppLayout pageTitle="Persetujuan Cuti">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-900 shadow-sm">
+            <FileCheck2 className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Modul Persetujuan Cuti</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Halaman ini diperuntukkan bagi level Atasan (Supervisor, GM, HRD, Direksi) untuk memeriksa dan memutuskan permohonan cuti anggota tim.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Untuk mengajukan cuti pribadi atau melihat status permohonan Anda, silakan gunakan menu <strong>Pengajuan Cuti</strong>.
+            </p>
+          </div>
+          <Button onClick={() => router.push("/cuti")} size="sm" variant="default" className="rounded-full text-xs font-semibold gap-1.5">
+            Buka Pengajuan Cuti
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <AppLayout pageTitle="Persetujuan & Pengajuan Cuti">
+    <AppLayout pageTitle="Persetujuan Cuti Tim & Organisasi">
       <div className="space-y-6">
         {/* Banner Utama */}
         <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 p-5 text-white shadow-theme-md sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <FileCheck2 className="size-5" />
-              <h2 className="text-lg font-bold sm:text-xl">Manajemen Pengajuan & Approval Cuti</h2>
+              <h2 className="text-lg font-bold sm:text-xl">Persetujuan Cuti Tim &amp; Organisasi</h2>
             </div>
             <p className="mt-1 text-xs text-brand-100 sm:text-sm">
-              Alur persetujuan hierarki berjenjang (PRD Section 5.10 / Final P-3) & validasi saldo cuti (P-10).
+              Verifikasi berjenjang (Supervisor ➔ HRD ➔ GM ➔ CEO) dan keputusan permohonan hak cuti bawahan (PRD P-3 &amp; P-10).
             </p>
           </div>
 
@@ -270,7 +251,7 @@ export default function ApprovalCutiPage() {
               size="sm"
               onClick={() => {
                 exportLeaveRequestsToExcel(displayedRequests, {
-                  tabScope: activeTab === "my_leaves" ? "Pengajuan Saya" : "Inbox Persetujuan",
+                  tabScope: "Antrean Persetujuan Cuti",
                   statusFilter,
                   departmentScope: user.role === "Staff" ? user.department : "Semua Departemen (Global)",
                   currentUser: user ? { name: user.name, role: user.role } : undefined,
@@ -281,43 +262,17 @@ export default function ApprovalCutiPage() {
               <Download className="size-4" />
               Ekspor Cuti (.xlsx)
             </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowApplyModal(true)}
-              className="bg-white text-brand-700 hover:bg-brand-50 font-bold border-none text-xs gap-1.5 shadow-theme-xs"
-            >
-              <Plus className="size-4" />
-              Ajukan Cuti Baru
-            </Button>
           </div>
         </div>
 
-        {/* 3 Stat Cards Ringkasan */}
+        {/* 3 Stat Cards Ringkasan Antrean Approval */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          <Card className="border-gray-200 dark:border-gray-800">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Sisa Kuota Cuti Tahunan</span>
-                <p className="mt-1 text-2xl font-bold text-brand-600 dark:text-brand-400">
-                  {annualLeaveBalance} <span className="text-sm font-normal text-gray-400">/ 12 Hari</span>
-                </p>
-                <span className="text-[10px] text-emerald-600 font-medium">Berlaku s.d. 31 Des 2026</span>
-              </div>
-              <div className="flex size-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
-                <CalendarDays className="size-6" />
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Perlu Diproses (Inbox)</span>
                 <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  {leaveRequests.filter((r) => r.status === "Menunggu Approval").length}
+                  {displayedRequests.filter((r) => isPendingApproval(r.status)).length}
                 </p>
                 <span className="text-[10px] text-amber-600 font-medium">Batas respon 48 jam (PRD P-4)</span>
               </div>
@@ -341,44 +296,35 @@ export default function ApprovalCutiPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Ditolak / Perlu Revisi</span>
+                <p className="mt-1 text-2xl font-bold text-rose-600 dark:text-rose-400">
+                  {leaveRequests.filter((r) => r.status === "Ditolak" || r.status === "Perlu Revisi").length}
+                </p>
+                <span className="text-[10px] text-rose-500 font-medium">Telah dikembalikan ke pemohon</span>
+              </div>
+              <div className="flex size-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                <XCircle className="size-6" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Tab Selector & Filter Bar */}
+        {/* Filter Bar & Pencarian */}
         <Card className="border-gray-200 dark:border-gray-800">
           <CardContent className="p-4 space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-gray-100 pb-3 dark:border-gray-800">
-              {/* Tab Navigation */}
               <div className="flex items-center gap-2">
-                {isApprover && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("inbox")}
-                    className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                      activeTab === "inbox"
-                        ? "bg-brand-500 text-white shadow-theme-xs"
-                        : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    <FileCheck2 className="size-4" />
-                    Kotak Masuk Persetujuan
-                    <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.2 text-[10px]">
-                      {leaveRequests.filter((r) => r.status === "Menunggu Approval").length}
-                    </span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("my_leaves")}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                    activeTab === "my_leaves"
-                      ? "bg-brand-500 text-white shadow-theme-xs"
-                      : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  <CalendarDays className="size-4" />
-                  Pengajuan Cuti Saya
-                </button>
+                <div className="flex items-center gap-2 rounded-xl bg-brand-500 text-white px-4 py-2 text-xs font-bold shadow-theme-xs">
+                  <FileCheck2 className="size-4" />
+                  Antrean Persetujuan Cuti Masuk
+                  <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.2 text-[10px]">
+                    {displayedRequests.length}
+                  </span>
+                </div>
               </div>
 
               {/* Search Field */}
@@ -386,10 +332,10 @@ export default function ApprovalCutiPage() {
                 <Search className="absolute left-3 top-2.5 size-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Cari nama, ID, atau tipe..."
+                  placeholder="Cari nama karyawan, ID, atau departemen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-xs shadow-theme-xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 />
               </div>
             </div>
@@ -397,7 +343,7 @@ export default function ApprovalCutiPage() {
             {/* Filter Status Buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-gray-400 font-medium mr-1">Status:</span>
-              {["Semua", "Menunggu Approval", "Disetujui", "Ditolak"].map((st) => (
+              {["Semua", "Menunggu Approval", "Disetujui", "Ditolak", "Perlu Revisi"].map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -415,10 +361,17 @@ export default function ApprovalCutiPage() {
           </CardContent>
         </Card>
 
-        {/* Tabel Data Cuti (Desktop View - Full Width & Fixed Columns) */}
+        {/* Tabel Data Antrean Cuti (Desktop View) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup><col className="w-[18%]" /><col className="w-[15%]" /><col className="w-[18%]" /><col className="w-[23%]" /><col className="w-[12%]" /><col className="w-[14%]" /></colgroup>
+            <colgroup>
+              <col className="w-[18%]" />
+              <col className="w-[15%]" />
+              <col className="w-[18%]" />
+              <col className="w-[23%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+            </colgroup>
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-5 py-3.5">Karyawan</th>
@@ -433,7 +386,7 @@ export default function ApprovalCutiPage() {
               {displayedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-gray-400">
-                    Tidak ada permohonan cuti yang cocok dengan kriteria.
+                    Tidak ada permohonan cuti dalam antrean persetujuan Anda saat ini.
                   </td>
                 </tr>
               ) : (
@@ -477,7 +430,7 @@ export default function ApprovalCutiPage() {
                     <td className="px-5 py-4">
                       <div className="flex flex-col gap-1 items-start">
                         {getStatusBadge(item.status)}
-                        {item.status === "Menunggu Approval" && (
+                        {isPendingApproval(item.status) && (
                           <span className="text-[9px] text-gray-400">
                             Approver: {item.currentApproverRole}
                           </span>
@@ -485,7 +438,7 @@ export default function ApprovalCutiPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      {activeTab === "inbox" && item.status === "Menunggu Approval" ? (
+                      {isPendingApproval(item.status) ? (
                         <Button
                           type="button"
                           variant="default"
@@ -496,7 +449,7 @@ export default function ApprovalCutiPage() {
                           }}
                           className="h-8 text-xs font-bold gap-1 shadow-theme-xs"
                         >
-                          Review & Putuskan
+                          Review &amp; Putuskan
                         </Button>
                       ) : (
                         <Button
@@ -522,170 +475,55 @@ export default function ApprovalCutiPage() {
 
         {/* Mobile View Cards */}
         <div className="lg:hidden space-y-3">
-          {displayedRequests.map((item) => (
-            <Card key={item.id} className="border-gray-200 dark:border-gray-800">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-sm text-gray-900 dark:text-white">{item.applicantName}</h4>
-                    <span className="text-[10px] text-gray-400">{item.leaveType} &bull; {item.durationDays} Hari</span>
+          {displayedRequests.length === 0 ? (
+            <div className="p-8 text-center text-xs text-gray-400 bg-white rounded-2xl border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
+              Tidak ada permohonan cuti dalam antrean.
+            </div>
+          ) : (
+            displayedRequests.map((item) => (
+              <Card key={item.id} className="border-gray-200 dark:border-gray-800">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-900 dark:text-white">{item.applicantName}</h4>
+                      <span className="text-[10px] text-gray-400">{item.leaveType} &bull; {item.durationDays} Hari</span>
+                    </div>
+                    {getStatusBadge(item.status)}
                   </div>
-                  {getStatusBadge(item.status)}
-                </div>
 
-                <div className="text-xs bg-gray-50 rounded-xl p-2.5 dark:bg-gray-800/60 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Periode:</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">{item.startDate} s.d. {item.endDate}</span>
+                  <div className="text-xs bg-gray-50 rounded-xl p-2.5 dark:bg-gray-800/60 space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Periode:</span>
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">{item.startDate} s.d. {item.endDate}</span>
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-300 italic pt-1 border-t border-gray-200/50 dark:border-gray-700/50">
+                      &quot;{item.reason}&quot;
+                    </div>
                   </div>
-                  <div className="text-gray-600 dark:text-gray-300 italic pt-1 border-t border-gray-200/50 dark:border-gray-700/50">
-                    &ldquo;{item.reason}&rdquo;
-                  </div>
-                </div>
 
-                <div className="flex justify-end pt-1">
-                  <Button
-                    type="button"
-                    variant={activeTab === "inbox" && item.status === "Menunggu Approval" ? "default" : "outline"}
-                    size="sm"
-                    className="w-full text-xs font-bold"
-                    onClick={() => {
-                      setSelectedRequest(item);
-                      setShowReviewModal(true);
-                    }}
-                  >
-                    {activeTab === "inbox" && item.status === "Menunggu Approval" ? "Review Permohonan" : "Lihat Rincian"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      variant={isPendingApproval(item.status) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedRequest(item);
+                        setShowReviewModal(true);
+                      }}
+                      className="text-xs h-7 font-semibold"
+                    >
+                      {isPendingApproval(item.status) ? "Review & Putuskan" : "Lihat Rincian"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. MODAL FORM PENGAJUAN CUTI BARU (KARYAWAN)                              */}
-      {/* ========================================================================= */}
-      <Dialog
-        open={showApplyModal}
-        onClose={() => setShowApplyModal(false)}
-        title="Form Pengajuan Cuti Karyawan"
-        description="Sampaikan permohonan izin cuti kerja sesuai ketentuan organisasi."
-      >
-        <form onSubmit={handleApplyLeave} className="space-y-4 pt-2">
-          {/* Info Saldo Cuti */}
-          <div className="flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50/70 p-3 text-xs text-brand-900 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300">
-            <span>Sisa Saldo Cuti Tahunan Anda:</span>
-            <span className="font-bold text-sm text-brand-700 dark:text-brand-300">{annualLeaveBalance} Hari</span>
-          </div>
-
-          {/* Jenis Cuti */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              Jenis Cuti
-            </label>
-            <select
-              value={newLeaveType}
-              onChange={(e) => setNewLeaveType(e.target.value as any)}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="Cuti Tahunan">Cuti Tahunan (Potong Saldo)</option>
-              <option value="Cuti Sakit">Cuti Sakit (Wajib Surat Dokter)</option>
-              <option value="Cuti Melahirkan">Cuti Melahirkan (3 Bulan)</option>
-              <option value="Cuti Alasan Penting">Cuti Alasan Penting / Duka</option>
-            </select>
-          </div>
-
-          {/* Rentang Tanggal */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Tanggal Mulai
-              </label>
-              <input
-                type="date"
-                required
-                value={newStartDate}
-                onChange={(e) => setNewStartDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Tanggal Selesai
-              </label>
-              <input
-                type="date"
-                required
-                value={newEndDate}
-                onChange={(e) => setNewEndDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Estimasi Durasi */}
-          <div className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl">
-            <span>Estimasi Durasi:</span>
-            <span className="font-bold text-gray-900 dark:text-white">
-              {calculatedDays > 0 ? `${calculatedDays} Hari Kerja` : "Pilih tanggal"}
-            </span>
-          </div>
-
-          {/* Alasan Cuti */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              Alasan Pengajuan Cuti (Wajib)
-            </label>
-            <textarea
-              rows={3}
-              required
-              value={newReason}
-              onChange={(e) => setNewReason(e.target.value)}
-              placeholder="Jelaskan keperluan cuti secara jelas..."
-              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          {/* Dokumen Pendukung */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              Lampiran Surat Dokter / Berkas Pendukung (Opsional)
-            </label>
-            <input
-              type="text"
-              value={newAttachment}
-              onChange={(e) => setNewAttachment(e.target.value)}
-              placeholder="Contoh: Surat_Keterangan_Dokter.pdf"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-6 flex gap-2.5 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowApplyModal(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              disabled={isSubmitting}
-              className="flex-1 gap-1.5 font-bold"
-            >
-              <Send className="size-3.5" />
-              {isSubmitting ? "Mengirim..." : "Kirim Permohonan"}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-
-      {/* ========================================================================= */}
-      {/* 2. MODAL REVIEW & KEPUTUSAN APPROVAL (ATASAN / HRD)                       */}
+      {/* MODAL REVIEW & KEPUTUSAN APPROVAL (ATASAN / HRD)                           */}
       {/* ========================================================================= */}
       {selectedRequest && (
         <Dialog
@@ -722,7 +560,9 @@ export default function ApprovalCutiPage() {
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-800">
                 <span className="text-gray-400">Periode Cuti:</span>
-                <span className="font-semibold">{selectedRequest.startDate} s.d. {selectedRequest.endDate} ({selectedRequest.durationDays} Hari)</span>
+                <span className="font-semibold">
+                  {selectedRequest.startDate} s.d. {selectedRequest.endDate} ({selectedRequest.durationDays} Hari)
+                </span>
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2 dark:border-gray-800">
                 <span className="text-gray-400">Dampak Kuota:</span>
@@ -761,7 +601,7 @@ export default function ApprovalCutiPage() {
             </div>
 
             {/* Input Catatan Approver (Jika status masih Menunggu) */}
-            {selectedRequest.status === "Menunggu Approval" && isApprover && (
+            {isPendingApproval(selectedRequest.status) && (
               <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Catatan Persetujuan / Alasan Penolakan
@@ -786,7 +626,7 @@ export default function ApprovalCutiPage() {
 
             {/* Action Buttons */}
             <div className="mt-6 pt-2">
-              {selectedRequest.status === "Menunggu Approval" && isApprover ? (
+              {isPendingApproval(selectedRequest.status) ? (
                 <div className="grid grid-cols-3 gap-2">
                   <Button
                     type="button"
@@ -823,14 +663,17 @@ export default function ApprovalCutiPage() {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setShowReviewModal(false)}
-                >
-                  Tutup Rincian
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowReviewModal(false)}
+                    className="text-xs"
+                  >
+                    Tutup
+                  </Button>
+                </div>
               )}
             </div>
           </div>

@@ -118,17 +118,82 @@ export default function JadwalPage() {
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  // Load schedules & leaves from localStorage with automatic self-healing for all 27 employees
+  const fetchJadwalFromDb = async () => {
+    try {
+      const res = await fetch(`/api/jadwal?startDate=${selectedWeek}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.weeklySchedules) && data.weeklySchedules.length > 0) {
+          const mapped: WeeklyScheduleRecord[] = data.weeklySchedules.map((ws: any) => ({
+            id: `sch-${ws.employeeId}-${selectedWeek}`,
+            employeeId: ws.employeeId,
+            employeeName: ws.employeeName,
+            employeeAvatar: ws.avatar,
+            departmentId: ws.departmentId || "dept-ti",
+            departmentName: ws.department,
+            jobTitle: ws.jobTitle,
+            weekLabel: `Minggu Ini (${selectedWeek})`,
+            weekStartDate: selectedWeek,
+            createdById: user?.id || "DIR-001",
+            createdByName: user?.name || "Admin",
+            createdAt: new Date().toISOString(),
+            status: "Aktif",
+            days: ws.days,
+          }));
+          setWeeklySchedules(mapped);
+          saveStoredWeeklySchedules(mapped);
+        }
+      }
+    } catch (err) {
+      console.warn("Falling back to local schedules:", err);
+    }
+  };
+
+  // Load schedules from PostgreSQL & localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       setWeeklySchedules(getStoredWeeklySchedules());
       setLeaveRequests(getStoredLeaveRequests());
+      fetchJadwalFromDb();
     }
-  }, []);
+  }, [selectedWeek]);
 
-  const saveSchedules = (records: WeeklyScheduleRecord[]) => {
+  const saveSchedules = async (records: WeeklyScheduleRecord[]) => {
     setWeeklySchedules(records);
     saveStoredWeeklySchedules(records);
+
+    // Sync to PostgreSQL DB
+    const assignments: any[] = [];
+    records.forEach((r) => {
+      r.days.forEach((d) => {
+        if (d.isoDate) {
+          let sId = d.shiftId;
+          if (sId === "SHIFT-REG") sId = "shift-reguler";
+          else if (sId === "SHIFT-PAGI") sId = "shift-pagi";
+          else if (sId === "SHIFT-SIANG") sId = "shift-siang";
+          else if (sId === "SHIFT-MALAM") sId = "shift-malam";
+
+          assignments.push({
+            employeeId: r.employeeId,
+            date: d.isoDate,
+            shiftId: sId && sId !== "OFF" && sId !== "CUTI" ? sId : "shift-reguler",
+            isOffDay: d.isOff || d.shiftId === "OFF",
+          });
+        }
+      });
+    });
+
+    if (assignments.length > 0) {
+      try {
+        await fetch("/api/jadwal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assignments, actor: { name: user?.name, role: user?.role } }),
+        });
+      } catch (e) {
+        console.error("Error saving schedule to PostgreSQL:", e);
+      }
+    }
   };
 
   // Akses Otorisasi

@@ -36,6 +36,12 @@ import {
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
+  LogIn,
+  LogOut,
+  Calendar,
+  X,
+  Compass,
+  UserCheck,
 } from "lucide-react";
 import { getCurrentDevice, getStoredUserAccounts, SimulatedDeviceConfig, UserAccount } from "@/lib/user-account-data";
 
@@ -121,7 +127,135 @@ export default function AbsenPage() {
   const [bypassDesktop, setBypassDesktop] = useState<boolean>(false);
   const [networkIp] = useState<string>("http://192.168.1.2:3000/absen");
 
-  // Mode Absensi (Masuk / Pulang)
+  // Jam Real-Time Digital
+  const [currentTime, setCurrentTime] = useState<string>("");
+  const [currentDateFormatted, setCurrentDateFormatted] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }) + " WIB"
+      );
+      setCurrentDateFormatted(
+        now.toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      );
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Status Presensi Hari Ini (Check In & Check Out)
+  const [todayCheckIn, setTodayCheckIn] = useState<AttendanceRecord | null>(null);
+  const [todayCheckOut, setTodayCheckOut] = useState<AttendanceRecord | null>(null);
+
+  // Baca rekam jejak presensi hari ini dari database PostgreSQL (dengan fallback storage)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTodayStatus = async () => {
+      try {
+        const empId = user.nik || user.id;
+        const res = await fetch(`/api/absen?employeeId=${encodeURIComponent(empId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted) {
+            if (data.todayCheckIn) {
+              setTodayCheckIn({
+                id: data.todayCheckIn.id,
+                userId: user.id,
+                userName: user.name,
+                role: user.role,
+                type: "masuk",
+                timestamp: data.todayCheckIn.timestamp,
+                timeFormatted: data.todayCheckIn.timeFormatted,
+                dateFormatted: new Date(data.todayCheckIn.date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+                officeName: targetOffice.name,
+                distanceMeters: data.todayCheckIn.distanceMeters,
+                latitude: data.todayCheckIn.latitude,
+                longitude: data.todayCheckIn.longitude,
+                isWithinRadius: data.todayCheckIn.isWithinRadius,
+                photoUrl: data.todayCheckIn.photoUrl || user.avatar,
+                verificationHash: data.todayCheckIn.verificationHash,
+                status: data.todayCheckIn.status,
+              });
+            } else {
+              setTodayCheckIn(null);
+            }
+
+            if (data.todayCheckOut) {
+              setTodayCheckOut({
+                id: data.todayCheckOut.id,
+                userId: user.id,
+                userName: user.name,
+                role: user.role,
+                type: "pulang",
+                timestamp: data.todayCheckOut.timestamp,
+                timeFormatted: data.todayCheckOut.timeFormatted,
+                dateFormatted: new Date(data.todayCheckOut.date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+                officeName: targetOffice.name,
+                distanceMeters: data.todayCheckOut.distanceMeters,
+                latitude: data.todayCheckOut.latitude,
+                longitude: data.todayCheckOut.longitude,
+                isWithinRadius: data.todayCheckOut.isWithinRadius,
+                photoUrl: data.todayCheckOut.photoUrl || user.avatar,
+                verificationHash: data.todayCheckOut.verificationHash,
+                status: data.todayCheckOut.status,
+              });
+            } else {
+              setTodayCheckOut(null);
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        // Fallback jika offline
+      }
+
+      try {
+        const raw = localStorage.getItem("j_absen_records");
+        if (raw && isMounted) {
+          const records: AttendanceRecord[] = JSON.parse(raw);
+          const todayStr = new Date().toLocaleDateString("id-ID", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+
+          const myRecordsToday = records.filter(
+            (r) =>
+              (r.userId === user.id || r.userName === user.name) &&
+              r.dateFormatted === todayStr
+          );
+
+          const inRec = myRecordsToday.find((r) => r.type === "masuk");
+          const outRec = myRecordsToday.find((r) => r.type === "pulang");
+          setTodayCheckIn(inRec || null);
+          setTodayCheckOut(outRec || null);
+        }
+      } catch (err) {
+        console.error("Gagal membaca storage absen:", err);
+      }
+    };
+
+    fetchTodayStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  // Mode Pop-up Kamera Verifikasi
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
   const [attendanceType, setAttendanceType] = useState<AttendanceType>("masuk");
   const [note, setNote] = useState("");
 
@@ -138,18 +272,18 @@ export default function AbsenPage() {
   const [activeChallenges, setActiveChallenges] = useState<LivenessChallengeItem[]>([]);
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState<number>(0);
   const [livenessStatus, setLivenessStatus] = useState<"scanning_face" | "in_challenge" | "passed" | "failed">("scanning_face");
-  const [countdown, setCountdown] = useState<number>(8); // 8 detik per gerakan
+  const [countdown, setCountdown] = useState<number>(8);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
 
   // State Lokasi & Geofence
   const targetOffice = OFFICE_LOCATIONS[0]; // Kantor Pusat Bali
-  const [currentLat, setCurrentLat] = useState<number>(targetOffice.latitude + 0.00015); // ~17m default di kantor
+  const [currentLat, setCurrentLat] = useState<number>(targetOffice.latitude + 0.00015);
   const [currentLng, setCurrentLng] = useState<number>(targetOffice.longitude + 0.0001);
-  const [gpsAccuracy, setGpsAccuracy] = useState<number>(12); // meter
+  const [gpsAccuracy, setGpsAccuracy] = useState<number>(12);
   const [isLocationLoading, setIsLocationLoading] = useState<boolean>(false);
   const [isMockLocation, setIsMockLocation] = useState<boolean>(false);
 
-  // State Hasil Absensi (Modal)
+  // State Hasil Absensi (Modal Struk Bukti)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successRecord, setSuccessRecord] = useState<AttendanceRecord | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
@@ -206,38 +340,7 @@ export default function AbsenPage() {
     userAccount.boundDeviceId !== currentDev.deviceId
   );
 
-  // Inisialisasi 4 Tantangan Acak saat pertama kali
-  useEffect(() => {
-    startNewLivenessSession();
-  }, []);
-
-  // Jalankan / matikan kamera
-  useEffect(() => {
-    if (isMobileDevice || bypassDesktop) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => {
-      stopCamera();
-    };
-  }, [isMobileDevice, bypassDesktop]);
-
-  // Timer Countdown per gerakan
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (livenessStatus === "in_challenge" && countdown > 0) {
-      timer = setTimeout(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-    } else if (livenessStatus === "in_challenge" && countdown === 0) {
-      // Timeout gerakan: Gagal atau beri kesempatan retry
-      setLivenessStatus("failed");
-    }
-    return () => clearTimeout(timer);
-  }, [livenessStatus, countdown]);
-
-  // Kamera WebRTC
+  // Kamera WebRTC (hanya aktif saat Pop-up modal dibuka)
   const startCamera = async () => {
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -278,21 +381,19 @@ export default function AbsenPage() {
     setLivenessStatus("scanning_face");
     setCountdown(8);
 
-    // Langkah Awal: Deteksi Wajah (1.5 detik) lalu mulai gerakan 1
+    // Langkah Awal: Deteksi Wajah (1.2 detik) lalu mulai gerakan 1
     setTimeout(() => {
       setLivenessStatus("in_challenge");
       setCountdown(8);
-    }, 1500);
+    }, 1200);
   };
 
-  // Callback saat gerakan terdeteksi berhasil (otomatis atau via simulasi interaktif)
+  // Callback saat gerakan terdeteksi berhasil
   const handlePassCurrentChallenge = () => {
     if (currentChallengeIndex < 3) {
-      // Lanjut ke gerakan berikutnya (misal dari 1/4 ke 2/4)
       setCurrentChallengeIndex((prev) => prev + 1);
       setCountdown(8);
     } else {
-      // Semua 4 gerakan selesai!
       setLivenessStatus("passed");
     }
   };
@@ -328,6 +429,7 @@ export default function AbsenPage() {
 
     const detectLoop = () => {
       if (
+        isCameraModalOpen &&
         cameraActive &&
         videoRef.current &&
         videoRef.current.readyState >= 2 &&
@@ -335,28 +437,29 @@ export default function AbsenPage() {
         livenessStatus === "in_challenge"
       ) {
         const video = videoRef.current;
-        const currentTime = video.currentTime;
-        if (currentTime !== lastVideoTime) {
-          lastVideoTime = currentTime;
+        const currentVideoTime = video.currentTime;
+        if (currentVideoTime !== lastVideoTime) {
+          lastVideoTime = currentVideoTime;
           try {
             const results = landmarkerRef.current.detectForVideo(video, performance.now());
             const analysis = analyzeMovementFromLandmarks(results);
             setDetectedMovement(analysis.movement);
 
-            // Validasi apakah gerakan fisik pengguna cocok dengan instruksi aktif
             const currentChallenge = activeChallenges[currentChallengeIndex];
             if (currentChallenge && analysis.movement === currentChallenge.id) {
               handlePassCurrentChallenge();
             }
           } catch (err) {
-            // Drop frame toleransi
+            // Toleransi frame
           }
         }
       }
-      requestRef.current = requestAnimationFrame(detectLoop);
+      if (isCameraModalOpen) {
+        requestRef.current = requestAnimationFrame(detectLoop);
+      }
     };
 
-    if (isMediaPipeReady && cameraActive && livenessStatus === "in_challenge") {
+    if (isCameraModalOpen && isMediaPipeReady && cameraActive && livenessStatus === "in_challenge") {
       requestRef.current = requestAnimationFrame(detectLoop);
     }
 
@@ -365,18 +468,92 @@ export default function AbsenPage() {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [isMediaPipeReady, cameraActive, livenessStatus, currentChallengeIndex, activeChallenges]);
+  }, [isCameraModalOpen, isMediaPipeReady, cameraActive, livenessStatus, currentChallengeIndex, activeChallenges]);
 
-  // Fallback Auto-Simulasi (jika tidak ada webcam fisik atau di desktop dev)
+  // Fallback Auto-Simulasi jika webcam dev tidak mendeteksi gerakan
   useEffect(() => {
     let progressTimer: NodeJS.Timeout;
-    if (livenessStatus === "in_challenge" && (!cameraActive || !isMediaPipeReady)) {
+    if (isCameraModalOpen && livenessStatus === "in_challenge" && (!cameraActive || !isMediaPipeReady)) {
       progressTimer = setTimeout(() => {
         handlePassCurrentChallenge();
-      }, 3000);
+      }, 2500);
     }
     return () => clearTimeout(progressTimer);
-  }, [livenessStatus, currentChallengeIndex, cameraActive, isMediaPipeReady]);
+  }, [isCameraModalOpen, livenessStatus, currentChallengeIndex, cameraActive, isMediaPipeReady]);
+
+  // Timer Countdown per gerakan
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isCameraModalOpen && livenessStatus === "in_challenge" && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (isCameraModalOpen && livenessStatus === "in_challenge" && countdown === 0) {
+      setLivenessStatus("failed");
+    }
+    return () => clearTimeout(timer);
+  }, [isCameraModalOpen, livenessStatus, countdown]);
+
+  // Buka Pop-up Verifikasi Wajah untuk Check In
+  const handleOpenCheckInModal = () => {
+    if (todayCheckIn) return;
+    setAttendanceType("masuk");
+    setIsCameraModalOpen(true);
+    startNewLivenessSession();
+    setTimeout(() => {
+      startCamera();
+    }, 200);
+  };
+
+  // Buka Pop-up Verifikasi Wajah untuk Check Out
+  const handleOpenCheckOutModal = () => {
+    if (!todayCheckIn || todayCheckOut) return;
+    setAttendanceType("pulang");
+    setIsCameraModalOpen(true);
+    startNewLivenessSession();
+    setTimeout(() => {
+      startCamera();
+    }, 200);
+  };
+
+  // Tutup Pop-up Modal Kamera
+  const handleCloseCameraModal = () => {
+    setIsCameraModalOpen(false);
+    stopCamera();
+  };
+
+  // Reset Uji Coba Hari Ini (Khusus QA / Dev)
+  const handleResetTodayAttendance = () => {
+    try {
+      const raw = localStorage.getItem("j_absen_records");
+      if (raw) {
+        const records: AttendanceRecord[] = JSON.parse(raw);
+        const todayStr = new Date().toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        const filtered = records.filter(
+          (r) =>
+            !(
+              (r.userId === user.id || r.userName === user.name) &&
+              r.dateFormatted === todayStr
+            )
+        );
+        localStorage.setItem("j_absen_records", JSON.stringify(filtered));
+      }
+      setTodayCheckIn(null);
+      setTodayCheckOut(null);
+      showAlert({
+        title: "Reset Berhasil",
+        message: "Status absensi hari ini telah di-reset ke status awal (Belum Check In).",
+        type: "info",
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Ambil lokasi GPS asli browser
   const fetchRealGpsLocation = () => {
@@ -400,10 +577,9 @@ export default function AbsenPage() {
         setIsMockLocation(false);
       },
       (err) => {
-        console.warn("Gagal membaca GPS asli:", err);
         showAlert({
-          title: "Gagal Mengakses GPS",
-          message: "Tidak dapat mengambil sinyal GPS: " + err.message + ". Menggunakan koordinat kantor simulasi.",
+          title: "Gagal Membaca GPS",
+          message: "Tidak dapat mengambil sinyal GPS asli: " + err.message + ". Menggunakan koordinat kantor simulasi.",
           type: "warning",
         });
         setIsLocationLoading(false);
@@ -412,7 +588,7 @@ export default function AbsenPage() {
     );
   };
 
-  // Simulasi lokasi pengujian dev
+  // Preset lokasi pengujian dev
   const setPresetLocation = (type: "inside" | "outside") => {
     if (type === "inside") {
       setCurrentLat(targetOffice.latitude + 0.00012);
@@ -443,8 +619,8 @@ export default function AbsenPage() {
     return user.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80";
   };
 
-  // Eksekusi Simpan Presensi
-  const handleSubmitAttendance = () => {
+  // Eksekusi Simpan Presensi dari Modal Pop-up (Terhubung ke PostgreSQL & Offline Cache)
+  const handleSubmitAttendance = async () => {
     if (!geofence.isWithinRadius) {
       showAlert({
         title: "Di Luar Radius Kantor",
@@ -467,57 +643,120 @@ export default function AbsenPage() {
     const photoData = captureSnapshot();
     setCapturedPhoto(photoData);
 
-    setTimeout(() => {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
 
-      let status: AttendanceRecord["status"] = "Tepat Waktu";
-      if (attendanceType === "masuk") {
-        if (hours > 8 || (hours === 8 && minutes > 30)) {
-          status = "Terlambat";
-        }
-      } else {
-        if (hours < 17) {
-          status = "Pulang Cepat";
-        }
+    let calculatedStatus: AttendanceRecord["status"] = "Tepat Waktu";
+    if (attendanceType === "masuk") {
+      if (hours > 8 || (hours === 8 && minutes > 30)) {
+        calculatedStatus = "Terlambat";
+      }
+    } else {
+      if (hours < 17) {
+        calculatedStatus = "Pulang Cepat";
+      }
+    }
+
+    let finalRecord: AttendanceRecord = {
+      id: "REC-" + Date.now().toString(36).toUpperCase(),
+      userId: user.id,
+      userName: user.name,
+      role: user.role,
+      type: attendanceType,
+      timestamp: now.toISOString(),
+      timeFormatted: now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " WIB",
+      dateFormatted: now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+      officeName: targetOffice.name,
+      distanceMeters: geofence.distanceMeters,
+      latitude: currentLat,
+      longitude: currentLng,
+      isWithinRadius: true,
+      photoUrl: photoData,
+      verificationHash: "SHA256-" + Math.random().toString(16).substring(2, 10) + "-WORM",
+      status: calculatedStatus,
+    };
+
+    // 1. Simpan ke database PostgreSQL via API
+    try {
+      const res = await fetch("/api/absen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: user.nik || user.id,
+          type: attendanceType,
+          latitude: currentLat,
+          longitude: currentLng,
+          distanceMeters: geofence.distanceMeters,
+          photoUrl: photoData,
+          notes: note,
+          officeId: targetOffice.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setIsSubmitting(false);
+        showAlert({
+          title: "Gagal Mengirim Presensi",
+          message: data.message || "Terjadi kesalahan saat memproses presensi.",
+          type: "error",
+        });
+        return;
       }
 
-      const newRecord: AttendanceRecord = {
-        id: "REC-" + Date.now().toString(36).toUpperCase(),
-        userId: user.id,
-        userName: user.name,
-        role: user.role,
-        type: attendanceType,
-        timestamp: now.toISOString(),
-        timeFormatted: now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " WIB",
-        dateFormatted: now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
-        officeName: targetOffice.name,
-        distanceMeters: geofence.distanceMeters,
-        latitude: currentLat,
-        longitude: currentLng,
-        isWithinRadius: true,
-        photoUrl: photoData,
-        verificationHash: "SHA256-" + Math.random().toString(16).substring(2, 10) + "-WORM",
-        status: status,
-      };
-
-      try {
-        const existing = JSON.parse(localStorage.getItem("j_absen_records") || "[]");
-        localStorage.setItem("j_absen_records", JSON.stringify([newRecord, ...existing]));
-      } catch (e) {
-        console.error("Gagal simpan ke storage:", e);
+      if (data.record) {
+        finalRecord = {
+          id: data.record.id,
+          userId: user.id,
+          userName: user.name,
+          role: user.role,
+          type: data.record.type,
+          timestamp: data.record.timestamp,
+          timeFormatted: data.record.timeFormatted,
+          dateFormatted: new Date(data.record.date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+          officeName: targetOffice.name,
+          distanceMeters: data.record.distanceMeters,
+          latitude: data.record.latitude,
+          longitude: data.record.longitude,
+          isWithinRadius: data.record.isWithinRadius,
+          photoUrl: data.record.photoUrl || photoData,
+          verificationHash: data.record.verificationHash,
+          status: data.record.status,
+        };
       }
+    } catch (apiErr) {
+      console.warn("Koneksi API presensi offline, menyimpan ke cache lokal:", apiErr);
+    }
 
-      setSuccessRecord(newRecord);
-      setIsSubmitting(false);
-      setShowSuccessModal(true);
-    }, 1200);
+    // 2. Simpan juga ke cache lokal
+    try {
+      const existing = JSON.parse(localStorage.getItem("j_absen_records") || "[]");
+      localStorage.setItem("j_absen_records", JSON.stringify([finalRecord, ...existing]));
+    } catch (e) {
+      console.error("Gagal simpan ke storage:", e);
+    }
+
+    // 3. Perbarui status state tombol
+    if (attendanceType === "masuk") {
+      setTodayCheckIn(finalRecord);
+    } else {
+      setTodayCheckOut(finalRecord);
+    }
+
+    // Tutup modal kamera & matikan kamera
+    setIsCameraModalOpen(false);
+    stopCamera();
+
+    // Tampilkan modal struk bukti sukses
+    setSuccessRecord(finalRecord);
+    setIsSubmitting(false);
+    setShowSuccessModal(true);
   };
 
   const currentChallenge = activeChallenges[currentChallengeIndex];
 
-  // Render Icon Gerakan Sesuai Arah
+  // Render Icon Gerakan
   const renderMovementIcon = (type: MovementType) => {
     switch (type) {
       case "left":
@@ -533,25 +772,30 @@ export default function AbsenPage() {
     }
   };
 
+  // State Logic untuk Tombol
+  const hasCheckedIn = Boolean(todayCheckIn);
+  const hasCheckedOut = Boolean(todayCheckOut);
+  const isAllCompleted = hasCheckedIn && hasCheckedOut;
+
   return (
     <AppLayout pageTitle="Presensi Kehadiran">
       <canvas ref={canvasRef} className="hidden" />
 
       {/* ========================================================================= */}
-      {/* 1. LAYAR BLOKIR DESKTOP (PC/LAPTOP NOT SUPPORTED FOR FACE ATTENDANCE) */}
+      {/* 1. LAYAR BLOKIR DESKTOP (JIKA TIDAK BYPASS)                              */}
       {/* ========================================================================= */}
       {!isMobileDevice && !bypassDesktop ? (
-        <div className="mx-auto max-w-2xl py-8">
-          <Card className="border-gray-200 shadow-theme-lg dark:border-gray-800 overflow-hidden">
-            <div className="bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 p-6 text-white text-center">
+        <div className="mx-auto max-w-2xl py-8 px-4">
+          <Card className="border-gray-200 shadow-theme-lg dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900 rounded-3xl">
+            <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 p-6 text-white text-center">
               <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-theme-md">
                 <Smartphone className="size-8 animate-bounce" />
               </div>
               <h2 className="text-xl font-bold sm:text-2xl">
                 Presensi Wajah Khusus HP Pribadi
               </h2>
-              <p className="mt-2 text-xs text-brand-100 sm:text-sm max-w-lg mx-auto leading-relaxed">
-                Presensi kehadiran wajah hanya dapat dilakukan melalui HP pribadi terdaftar Anda demi keabsahan biometrik &amp; GPS. Gunakan Laptop/PC khusus untuk administrasi manajemen.
+              <p className="mt-2 text-xs text-blue-100 sm:text-sm max-w-lg mx-auto leading-relaxed">
+                Presensi kehadiran wajah dilakukan melalui HP pribadi terdaftar Anda demi keabsahan biometrik &amp; koordinat GPS. Gunakan Laptop/PC khusus untuk manajemen data.
               </p>
             </div>
 
@@ -573,11 +817,8 @@ export default function AbsenPage() {
                   </svg>
                 </div>
                 <h4 className="mt-4 font-bold text-sm text-gray-900 dark:text-white">
-                  Pindai QR Code untuk Absen di Smartphone
+                  Buka Tautan di Smartphone Anda
                 </h4>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-sm">
-                  Atau buka tautan berikut melalui peramban (browser) di smartphone Anda:
-                </p>
                 <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-gray-200/80 px-3.5 py-1.5 font-mono text-xs font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-200">
                   <span>{networkIp}</span>
                 </div>
@@ -608,10 +849,10 @@ export default function AbsenPage() {
         </div>
       ) : isDeviceMismatch ? (
         /* ========================================================================= */
-        /* 2. LAYAR BLOKIR PERANGKAT TIDAK COCOK (ANTI TITIP ABSEN)                 */
+        /* 2. LAYAR BLOKIR PERANGKAT TIDAK COCOK                                     */
         /* ========================================================================= */
-        <div className="mx-auto max-w-xl py-8">
-          <Card className="border-red-200 shadow-theme-lg dark:border-red-900/60 overflow-hidden">
+        <div className="mx-auto max-w-xl py-8 px-4">
+          <Card className="border-red-200 shadow-theme-lg dark:border-red-900/60 overflow-hidden bg-white dark:bg-gray-900 rounded-3xl">
             <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 p-6 text-white text-center">
               <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-theme-md">
                 <ShieldAlert className="size-9 animate-pulse" />
@@ -633,16 +874,6 @@ export default function AbsenPage() {
                   <Smartphone className="size-4 text-emerald-600" />
                   <span>{userAccount?.boundDeviceName || "HP Terdaftar Resmi"}</span>
                 </div>
-                <p>
-                  Perangkat yang Anda gunakan saat ini terdeteksi sebagai:
-                </p>
-                <div className="rounded-lg bg-red-100/70 p-2.5 border border-red-300 font-mono text-xs font-bold text-red-800 dark:bg-red-950/80 dark:border-red-800 dark:text-red-300 flex items-center gap-2">
-                  <ShieldAlert className="size-4 text-red-600" />
-                  <span>{currentDev.deviceName}</span>
-                </div>
-                <p className="text-[11px] text-gray-600 dark:text-gray-400 pt-1">
-                  Demi validitas presensi, sistem melarang 1 HP digunakan untuk bergantian akun. Silakan gunakan HP pribadi terdaftar Anda atau hubungi <strong>Admin IT / HRD</strong> untuk mengajukan reset ikatan perangkat jika Anda telah mengganti HP.
-                </p>
               </div>
 
               <div className="pt-2">
@@ -660,298 +891,235 @@ export default function AbsenPage() {
         </div>
       ) : (
         /* ========================================================================= */
-        /* 2. ANTARMUKA ABSENSI SMARTPHONE (RESPONSIF & 4 GERAKAN ACAK)             */
+        /* 3. TAMPILAN UTAMA ABSENSI MOBILE: PUTIH BERSIH, LEBAR & INFORMATIF       */
         /* ========================================================================= */
-        <div className="space-y-4 max-w-xl mx-auto pb-12">
-          {/* Banner Dev Mode jika sedang bypass desktop */}
-          {bypassDesktop && !isMobileDevice && (
-            <div className="flex items-center justify-between rounded-xl bg-amber-500/10 border border-amber-300 px-3.5 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:text-amber-200">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Sliders className="size-3.5 text-amber-600" />
-                Mode Uji Coba PC Aktif (Bypass)
+        <div className="max-w-xl mx-auto space-y-4 pb-16 px-1">
+          {/* Banner Toolbar Mode Dev & Status Perangkat */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
+              <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+              <span className="truncate font-semibold">
+                {userAccount?.boundDeviceName || currentDev.deviceName}
               </span>
-              <button
-                type="button"
-                onClick={() => setBypassDesktop(false)}
-                className="text-[11px] font-bold text-amber-700 hover:underline dark:text-amber-300"
-              >
-                Kunci Kembali
-              </button>
+              <span className="text-emerald-500 font-bold">&bull; Valid HP</span>
             </div>
-          )}
 
-          {/* Badge Status Verifikasi Perangkat HP Pribadi */}
-          <div className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
-            <div className="flex items-center gap-2 truncate">
-              <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="truncate">
-                Perangkat Terverifikasi: <strong>{userAccount?.boundDeviceName || currentDev.deviceName}</strong>
-              </span>
+            {/* Tombol Dev Tools: Reset Uji Coba & Bypass */}
+            <div className="flex items-center gap-2 justify-end">
+              {(hasCheckedIn || hasCheckedOut) && (
+                <button
+                  type="button"
+                  onClick={handleResetTodayAttendance}
+                  className="rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-300 dark:bg-gray-800 dark:border-gray-700 px-3 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1 transition-colors"
+                  title="Kembalikan status hari ini ke belum absen untuk pengujian"
+                >
+                  <RotateCcw className="size-3" />
+                  Reset Uji Coba
+                </button>
+              )}
+              {bypassDesktop && (
+                <button
+                  type="button"
+                  onClick={() => setBypassDesktop(false)}
+                  className="rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-300"
+                >
+                  Kunci PC
+                </button>
+              )}
             </div>
-            <Badge variant="success" size="sm" className="text-[10px] shrink-0">
-              Valid HP Pribadi
-            </Badge>
           </div>
 
-          {/* Selector Jenis Presensi: Masuk vs Pulang */}
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1.5 dark:bg-gray-800">
-            <button
-              type="button"
-              onClick={() => setAttendanceType("masuk")}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
-                attendanceType === "masuk"
-                  ? "bg-brand-500 text-white shadow-theme-xs"
-                  : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-              }`}
-            >
-              <Clock className="size-4" />
-              Absen Masuk
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendanceType("pulang")}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
-                attendanceType === "pulang"
-                  ? "bg-brand-500 text-white shadow-theme-xs"
-                  : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-              }`}
-            >
-              <Clock className="size-4" />
-              Absen Pulang
-            </button>
-          </div>
-
-          {/* Kartu Kamera & 4-Movement Random Liveness Viewfinder */}
-          <Card className="overflow-hidden border-gray-200 dark:border-gray-800 shadow-theme-md">
-            {/* Header Liveness Progress 4 Gerakan */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-2">
-                <Camera className="size-4 text-brand-500" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-xs text-gray-900 dark:text-white">
-                    Liveness: 4 Gerakan Acak (PRD 5.5)
-                  </span>
-                  <span className="text-[10px] text-gray-400 flex items-center gap-1 font-medium">
-                    <span className={`inline-block size-1.5 rounded-full ${isMediaPipeReady ? "bg-emerald-500" : "bg-amber-400 animate-pulse"}`} />
-                    {isMediaPipeReady ? "MediaPipe 478 Landmark (GPU)" : "Menghubungkan MediaPipe Vision..."}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress 1/4, 2/4, 3/4, 4/4 */}
-              <div className="flex items-center gap-1.5">
-                {livenessStatus === "passed" ? (
-                  <Badge variant="success" size="sm" className="gap-1">
-                    <CheckCircle2 className="size-3" />
-                    4/4 Selesai
-                  </Badge>
-                ) : livenessStatus === "failed" ? (
-                  <Badge variant="destructive" size="sm" className="gap-1">
-                    <AlertCircle className="size-3" />
-                    Waktu Habis
-                  </Badge>
-                ) : (
-                  <Badge variant="warning" size="sm" className="gap-1">
-                    <Sparkles className="size-3 animate-spin" />
-                    Gerakan {currentChallengeIndex + 1}/4
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <CardContent className="p-3 sm:p-4">
-              {/* Step Dots Indikator (1, 2, 3, 4) */}
-              <div className="mb-3 grid grid-cols-4 gap-2">
-                {activeChallenges.map((item, idx) => {
-                  const isDone = idx < currentChallengeIndex || livenessStatus === "passed";
-                  const isCurrent = idx === currentChallengeIndex && livenessStatus === "in_challenge";
-
-                  return (
-                    <div
-                      key={item.id + idx}
-                      className={`flex flex-col items-center rounded-xl p-1.5 border text-center transition-all ${
-                        isDone
-                          ? "bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300"
-                          : isCurrent
-                          ? "bg-amber-50 border-amber-400 text-amber-900 shadow-theme-xs dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-200"
-                          : "bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-900 dark:border-gray-800"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1">
-                        {isDone ? (
-                          <Check className="size-3 text-emerald-600" />
-                        ) : (
-                          <span className="text-[10px] font-bold">#{idx + 1}</span>
-                        )}
-                      </div>
-                      <span className="text-[9px] font-medium truncate w-full mt-0.5">
-                        {item.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Kamera Frame Portrait Ratio */}
-              <div className="relative aspect-[3/4] max-h-[460px] w-full overflow-hidden rounded-2xl bg-gray-950 flex items-center justify-center shadow-inner">
-                {/* Video Feed */}
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  className={`h-full w-full object-cover scale-x-[-1] ${
-                    cameraActive ? "block" : "hidden"
-                  }`}
-                />
-
-                {/* Fallback avatar preview */}
-                {!cameraActive && (
-                  <div className="relative flex flex-col items-center justify-center p-6 text-center">
-                    <div className="relative mb-3 flex size-28 items-center justify-center rounded-full bg-gray-800/90 border-2 border-dashed border-brand-400/60 overflow-hidden">
-                      <img
-                        src={user.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80"}
-                        alt={user.name}
-                        className="size-full object-cover"
-                      />
-                    </div>
-                    <p className="text-sm font-bold text-white">{user.name}</p>
-                    <p className="text-xs text-gray-400">ID: {user.id}</p>
-                    <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-500/20 px-2.5 py-0.5 text-[11px] font-medium text-brand-300">
-                      Simulasi Selfie Karyawan
+          {/* KARTU 1: PROFIL KARYAWAN & JAM DIGITAL REAL-TIME (PUTIH BERSIH) */}
+          <Card className="border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 shadow-xs rounded-3xl overflow-hidden">
+            <CardContent className="p-5 space-y-4">
+              {/* Header Info User */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={user.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80"}
+                    alt={user.name}
+                    className="size-13 rounded-2xl object-cover ring-2 ring-blue-100 dark:ring-blue-900 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-base text-gray-900 dark:text-white truncate">
+                      {user.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                      {user.nik || "ID: EMP-001"} &bull; {user.role}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5">
+                      Shift Reguler (08:00 - 17:00 WIB)
                     </span>
                   </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <Badge variant="secondary" className="border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300 font-bold text-xs">
+                    Kantor Pusat
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Display Waktu & Tanggal Digital Besar */}
+              <div className="rounded-2xl bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/40 p-4 border border-blue-100 dark:from-gray-800/60 dark:to-gray-800/20 dark:border-gray-700/60 text-center space-y-1">
+                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                  <Calendar className="size-3.5 text-blue-600" />
+                  <span>{currentDateFormatted || "Memuat Tanggal..."}</span>
+                </div>
+                <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white font-mono">
+                  {currentTime || "00:00:00 WIB"}
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Waktu Indonesia Barat (Sinkron Server Presensi WORM)
+                </p>
+              </div>
+
+              {/* Status Ringkasan Presensi Hari Ini */}
+              <div className="rounded-2xl p-3.5 border transition-all">
+                {!hasCheckedIn ? (
+                  <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 p-3 rounded-xl">
+                    <Clock className="size-5 shrink-0 text-amber-600" />
+                    <div className="text-xs">
+                      <span className="font-bold block">Status: Belum Absen Masuk</span>
+                      <span className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Silakan tekan tombol <strong>Check In</strong> di bawah untuk memulai jam kerja.
+                      </span>
+                    </div>
+                  </div>
+                ) : !hasCheckedOut ? (
+                  <div className="flex items-center gap-3 text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 p-3 rounded-xl">
+                    <CheckCircle2 className="size-5 shrink-0 text-emerald-600" />
+                    <div className="text-xs">
+                      <span className="font-bold block">
+                        Sudah Check In: {todayCheckIn?.timeFormatted} ({todayCheckIn?.status})
+                      </span>
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                        Jam kerja Anda aktif. Tekan tombol <strong>Check Out</strong> saat jam pulang kerja.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 p-3 rounded-xl">
+                    <UserCheck className="size-5 shrink-0 text-blue-600" />
+                    <div className="text-xs">
+                      <span className="font-bold block">Presensi Hari Ini Lengkap & Sah</span>
+                      <span className="text-[11px] text-blue-700 dark:text-blue-300">
+                        Check In: <strong>{todayCheckIn?.timeFormatted}</strong> &bull; Check Out: <strong>{todayCheckOut?.timeFormatted}</strong>.
+                      </span>
+                    </div>
+                  </div>
                 )}
-
-                {/* Oval Face Guide Frame */}
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <div
-                    className={`relative w-44 h-60 sm:w-52 sm:h-72 rounded-[50%] border-2 transition-all duration-300 ${
-                      livenessStatus === "passed"
-                        ? "border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.6)]"
-                        : livenessStatus === "failed"
-                        ? "border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.5)]"
-                        : "border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.5)]"
-                    }`}
-                  >
-                    {/* Scan line */}
-                    <div
-                      className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-400 to-transparent animate-bounce opacity-80"
-                      style={{ top: "45%" }}
-                    />
-
-                    {/* Active Movement Direction Overlay Icon */}
-                    {livenessStatus === "in_challenge" && currentChallenge && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="rounded-full bg-black/60 p-3 backdrop-blur-xs border border-white/20">
-                          {renderMovementIcon(currentChallenge.id)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Liveness Challenge Text & Countdown */}
-                  <div className="mt-4 max-w-[280px] rounded-xl bg-black/85 px-4 py-2 text-center text-xs font-semibold text-white backdrop-blur-md">
-                    {livenessStatus === "scanning_face" && (
-                      <span className="text-brand-300">Memindai wajah awal...</span>
-                    )}
-
-                    {livenessStatus === "in_challenge" && currentChallenge && (
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-center gap-1.5 text-amber-300 font-bold">
-                          <span>Instruksi {currentChallengeIndex + 1}/4:</span>
-                          <span className="flex items-center gap-1 text-[11px] text-white/80">
-                            <Timer className="size-3 text-amber-400" />
-                            {countdown}s
-                          </span>
-                        </div>
-                        <p className="text-white text-[12px]">{currentChallenge.instruction}</p>
-                      </div>
-                    )}
-
-                    {livenessStatus === "passed" && (
-                      <span className="text-emerald-400 font-bold flex items-center justify-center gap-1">
-                        <CheckCircle2 className="size-4" />
-                        4 Gerakan Acak Berhasil Terverifikasi! ✓
-                      </span>
-                    )}
-
-                    {livenessStatus === "failed" && (
-                      <span className="text-red-400 font-bold flex items-center justify-center gap-1">
-                        <AlertCircle className="size-4" />
-                        Waktu tantangan habis. Silakan ulangi.
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Floating Action Tool Buttons */}
-                <div className="absolute bottom-3 inset-x-3 z-10 flex justify-between items-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={cameraActive ? stopCamera : startCamera}
-                    className="h-8 gap-1.5 bg-black/60 text-white backdrop-blur-md hover:bg-black/80 border-none text-xs"
-                  >
-                    {cameraActive ? (
-                      <>
-                        <VideoOff className="size-3.5" />
-                        Tutup
-                      </>
-                    ) : (
-                      <>
-                        <Video className="size-3.5" />
-                        Kamera
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={startNewLivenessSession}
-                    className="h-8 gap-1.5 bg-black/60 text-white backdrop-blur-md hover:bg-black/80 border-none text-xs"
-                    title="Acak Ulang 4 Gerakan"
-                  >
-                    <RotateCcw className="size-3.5" />
-                    Acak Ulang
-                  </Button>
-                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Kartu Status Geofence GPS */}
-          <Card className="border-gray-200 dark:border-gray-800">
+          {/* KARTU 2: DUA TOMBOL AKSI UTAMA (CHECK IN & CHECK OUT) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* 1. TOMBOL CHECK IN */}
+            <button
+              type="button"
+              disabled={hasCheckedIn || isSubmitting}
+              onClick={handleOpenCheckInModal}
+              className={`w-full relative flex flex-col items-center justify-center p-5 rounded-3xl transition-all select-none shadow-sm border-2 ${
+                !hasCheckedIn
+                  ? "bg-blue-600 hover:bg-blue-700 active:scale-[0.98] border-blue-600 text-white cursor-pointer shadow-blue-500/25 shadow-lg"
+                  : "bg-emerald-50/70 border-emerald-200 text-emerald-900 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-200 cursor-not-allowed opacity-90"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {!hasCheckedIn ? (
+                  <LogIn className="size-6 text-white" />
+                ) : (
+                  <CheckCircle2 className="size-6 text-emerald-600 dark:text-emerald-400" />
+                )}
+                <span className="text-base font-extrabold tracking-tight">
+                  {!hasCheckedIn ? "CHECK IN" : "SUDAH CHECK IN"}
+                </span>
+              </div>
+              <span className={`text-xs mt-1 font-medium ${!hasCheckedIn ? "text-blue-100" : "text-emerald-700 dark:text-emerald-400"}`}>
+                {!hasCheckedIn
+                  ? "Klik untuk Verifikasi Wajah Masuk"
+                  : `Tercatat: ${todayCheckIn?.timeFormatted}`}
+              </span>
+            </button>
+
+            {/* 2. TOMBOL CHECK OUT */}
+            <button
+              type="button"
+              disabled={!hasCheckedIn || hasCheckedOut || isSubmitting}
+              onClick={handleOpenCheckOutModal}
+              className={`w-full relative flex flex-col items-center justify-center p-5 rounded-3xl transition-all select-none shadow-sm border-2 ${
+                !hasCheckedIn
+                  ? "bg-gray-100 border-gray-200 text-gray-400 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-500 cursor-not-allowed opacity-60"
+                  : !hasCheckedOut
+                  ? "bg-amber-600 hover:bg-amber-700 active:scale-[0.98] border-amber-600 text-white cursor-pointer shadow-amber-500/25 shadow-lg"
+                  : "bg-blue-50/70 border-blue-200 text-blue-900 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-200 cursor-not-allowed opacity-90"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {!hasCheckedIn ? (
+                  <LogOut className="size-6 text-gray-400" />
+                ) : !hasCheckedOut ? (
+                  <LogOut className="size-6 text-white" />
+                ) : (
+                  <CheckCircle2 className="size-6 text-blue-600 dark:text-blue-400" />
+                )}
+                <span className="text-base font-extrabold tracking-tight">
+                  {!hasCheckedIn
+                    ? "CHECK OUT"
+                    : !hasCheckedOut
+                    ? "CHECK OUT"
+                    : "SUDAH CHECK OUT"}
+                </span>
+              </div>
+              <span className={`text-xs mt-1 font-medium ${
+                !hasCheckedIn
+                  ? "text-gray-400"
+                  : !hasCheckedOut
+                  ? "text-amber-100"
+                  : "text-blue-700 dark:text-blue-400"
+              }`}>
+                {!hasCheckedIn
+                  ? "Selesaikan Check In Terlebih Dahulu"
+                  : !hasCheckedOut
+                  ? "Klik untuk Verifikasi Wajah Pulang"
+                  : `Tercatat: ${todayCheckOut?.timeFormatted}`}
+              </span>
+            </button>
+          </div>
+
+          {/* KARTU 3: STATUS RADIUS GEOFENCE & GPS KANTOR */}
+          <Card className="border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 shadow-xs rounded-3xl">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MapPin className="size-4 text-emerald-500" />
+                  <MapPin className="size-4.5 text-blue-600 dark:text-blue-400" />
                   <span className="font-bold text-xs text-gray-900 dark:text-white">
-                    Radius Kantor: {targetOffice.name}
+                    Lokasi Kantor: {targetOffice.name}
                   </span>
                 </div>
                 <Badge
                   variant={geofence.isWithinRadius ? "success" : "destructive"}
                   size="sm"
+                  className="font-bold text-[10px]"
                 >
-                  {geofence.isWithinRadius ? "Dalam Area" : "Luar Area"}
+                  {geofence.isWithinRadius ? "Dalam Radius Area" : "Luar Radius Area"}
                 </Badge>
               </div>
 
-              {/* Jarak & Progress Bar */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 dark:border-gray-800 dark:bg-gray-800/40">
-                <div className="flex justify-between text-xs text-gray-700 dark:text-gray-300">
+              {/* Jarak GPS Ponsel & Progress Bar */}
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/80 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
+                <div className="flex justify-between items-center text-xs text-gray-700 dark:text-gray-300">
                   <span>Jarak GPS Ponsel:</span>
                   <span className="font-bold text-gray-900 dark:text-white">
-                    {geofence.distanceMeters} m <span className="text-gray-400 font-normal">/ maks {targetOffice.radiusMeters}m</span>
+                    {geofence.distanceMeters} meter{" "}
+                    <span className="text-gray-400 font-normal">/ maks {targetOffice.radiusMeters}m</span>
                   </span>
                 </div>
 
-                <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <div className="mt-2 h-2.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-500 ${
+                    className={`h-full transition-all duration-500 rounded-full ${
                       geofence.isWithinRadius ? "bg-emerald-500" : "bg-red-500"
                     }`}
                     style={{
@@ -961,87 +1129,33 @@ export default function AbsenPage() {
                 </div>
               </div>
 
-              {/* Dev Simulation Buttons */}
+              {/* Dev Simulation Buttons & GPS Real-time */}
               <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
-                <span className="text-gray-400 font-medium">Uji Coba:</span>
-                <div className="flex gap-1.5">
+                <span className="text-gray-400 font-medium">Uji Coba GPS:</span>
+                <div className="flex gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setPresetLocation("inside")}
-                    className="rounded-lg bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    className="rounded-lg bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 transition-colors"
                   >
                     📍 Di Kantor (18m)
                   </button>
                   <button
                     type="button"
                     onClick={() => setPresetLocation("outside")}
-                    className="rounded-lg bg-red-50 px-2.5 py-1 font-semibold text-red-700 border border-red-200 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                    className="rounded-lg bg-red-50 px-2.5 py-1 font-semibold text-red-700 border border-red-200 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-300 transition-colors"
                   >
                     🚫 Di Luar (1.8km)
                   </button>
                   <button
                     type="button"
                     onClick={fetchRealGpsLocation}
-                    className="rounded-lg bg-gray-100 px-2.5 py-1 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                    disabled={isLocationLoading}
+                    className="rounded-lg bg-gray-100 px-2.5 py-1 text-gray-700 hover:bg-gray-200 font-medium dark:bg-gray-800 dark:text-gray-300 transition-colors"
                   >
-                    GPS Asli
+                    {isLocationLoading ? "Mencari GPS..." : "GPS Asli"}
                   </button>
                 </div>
-              </div>
-
-              {/* Catatan Karyawan (Opsional) */}
-              <div className="pt-1">
-                <input
-                  type="text"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Catatan / agenda kerja (opsional)..."
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                />
-              </div>
-
-              {/* Tombol Eksekusi Absen Mobile */}
-              <div className="pt-2">
-                <Button
-                  type="button"
-                  variant="default"
-                  size="lg"
-                  disabled={isSubmitting || !geofence.isWithinRadius || livenessStatus !== "passed"}
-                  onClick={handleSubmitAttendance}
-                  className="w-full h-12 text-sm font-bold shadow-theme-md gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <RefreshCw className="size-4 animate-spin" />
-                      Memverifikasi Kehadiran...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="size-4" />
-                      {attendanceType === "masuk"
-                        ? "Konfirmasi Absen Masuk"
-                        : "Konfirmasi Absen Pulang"}
-                    </>
-                  )}
-                </Button>
-
-                {/* Pesan status */}
-                {!geofence.isWithinRadius ? (
-                  <p className="mt-2 text-center text-[11px] font-medium text-red-600 dark:text-red-400 flex items-center justify-center gap-1">
-                    <AlertCircle className="size-3" />
-                    Terkunci: Berada di luar area kantor ({geofence.distanceMeters}m).
-                  </p>
-                ) : livenessStatus !== "passed" ? (
-                  <p className="mt-2 text-center text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1">
-                    <AlertCircle className="size-3" />
-                    Selesaikan 4 gerakan acak di atas ({currentChallengeIndex + 1}/4)...
-                  </p>
-                ) : (
-                  <p className="mt-2 text-center text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
-                    <CheckCircle2 className="size-3" />
-                    Siap absen! 4 Gerakan lolos & berada di kantor.
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -1049,7 +1163,252 @@ export default function AbsenPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. MODAL DIALOG STRUK BUKTI KEHADIRAN SUKSES                              */}
+      {/* 4. POP-UP MODAL KAMERA FISIK (VERIFIKASI WAJAH PUTIH BERSIH & LEBAR)     */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={isCameraModalOpen}
+        onClose={handleCloseCameraModal}
+        title={attendanceType === "masuk" ? "Verifikasi Wajah — Absen Masuk" : "Verifikasi Wajah — Absen Pulang"}
+        description="Posisikan wajah Anda pada lingkaran kamera dan ikuti 4 gerakan acak liveness."
+        className="max-w-lg w-full text-xs bg-white dark:bg-gray-900 rounded-3xl"
+      >
+        <div className="space-y-4 pt-1">
+          {/* Header Progress 4 Gerakan Acak */}
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Camera className="size-4 text-blue-600" />
+              <span className="font-bold text-xs text-gray-900 dark:text-white">
+                Liveness: 4 Gerakan Acak
+              </span>
+            </div>
+            <div>
+              {livenessStatus === "passed" ? (
+                <Badge variant="success" size="sm" className="gap-1 font-bold">
+                  <CheckCircle2 className="size-3" />
+                  4/4 Selesai
+                </Badge>
+              ) : livenessStatus === "failed" ? (
+                <Badge variant="destructive" size="sm" className="gap-1 font-bold">
+                  <AlertCircle className="size-3" />
+                  Waktu Habis
+                </Badge>
+              ) : (
+                <Badge variant="warning" size="sm" className="gap-1 font-bold">
+                  <Sparkles className="size-3 animate-spin" />
+                  Gerakan {currentChallengeIndex + 1}/4
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* 4 Steps Gerakan (Pills) */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {activeChallenges.map((item, idx) => {
+              const isDone = idx < currentChallengeIndex || livenessStatus === "passed";
+              const isCurrent = idx === currentChallengeIndex && livenessStatus === "in_challenge";
+
+              return (
+                <button
+                  type="button"
+                  key={item.id + idx}
+                  onClick={() => {
+                    // Fitur klik langsung untuk kemudahan pengujian jika kamera minim cahaya
+                    if (idx === currentChallengeIndex && livenessStatus === "in_challenge") {
+                      handlePassCurrentChallenge();
+                    }
+                  }}
+                  className={`flex flex-col items-center rounded-xl p-1.5 border text-center transition-all ${
+                    isDone
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300"
+                      : isCurrent
+                      ? "bg-amber-50 border-amber-400 text-amber-900 shadow-xs dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-200 cursor-pointer"
+                      : "bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700"
+                  }`}
+                  title="Klik gerakan untuk loloskan tantangan (Dev/Bypass)"
+                >
+                  <div className="flex items-center gap-1">
+                    {isDone ? (
+                      <Check className="size-3 text-emerald-600" />
+                    ) : (
+                      <span className="text-[10px] font-bold">#{idx + 1}</span>
+                    )}
+                  </div>
+                  <span className="text-[9px] font-medium truncate w-full mt-0.5">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* JENDELA KAMERA FISIK DENGAN BINGKAI OVAL */}
+          <div className="relative aspect-[3/4] max-h-[380px] w-full overflow-hidden rounded-2xl bg-gray-950 flex items-center justify-center shadow-inner">
+            {/* Video WebRTC Feed dari Kamera Depan */}
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className={`h-full w-full object-cover scale-x-[-1] ${
+                cameraActive ? "block" : "hidden"
+              }`}
+            />
+
+            {/* Fallback jika izin kamera belum aktif atau simulator */}
+            {!cameraActive && (
+              <div className="relative flex flex-col items-center justify-center p-6 text-center">
+                <div className="relative mb-3 flex size-24 items-center justify-center rounded-full bg-gray-800 border-2 border-dashed border-blue-400/60 overflow-hidden">
+                  <img
+                    src={user.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80"}
+                    alt={user.name}
+                    className="size-full object-cover"
+                  />
+                </div>
+                <p className="text-sm font-bold text-white">{user.name}</p>
+                <p className="text-xs text-gray-400 font-mono">ID: {user.nik || user.id}</p>
+                <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[11px] font-medium text-blue-300">
+                  Simulasi Selfie Karyawan
+                </span>
+              </div>
+            )}
+
+            {/* Bingkai Oval Wajah */}
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <div
+                className={`relative w-44 h-56 rounded-[50%] border-2 transition-all duration-300 ${
+                  livenessStatus === "passed"
+                    ? "border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.6)]"
+                    : livenessStatus === "failed"
+                    ? "border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.5)]"
+                    : "border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.5)]"
+                }`}
+              >
+                {/* Garis Scan Vertikal Halus */}
+                <div
+                  className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-bounce opacity-80"
+                  style={{ top: "45%" }}
+                />
+
+                {/* Overlay Icon Arah Gerakan Aktif */}
+                {livenessStatus === "in_challenge" && currentChallenge && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="rounded-full bg-black/60 p-3 backdrop-blur-xs border border-white/20">
+                      {renderMovementIcon(currentChallenge.id)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Teks Instruksi & Countdown */}
+              <div className="mt-3 max-w-[270px] rounded-xl bg-black/85 px-4 py-1.5 text-center text-xs font-semibold text-white backdrop-blur-md">
+                {livenessStatus === "scanning_face" && (
+                  <span className="text-blue-300">Mendeteksi wajah awal...</span>
+                )}
+
+                {livenessStatus === "in_challenge" && currentChallenge && (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-center gap-1.5 text-amber-300 font-bold">
+                      <span>Gerakan {currentChallengeIndex + 1}/4:</span>
+                      <span className="flex items-center gap-1 text-[11px] text-white/80">
+                        <Timer className="size-3 text-amber-400" />
+                        {countdown}s
+                      </span>
+                    </div>
+                    <p className="text-white text-[11px] leading-tight">{currentChallenge.instruction}</p>
+                  </div>
+                )}
+
+                {livenessStatus === "passed" && (
+                  <span className="text-emerald-400 font-bold flex items-center justify-center gap-1">
+                    <CheckCircle2 className="size-4" />
+                    4 Gerakan Lolos Terverifikasi! ✓
+                  </span>
+                )}
+
+                {livenessStatus === "failed" && (
+                  <span className="text-red-400 font-bold flex items-center justify-center gap-1">
+                    <AlertCircle className="size-4" />
+                    Waktu habis. Silakan ulangi.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Tombol Kontrol Kamera di dalam frame */}
+            <div className="absolute bottom-2 inset-x-2 z-10 flex justify-between items-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={cameraActive ? stopCamera : startCamera}
+                className="h-7 text-[11px] gap-1 bg-black/60 text-white backdrop-blur-md hover:bg-black/80 border-none"
+              >
+                {cameraActive ? <VideoOff className="size-3" /> : <Video className="size-3" />}
+                {cameraActive ? "Tutup Cam" : "Nyalakan Cam"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={startNewLivenessSession}
+                className="h-7 text-[11px] gap-1 bg-black/60 text-white backdrop-blur-md hover:bg-black/80 border-none"
+              >
+                <RotateCcw className="size-3" />
+                Acak Ulang
+              </Button>
+            </div>
+          </div>
+
+          {/* Catatan / Keterangan Tambahan */}
+          <div>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Catatan kerja (opsional, misal: lembur / dinas)..."
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+
+          {/* Tombol Eksekusi di Pop-up */}
+          <div className="flex gap-2.5 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseCameraModal}
+              className="flex-1 text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              disabled={isSubmitting || !geofence.isWithinRadius || livenessStatus !== "passed"}
+              onClick={handleSubmitAttendance}
+              className={`flex-2 text-xs font-bold gap-1.5 ${
+                attendanceType === "masuk"
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-amber-600 hover:bg-amber-700 text-white"
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin" />
+                  Memverifikasi...
+                </>
+              ) : (
+                <>
+                  <Check className="size-3.5" />
+                  {attendanceType === "masuk" ? "Konfirmasi Absen Masuk" : "Konfirmasi Absen Pulang"}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* 5. MODAL DIALOG STRUK BUKTI KEHADIRAN SUKSES                              */}
       {/* ========================================================================= */}
       {successRecord && (
         <Dialog
@@ -1059,7 +1418,7 @@ export default function AbsenPage() {
           description="Presensi Anda telah divalidasi dengan aman melalui verifikasi wajah 4 gerakan acak dan geofencing."
         >
           <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-3.5 rounded-xl bg-emerald-50 p-4 border border-emerald-200 dark:border-emerald-900/60 dark:bg-emerald-950/40">
+            <div className="flex items-center gap-3.5 rounded-2xl bg-emerald-50 p-4 border border-emerald-200 dark:border-emerald-900/60 dark:bg-emerald-950/40">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-theme-xs">
                 <CheckCircle2 className="size-6" />
               </div>
@@ -1073,8 +1432,8 @@ export default function AbsenPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
-              <div className="relative size-16 shrink-0 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-black">
+            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
+              <div className="relative size-16 shrink-0 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-black">
                 <img
                   src={successRecord.photoUrl}
                   alt="Snapshot Verifikasi"

@@ -101,6 +101,11 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           href: "/jadwal",
           icon: CalendarDays,
         },
+        {
+          title: "Pengajuan Cuti",
+          href: "/cuti",
+          icon: FileCheck2,
+        },
       ],
     },
     {
@@ -110,14 +115,14 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           title: "Approval Cuti",
           href: "/approval/cuti",
           icon: FileCheck2,
-          badge: user.role !== "Staff" ? "3" : undefined,
+          badge: "3",
           allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
         {
           title: "Approval Koreksi",
           href: "/approval/koreksi",
           icon: FileEdit,
-          badge: user.role !== "Staff" ? "1" : undefined,
+          badge: "1",
           allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
       ],
@@ -495,15 +500,18 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
               collapsed && "justify-center p-2"
             )}
           >
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 font-bold text-xs dark:bg-brand-900/60 dark:text-brand-300">
+            <div
+              suppressHydrationWarning
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 font-bold text-xs dark:bg-brand-900/60 dark:text-brand-300"
+            >
               {user.name.split(" ").map(n => n[0]).slice(0, 2).join("")}
             </div>
             {!collapsed && (
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="truncate text-xs font-semibold text-gray-900 dark:text-white">
+              <div suppressHydrationWarning className="flex flex-col min-w-0 flex-1">
+                <span suppressHydrationWarning className="truncate text-xs font-semibold text-gray-900 dark:text-white">
                   {user.name}
                 </span>
-                <span className="truncate text-[11px] text-gray-500 dark:text-gray-400">
+                <span suppressHydrationWarning className="truncate text-[11px] text-gray-500 dark:text-gray-400">
                   {ROLE_LABELS[user.role] || user.role} &bull; {user.department}
                 </span>
               </div>

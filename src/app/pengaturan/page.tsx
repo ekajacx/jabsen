@@ -65,25 +65,76 @@ function PengaturanContent() {
   const [company, setCompany] = useState<CompanyProfile>(getCompanyProfile);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
-  const handleSaveCompany = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingCompany(true);
-    saveCompanyProfile(company);
-    setTimeout(() => {
-      setIsSavingCompany(false);
-      showToast("success", "Data identitas perusahaan & kop surat resmi berhasil disimpan.");
-    }, 600);
-  };
-
   // ==========================================
   // TAB 2: STATE LOKASI & GEOFENCE KANTOR
   // ==========================================
+  const [officeId, setOfficeId] = useState("office-pusat-bali");
   const [officeName, setOfficeName] = useState("Kantor Pusat Bali");
-  const [latitude, setLatitude] = useState(-8.670458);
-  const [longitude, setLongitude] = useState(115.212629);
+  const [latitude, setLatitude] = useState(-8.7234);
+  const [longitude, setLongitude] = useState(115.1768);
   const [radiusMeters, setRadiusMeters] = useState(100);
   const [isGettingGps, setIsGettingGps] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [isSavingOffice, setIsSavingOffice] = useState(false);
+
+  // Load Pengaturan dari database PostgreSQL via API
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/pengaturan");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted) {
+            if (data.profile) {
+              setCompany(data.profile);
+              saveCompanyProfile(data.profile);
+            }
+            if (data.office) {
+              setOfficeId(data.office.id);
+              setOfficeName(data.office.name);
+              setLatitude(data.office.latitude);
+              setLongitude(data.office.longitude);
+              setRadiusMeters(data.office.radiusMeters);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Gagal fetch pengaturan via API:", err);
+      }
+    };
+    fetchSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSaveCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCompany(true);
+    try {
+      const res = await fetch("/api/pengaturan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "profile",
+          profileData: company,
+          actorName: user?.name,
+          actorRole: user?.role,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal menyimpan data ke database.");
+      }
+      saveCompanyProfile(company);
+      showToast("success", data.message || "Data profil perusahaan berhasil diperbarui di database PostgreSQL.");
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal menyimpan profil perusahaan.");
+    } finally {
+      setIsSavingCompany(false);
+    }
+  };
 
   // Fungsi 1-Klik: Dapatkan Koordinat Saya Saat Ini (GPS)
   const handleGetCurrentLocation = () => {
@@ -117,11 +168,38 @@ function PengaturanContent() {
     );
   };
 
-  const handleSaveGeofence = () => {
-    showToast(
-      "success",
-      `Lokasi kantor '${officeName}' dengan radius ${radiusMeters}m berhasil diperbarui dan aktif untuk geofencing absensi.`
-    );
+  const handleSaveGeofence = async () => {
+    setIsSavingOffice(true);
+    try {
+      const res = await fetch("/api/pengaturan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "office",
+          officeData: {
+            id: officeId,
+            name: officeName,
+            latitude,
+            longitude,
+            radiusMeters,
+          },
+          actorName: user?.name,
+          actorRole: user?.role,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal menyimpan koordinat lokasi ke database.");
+      }
+      showToast(
+        "success",
+        data.message || `Lokasi kantor '${officeName}' dengan radius ${radiusMeters}m berhasil diperbarui di database PostgreSQL.`
+      );
+    } catch (err: any) {
+      showToast("error", err.message || "Gagal memperbarui lokasi kantor.");
+    } finally {
+      setIsSavingOffice(false);
+    }
   };
 
   if (!isAuthReady) {

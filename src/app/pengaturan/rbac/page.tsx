@@ -33,6 +33,8 @@ import {
   FileCheck,
   Sparkles,
   ChevronRight,
+  ChevronDown,
+  ChevronsUpDown,
   Info,
 } from "lucide-react";
 
@@ -98,7 +100,6 @@ const ROLE_DISPLAY_CONFIG: Record<
 
 // 41 Baseline Permissions sesuai Matriks_Hak_Akses_Baseline_Final.md
 const INITIAL_PERMISSIONS: PermissionRule[] = [
-  // A. Autentikasi & Akun Pribadi
   {
     id: 1,
     categoryCode: "A",
@@ -168,7 +169,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // B. Manajemen Karyawan (Employee)
+  // B. Manajemen Karyawan (Employee),
   {
     id: 5,
     categoryCode: "B",
@@ -256,9 +257,169 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // C. Akun Login & Hak Akses (RBAC)
+  // C. Akun Login & Hak Akses (RBAC),
   {
     id: 10,
+    categoryCode: "B",
+    categoryName: "Manajemen Karyawan",
+    code: "employee.export_excel",
+    name: "Ekspor Master Karyawan ke Excel",
+    description: "Mengunduh daftar database profil karyawan organisasi ke file .xlsx",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+
+  // C. Tambahan Akun Pengguna (Ekspor Akun),
+  {
+    id: 11,
+    categoryCode: "L",
+    categoryName: "Manajemen Struktur Organisasi",
+    code: "org.view_structure",
+    name: "Lihat Bagan Struktur Organisasi",
+    description: "Melihat visualisasi bagan hirarki pohon organisasi perusahaan",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Org" },
+      Staff: { allowed: true, scope: "Org" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 12,
+    categoryCode: "L",
+    categoryName: "Manajemen Struktur Organisasi",
+    code: "org.edit_position",
+    name: "Ubah Posisi Jabatan di Bagan",
+    description: "Mengubah informasi pemegang posisi jabatan pada kotak hirarki (ikon pensil)",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 13,
+    categoryCode: "L",
+    categoryName: "Manajemen Struktur Organisasi",
+    code: "org.manage_hierarchy",
+    name: "Kelola Hubungan Hirarki Organisasi",
+    description: "Menambah posisi baru dan menghubungkan garis komando antar jabatan",
+    isCritical: true,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 14,
+    categoryCode: "L",
+    categoryName: "Manajemen Struktur Organisasi",
+    code: "org.export_chart",
+    name: "Ekspor Bagan Organisasi (Gambar / PDF)",
+    description: "Mengunduh visualisasi bagan organisasi dalam format file gambar atau dokumen",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Org" },
+      Staff: { allowed: true, scope: "Org" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+
+  // M. Profil Perusahaan & Pengaturan Sistem,
+  {
+    id: 15,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.view",
+    name: "Lihat Daftar Departemen",
+    description: "Melihat daftar unit kerja dan struktur departemen perusahaan",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 16,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.create",
+    name: "Tambah Departemen Baru",
+    description: "Mendaftarkan unit departemen operasional baru ke organisasi",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 17,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.update",
+    name: "Ubah Data Departemen",
+    description: "Memperbarui kode, nama, dan deskripsi unit departemen",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 18,
+    categoryCode: "K",
+    categoryName: "Manajemen Departemen",
+    code: "department.delete",
+    name: "Hapus Departemen",
+    description: "Menghapus unit departemen beserta relasi hierarki di organisasi",
+    isCritical: true,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: false, scope: "None" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+    note: "Tindakan Kritis [CRITICAL]: Menghapus unit departemen dapat memengaruhi hierarki jabatan",
+  },
+
+  // G. Tambahan Cuti (Approval Tahap 2 & Ekspor),
+  {
+    id: 19,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "account.create_activate",
@@ -275,7 +436,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 11,
+    id: 20,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "account.reset_credential",
@@ -292,7 +453,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 12,
+    id: 21,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "account.deactivate",
@@ -310,7 +471,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Dilindungi Aturan Anti-Lockout Admin IT (P-14)",
   },
   {
-    id: 13,
+    id: 22,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "rbac.manage_roles",
@@ -327,7 +488,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 14,
+    id: 23,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "rbac.assign_user_role",
@@ -344,7 +505,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 15,
+    id: 24,
     categoryCode: "C",
     categoryName: "Akun Login & Hak Akses",
     code: "rbac.grant_admin_it_approval",
@@ -362,9 +523,28 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Eksklusif CEO. Admin IT dilarang self-grant",
   },
 
-  // D. Enrollment & Biometrik Wajah
+  // D. Enrollment & Biometrik Wajah,
   {
-    id: 16,
+    id: 25,
+    categoryCode: "C",
+    categoryName: "Akun Login & Hak Akses",
+    code: "account.export_excel",
+    name: "Ekspor Daftar Akun Pengguna",
+    description: "Mengunduh rekap akun, status device binding, dan hak akses ke .xlsx",
+    isCritical: true,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: false, scope: "None" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+
+  // L. Manajemen Struktur Organisasi (Hirarki),
+  {
+    id: 26,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.register_self",
@@ -381,7 +561,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 17,
+    id: 27,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.view_status",
@@ -398,7 +578,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 18,
+    id: 28,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.review_approval",
@@ -416,7 +596,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-19",
   },
   {
-    id: 19,
+    id: 29,
     categoryCode: "D",
     categoryName: "Enrollment & Biometrik Wajah",
     code: "face.reset_template",
@@ -433,9 +613,9 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // E. Absensi & Verifikasi Kehadiran
+  // E. Absensi & Verifikasi Kehadiran,
   {
-    id: 20,
+    id: 30,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.check_in_out",
@@ -452,7 +632,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 21,
+    id: 31,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.view_own_history",
@@ -469,7 +649,24 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 23,
+    id: 32,
+    categoryCode: "E",
+    categoryName: "Absensi & Verifikasi Kehadiran",
+    code: "attendance.view_team_history",
+    name: "Lihat Riwayat Absensi Tim",
+    description: "Melihat rekapitulasi riwayat absensi staf bawahan atau divisi",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+  {
+    id: 33,
     categoryCode: "E",
     categoryName: "Absensi & Verifikasi Kehadiran",
     code: "attendance.manual_correction",
@@ -486,9 +683,28 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // F. Jadwal Kerja, Shift & Geofence
+  // F. Jadwal Kerja, Shift & Geofence,
   {
-    id: 24,
+    id: 34,
+    categoryCode: "E",
+    categoryName: "Absensi & Verifikasi Kehadiran",
+    code: "attendance.export_history_excel",
+    name: "Ekspor Riwayat Absensi ke Excel",
+    description: "Mengunduh lembar log catatan kehadiran individual atau tim ke file .xlsx",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: true, scope: "Own" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+
+  // B. Tambahan Karyawan (Ekspor Karyawan),
+  {
+    id: 35,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.view_own",
@@ -505,7 +721,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 25,
+    id: 36,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.view_team",
@@ -522,7 +738,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 26,
+    id: 37,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.assign",
@@ -539,7 +755,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 27,
+    id: 38,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.create",
@@ -557,7 +773,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Atasan departemen (Supervisor) membuat jadwal untuk staf bawahannya, GM membuat untuk Kepala Dept, HRD/CEO untuk seluruh organisasi",
   },
   {
-    id: 28,
+    id: 39,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.update",
@@ -574,7 +790,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 29,
+    id: 40,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "schedule.delete",
@@ -592,7 +808,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Tindakan Kritis [CRITICAL]: Menghapus jadwal kerja akan memengaruhi perhitungan keterlambatan dan absensi",
   },
   {
-    id: 30,
+    id: 41,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "config.work_rule_shift",
@@ -609,7 +825,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 31,
+    id: 42,
     categoryCode: "F",
     categoryName: "Jadwal Kerja & Geofence",
     code: "config.office_geofence",
@@ -626,9 +842,9 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // G. Pengajuan & Approval Cuti
+  // G. Pengajuan & Approval Cuti,
   {
-    id: 32,
+    id: 43,
     categoryCode: "G",
     categoryName: "Pengajuan & Approval Cuti",
     code: "leave.submit_own",
@@ -645,7 +861,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 33,
+    id: 44,
     categoryCode: "G",
     categoryName: "Pengajuan & Approval Cuti",
     code: "leave.approve_step1",
@@ -663,7 +879,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-13",
   },
   {
-    id: 34,
+    id: 45,
     categoryCode: "G",
     categoryName: "Pengajuan & Approval Cuti",
     code: "leave.manage_quota",
@@ -680,9 +896,46 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // H. Koreksi Absensi
+  // H. Koreksi Absensi,
   {
-    id: 35,
+    id: 46,
+    categoryCode: "G",
+    categoryName: "Pengajuan & Approval Cuti",
+    code: "leave.approve_step2",
+    name: "Persetujuan Cuti Tahap 2 (HRD)",
+    description: "Validasi administratif & eksekusi saldo kuota cuti oleh HRD (P-10)",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: false, scope: "None" },
+      GM: { allowed: false, scope: "None" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: false, scope: "None" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: false, scope: "None" },
+    },
+    note: "Eksklusif wewenang verifikasi & validasi akhir HRD",
+  },
+  {
+    id: 47,
+    categoryCode: "G",
+    categoryName: "Pengajuan & Approval Cuti",
+    code: "leave.export_excel",
+    name: "Ekspor Permohonan Cuti ke Excel",
+    description: "Mengunduh rekapitulasi data permohonan cuti karyawan dalam format .xlsx",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+
+  // H. Tambahan Koreksi (Ekspor),
+  {
+    id: 48,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.submit_own",
@@ -699,7 +952,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 36,
+    id: 49,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.submit_behalf",
@@ -716,7 +969,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 37,
+    id: 50,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.approve_step1",
@@ -734,7 +987,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-13",
   },
   {
-    id: 38,
+    id: 51,
     categoryCode: "H",
     categoryName: "Koreksi Absensi",
     code: "correction.approve_step2",
@@ -752,9 +1005,28 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "Admin IT DENY Default sesuai Resolusi P-13",
   },
 
-  // I. Workflow & Exception Engine
+  // I. Workflow & Exception Engine,
   {
-    id: 39,
+    id: 52,
+    categoryCode: "H",
+    categoryName: "Koreksi Absensi",
+    code: "correction.export_excel",
+    name: "Ekspor Koreksi Absensi ke Excel",
+    description: "Mengunduh berkas laporan rekapitulasi koreksi absensi (.xlsx)",
+    isCritical: false,
+    roles: {
+      CEO: { allowed: true, scope: "Org" },
+      GM: { allowed: true, scope: "Org" },
+      HRD: { allowed: true, scope: "Org" },
+      Supervisor: { allowed: true, scope: "Dept" },
+      Staff: { allowed: false, scope: "None" },
+      "Admin IT": { allowed: true, scope: "Org" },
+    },
+  },
+
+  // E. Tambahan Absensi (Ekspor Riwayat),
+  {
+    id: 53,
     categoryCode: "I",
     categoryName: "Workflow & Exception Engine",
     code: "workflow.configure",
@@ -771,7 +1043,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 40,
+    id: 54,
     categoryCode: "I",
     categoryName: "Workflow & Exception Engine",
     code: "workflow.handle_exception",
@@ -788,9 +1060,9 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
 
-  // J. Dashboard, Laporan & Audit Log
+  // J. Dashboard, Laporan & Audit Log,
   {
-    id: 41,
+    id: 55,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "dashboard.view_company",
@@ -807,7 +1079,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 42,
+    id: 56,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "dashboard.view_department",
@@ -824,7 +1096,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 43,
+    id: 57,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "report.view_attendance",
@@ -841,7 +1113,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 44,
+    id: 58,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "report.export_excel",
@@ -858,7 +1130,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     },
   },
   {
-    id: 45,
+    id: 59,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "audit_log.view_all",
@@ -876,7 +1148,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
     note: "CEO Memegang Hak Baca Pengawasan Independen atas Admin IT (P-15)",
   },
   {
-    id: 46,
+    id: 60,
     categoryCode: "J",
     categoryName: "Dashboard & Laporan",
     code: "audit_log.export",
@@ -892,65 +1164,31 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
       "Admin IT": { allowed: true, scope: "Org" },
     },
   },
-  // K. Manajemen Departemen & Struktur
+  // K. Manajemen Departemen & Struktur,
   {
-    id: 47,
-    categoryCode: "K",
-    categoryName: "Manajemen Departemen",
-    code: "department.view",
-    name: "Lihat Daftar Departemen",
-    description: "Melihat daftar unit kerja dan struktur departemen perusahaan",
+    id: 61,
+    categoryCode: "M",
+    categoryName: "Profil Perusahaan & Pengaturan",
+    code: "config.view_company_profile",
+    name: "Lihat Profil & Identitas Perusahaan",
+    description: "Melihat informasi legalitas PT, alamat, kontak, dan kop surat resmi",
     isCritical: false,
     roles: {
       CEO: { allowed: true, scope: "Org" },
       GM: { allowed: true, scope: "Org" },
       HRD: { allowed: true, scope: "Org" },
-      Supervisor: { allowed: false, scope: "None" },
-      Staff: { allowed: false, scope: "None" },
+      Supervisor: { allowed: true, scope: "Org" },
+      Staff: { allowed: true, scope: "Org" },
       "Admin IT": { allowed: true, scope: "Org" },
     },
   },
   {
-    id: 48,
-    categoryCode: "K",
-    categoryName: "Manajemen Departemen",
-    code: "department.create",
-    name: "Tambah Departemen Baru",
-    description: "Mendaftarkan unit departemen operasional baru ke organisasi",
-    isCritical: false,
-    roles: {
-      CEO: { allowed: true, scope: "Org" },
-      GM: { allowed: true, scope: "Org" },
-      HRD: { allowed: true, scope: "Org" },
-      Supervisor: { allowed: false, scope: "None" },
-      Staff: { allowed: false, scope: "None" },
-      "Admin IT": { allowed: true, scope: "Org" },
-    },
-  },
-  {
-    id: 49,
-    categoryCode: "K",
-    categoryName: "Manajemen Departemen",
-    code: "department.update",
-    name: "Ubah Data Departemen",
-    description: "Memperbarui kode, nama, dan deskripsi unit departemen",
-    isCritical: false,
-    roles: {
-      CEO: { allowed: true, scope: "Org" },
-      GM: { allowed: true, scope: "Org" },
-      HRD: { allowed: true, scope: "Org" },
-      Supervisor: { allowed: false, scope: "None" },
-      Staff: { allowed: false, scope: "None" },
-      "Admin IT": { allowed: true, scope: "Org" },
-    },
-  },
-  {
-    id: 50,
-    categoryCode: "K",
-    categoryName: "Manajemen Departemen",
-    code: "department.delete",
-    name: "Hapus Departemen",
-    description: "Menghapus unit departemen beserta relasi hierarki di organisasi",
+    id: 62,
+    categoryCode: "M",
+    categoryName: "Profil Perusahaan & Pengaturan",
+    code: "config.update_company_profile",
+    name: "Ubah Identitas Perusahaan & Kop Surat",
+    description: "Memperbarui nama badan hukum, kop surat resmi, kontak, dan alamat perusahaan",
     isCritical: true,
     roles: {
       CEO: { allowed: true, scope: "Org" },
@@ -960,7 +1198,7 @@ const INITIAL_PERMISSIONS: PermissionRule[] = [
       Staff: { allowed: false, scope: "None" },
       "Admin IT": { allowed: true, scope: "Org" },
     },
-    note: "Tindakan Kritis [CRITICAL]: Menghapus unit departemen dapat memengaruhi hierarki jabatan",
+    note: "Mempengaruhi format cetak kop surat resmi seluruh laporan ekspor perusahaan",
   },
 ];
 
@@ -1041,6 +1279,23 @@ const INITIAL_ASSIGNMENTS: UserRoleAssignment[] = [
   },
 ];
 
+// Definisi Master Kategori Akordeon RBAC
+const RBAC_CATEGORIES = [
+  { code: "A", no: 1, title: "AUTENTIKASI & AKUN PRIBADI", desc: "Login, ganti kata sandi, profil akun, dan pemulihan akses" },
+  { code: "B", no: 2, title: "MANAJEMEN KARYAWAN", desc: "Data master pegawai, status kerja, departemen, dan export data" },
+  { code: "L", no: 3, title: "STRUKTUR ORGANISASI", desc: "Hirarki perusahaan, bagan divisi, unit kerja, dan pimpinan" },
+  { code: "K", no: 4, title: "MANAJEMEN DEPARTEMEN", desc: "Master divisi/departemen, alokasi karyawan, dan kode unit" },
+  { code: "C", no: 5, title: "AKUN LOGIN & HAK AKSES (RBAC)", desc: "Manajemen user login, matriks izin peran, dan proteksi anti-lockout" },
+  { code: "D", no: 6, title: "ENROLLMENT & BIOMETRIK WAJAH", desc: "Pendaftaran wajah, verifikasi kualitas, dan approval template" },
+  { code: "E", no: 7, title: "ABSENSI & VERIFIKASI KEHADIRAN", desc: "Check-in/out, liveness deteksi, riwayat kehadiran, dan log harian" },
+  { code: "F", no: 8, title: "JADWAL KERJA & GEOFENCE", desc: "Shift kerja, toleransi keterlambatan, dan radius GPS presisi" },
+  { code: "G", no: 9, title: "PENGAJUAN & APPROVAL CUTI", desc: "Permohonan izin cuti, persetujuan supervisor, dan approval HRD" },
+  { code: "H", no: 10, title: "KOREKSI ABSENSI", desc: "Klaim lupa absen, kendala GPS, bukti lampiran, dan approval koreksi" },
+  { code: "I", no: 11, title: "WORKFLOW & EXCEPTION ENGINE", desc: "Eskalasi darurat otomatis dan delegasi persetujuan tugas" },
+  { code: "J", no: 12, title: "DASHBOARD & LAPORAN", desc: "Statistik real-time, ekspor Excel, cetak rekapitulasi, dan audit trail" },
+  { code: "M", no: 13, title: "PROFIL PERUSAHAAN & PENGATURAN", desc: "Identitas instansi, logo, kontak, dan konfigurasi sistem global" },
+];
+
 export default function RbacPage() {
   const router = useRouter();
   const { user, isAuthReady } = useAuth();
@@ -1048,10 +1303,42 @@ export default function RbacPage() {
   // Active Tab
   const [activeTab, setActiveTab] = useState<"matriks" | "penugasan" | "special_p16">("matriks");
 
-  // State Matriks Permissions (41 Rules)
+  // State Matriks Permissions (62 Rules)
   const [permissions, setPermissions] = useState<PermissionRule[]>(INITIAL_PERMISSIONS);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
+
+  // State Akordeon Kategori: Default semua terbuka
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    RBAC_CATEGORIES.forEach((cat) => {
+      initial[cat.code] = true;
+    });
+    return initial;
+  });
+
+  const toggleCategory = (code: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [code]: !prev[code],
+    }));
+  };
+
+  const expandAll = () => {
+    const next: Record<string, boolean> = {};
+    RBAC_CATEGORIES.forEach((cat) => {
+      next[cat.code] = true;
+    });
+    setExpandedCategories(next);
+  };
+
+  const collapseAll = () => {
+    const next: Record<string, boolean> = {};
+    RBAC_CATEGORIES.forEach((cat) => {
+      next[cat.code] = false;
+    });
+    setExpandedCategories(next);
+  };
 
   // State Penugasan Role Karyawan
   const [assignments, setAssignments] = useState<UserRoleAssignment[]>(INITIAL_ASSIGNMENTS);
@@ -1100,6 +1387,17 @@ export default function RbacPage() {
       return true;
     });
   }, [permissions, selectedCategory, searchQuery]);
+
+  // Grouped Permissions berdasarkan kategori terurut untuk Akordeon
+  const groupedPermissions = useMemo(() => {
+    return RBAC_CATEGORIES.map((cat) => {
+      const items = filteredPermissions.filter((p) => p.categoryCode === cat.code);
+      return {
+        ...cat,
+        items,
+      };
+    }).filter((group) => group.items.length > 0);
+  }, [filteredPermissions]);
 
   // Hitung Admin IT Aktif (Anti-Lockout P-14)
   const activeAdminCount = useMemo(() => {
@@ -1181,9 +1479,21 @@ export default function RbacPage() {
       })
     );
 
+    // Sync to PostgreSQL DB
+    fetch("/api/rbac", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role: editingCell.role,
+        permission: editingCell.permission.code,
+        isAllowed: modalAllowed,
+        actor: { name: user?.name, role: user?.role },
+      }),
+    }).catch(console.error);
+
     showToast(
       "success",
-      `Hak akses '${editingCell.permission.name}' untuk role '${editingCell.role}' berhasil diperbarui.`
+      `Hak akses '${editingCell.permission.name}' untuk role '${editingCell.role}' berhasil disimpan ke PostgreSQL.`
     );
     setEditingCell(null);
   };
@@ -1233,6 +1543,17 @@ export default function RbacPage() {
         item.id === editingAssignment.id ? { ...item, role: newRoleForUser } : item
       )
     );
+
+    // Sync role change to PostgreSQL DB
+    fetch("/api/karyawan", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editingAssignment.id,
+        role: newRoleForUser,
+        actor: { name: user?.name, role: user?.role },
+      }),
+    }).catch(console.error);
 
     showToast(
       "success",
@@ -1381,6 +1702,7 @@ export default function RbacPage() {
                     { code: "Semua", label: `Semua Fitur (${permissions.length})` },
                     { code: "A", label: "Autentikasi" },
                     { code: "B", label: "Karyawan" },
+                    { code: "L", label: "Struktur Organisasi" },
                     { code: "K", label: "Departemen" },
                     { code: "C", label: "Akun & RBAC" },
                     { code: "D", label: "Biometrik" },
@@ -1390,6 +1712,7 @@ export default function RbacPage() {
                     { code: "H", label: "Koreksi" },
                     { code: "I", label: "Workflow" },
                     { code: "J", label: "Laporan & Audit" },
+                    { code: "M", label: "Profil Perusahaan" },
                   ].map((m) => (
                     <button
                       key={m.code}
@@ -1417,124 +1740,223 @@ export default function RbacPage() {
               </CardContent>
             </Card>
 
-            {/* Tabel Matriks RBAC */}
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+            {/* Tabel Matriks RBAC dengan Sticky Header dan Akordeon Kategori */}
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800 gap-3">
                 <div>
                   <h2 className="text-base font-semibold text-gray-900 dark:text-white">
                     Matriks Otorisasi Hak Akses ({filteredPermissions.length})
                   </h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Klik langsung simbol centang (✓) atau silang (✕) untuk mengizinkan atau memblokir akses secara instan
+                    Klik baris kategori untuk buka/tutup akordeon. Klik simbol centang (✓) atau silang (✕) untuk mengubah izin.
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <span className="size-5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 inline-flex items-center justify-center text-[11px] font-bold">✓</span> Boleh Akses
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <span className="size-5 rounded-full bg-gray-100 dark:bg-gray-800 inline-flex items-center justify-center text-[11px]">✕</span> Ditolak
-                  </span>
-                  <span className="flex items-center gap-1.5 text-[11px] text-amber-600 font-semibold">
-                    <span className="size-2 rounded-full bg-amber-500 inline-block"></span> Aksi Kritis
-                  </span>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Tombol Kontrol Buka/Tutup Semua Akordeon */}
+                  <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-0.5 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={expandAll}
+                      className="px-2.5 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-white dark:hover:bg-gray-700 rounded transition-all"
+                      title="Buka seluruh kategori akordeon"
+                    >
+                      Buka Semua
+                    </button>
+                    <div className="h-3 w-px bg-gray-300 dark:bg-gray-600 mx-0.5" />
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="px-2.5 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-white dark:hover:bg-gray-700 rounded transition-all"
+                      title="Tutup seluruh kategori akordeon"
+                    >
+                      Tutup Semua
+                    </button>
+                  </div>
+
+                  {/* Legend Otorisasi */}
+                  <div className="flex items-center gap-2.5 border-l border-gray-200 dark:border-gray-700 pl-3">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="size-5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 inline-flex items-center justify-center text-[11px] font-bold">✓</span> Boleh
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <span className="size-5 rounded-full bg-gray-100 dark:bg-gray-800 inline-flex items-center justify-center text-[11px]">✕</span> Ditolak
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] text-amber-600 font-semibold">
+                      <span className="size-2 rounded-full bg-amber-500 inline-block"></span> Kritis
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs table-fixed min-w-[860px]">
-                  <colgroup><col className="w-[4%]" /><col className="w-[24%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[11%]" /><col className="w-[13%]" /><col className="w-[11%]" /><col className="w-[13%]" /></colgroup>
-                  <thead className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
-                    <tr>
-                      <th className="px-3 py-3 text-center">No</th>
-                      <th className="px-4 py-3">Nama Menu & Hak Akses</th>
-                      <th className="px-2 py-3 text-center">
+              {/* Scroll Container dengan Sticky Header */}
+              <div className="overflow-x-auto overflow-y-auto max-h-[72vh] relative scroll-smooth rounded-b-xl border-t border-gray-100 dark:border-gray-800">
+                <table className="w-full text-left text-xs table-fixed min-w-[860px] border-collapse">
+                  <colgroup>
+                    <col className="w-[5%]" />
+                    <col className="w-[27%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[12%]" />
+                  </colgroup>
+                  <thead className="sticky top-0 z-30 shadow-xs">
+                    <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur-xs">
+                      <th className="sticky top-0 z-30 px-3 py-3 text-center bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 font-semibold">
+                        No
+                      </th>
+                      <th className="sticky top-0 z-30 px-4 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 font-semibold">
+                        Nama Menu & Hak Akses
+                      </th>
+                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Direktur Utama</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">CEO</div>
                       </th>
-                      <th className="px-2 py-3 text-center">
+                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Manajer Umum</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">GM</div>
                       </th>
-                      <th className="px-2 py-3 text-center">
+                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Kepala HR</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">HRD</div>
                       </th>
-                      <th className="px-2 py-3 text-center">
+                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Kepala Dept</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">Supervisor</div>
                       </th>
-                      <th className="px-2 py-3 text-center">
+                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div className="font-bold text-gray-900 dark:text-white text-xs leading-tight">Staf</div>
                         <div className="text-[10px] text-gray-400 font-normal uppercase">Staff</div>
                       </th>
-                      <th className="px-2 py-3 text-center bg-brand-50/50 dark:bg-brand-950/20">
+                      <th className="sticky top-0 z-30 px-2 py-3 text-center bg-brand-100/90 dark:bg-brand-950/90 border-b border-brand-200 dark:border-brand-900">
                         <div className="font-bold text-brand-700 dark:text-brand-300 text-xs leading-tight">Admin IT</div>
                         <div className="text-[10px] text-brand-500/80 font-normal uppercase">Sistem</div>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {filteredPermissions.map((perm) => (
-                      <tr
-                        key={`rbac-perm-${perm.id}-${perm.code}`}
-                        className="transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
-                      >
-                        {/* No */}
-                        <td className="px-3 py-3 text-center text-gray-400 font-mono text-[11px]">
-                          {perm.id}
+                    {groupedPermissions.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-8 text-center text-xs text-gray-400">
+                          Tidak ada hak akses yang sesuai dengan filter atau kata kunci pencarian.
                         </td>
-
-                        {/* Modul & Nama Fitur */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-900 dark:text-white text-xs">
-                              {perm.name}
-                            </span>
-                            {perm.isCritical && (
-                              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
-                                Kritis
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                            {perm.description}
-                          </div>
-                        </td>
-
-                        {/* Roles: Sakelar Langsung Boleh (✓) atau Ditolak (✕) */}
-                        {(["CEO", "GM", "HRD", "Supervisor", "Staff", "Admin IT"] as const).map((r) => {
-                          const state = perm.roles[r];
-                          return (
-                            <td
-                              key={r}
-                              onClick={() => handleCellClick(perm, r)}
-                              className={`px-2 py-3 text-center cursor-pointer transition-colors ${
-                                r === "Admin IT" ? "bg-brand-50/20 dark:bg-brand-950/10" : ""
-                              }`}
-                            >
-                              <div className="flex items-center justify-center">
-                                {state.allowed ? (
-                                  <span
-                                    className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 font-bold text-xs hover:scale-110 hover:bg-emerald-500/25 transition-all shadow-xs"
-                                    title="Diizinkan (Klik untuk tolak akses)"
-                                  >
-                                    ✓
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="inline-flex size-7 items-center justify-center rounded-full bg-gray-100 text-gray-300 dark:bg-gray-800 dark:text-gray-600 font-medium text-xs hover:scale-110 hover:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
-                                    title="Ditolak (Klik untuk beri akses)"
-                                  >
-                                    ✕
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          );
-                        })}
                       </tr>
-                    ))}
+                    ) : (
+                      groupedPermissions.map((group) => {
+                        const isExpanded =
+                          searchQuery.trim().length > 0 ? true : (expandedCategories[group.code] ?? true);
+
+                        return (
+                          <React.Fragment key={`group-${group.code}`}>
+                            {/* Baris Akordeon Kategori */}
+                            <tr
+                              onClick={() => toggleCategory(group.code)}
+                              className="cursor-pointer select-none border-t-2 border-b border-gray-200/80 bg-gray-50/95 hover:bg-gray-100/95 dark:border-gray-700/80 dark:bg-gray-800/90 dark:hover:bg-gray-800 transition-colors"
+                            >
+                              <td colSpan={8} className="px-4 py-2.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="flex size-5 items-center justify-center rounded-md bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 shadow-2xs border border-gray-200 dark:border-gray-600">
+                                      {isExpanded ? (
+                                        <ChevronDown className="size-3.5 text-brand-600 dark:text-brand-400" />
+                                      ) : (
+                                        <ChevronRight className="size-3.5 text-gray-400" />
+                                      )}
+                                    </span>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-bold text-xs sm:text-[13px] text-gray-900 dark:text-white tracking-wide">
+                                        {group.no}. {group.title}
+                                      </span>
+                                      <span className="rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/80 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60 px-2 py-0.5 text-[10px] font-semibold">
+                                        {group.items.length} Hak Akses
+                                      </span>
+                                      {group.items.some((p) => p.isCritical) && (
+                                        <span className="rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 px-2 py-0.5 text-[9px] font-medium">
+                                          Ada Aksi Kritis
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                                    <span className="hidden lg:inline text-[11px] text-gray-400">
+                                      {group.desc}
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+                                      {isExpanded ? "Tutup" : "Buka"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Daftar Hak Akses dalam Kategori Saat Di-Expand */}
+                            {isExpanded &&
+                              group.items.map((perm) => (
+                                <tr
+                                  key={`rbac-perm-${perm.id}-${perm.code}`}
+                                  className="transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/60"
+                                >
+                                  {/* No */}
+                                  <td className="px-3 py-2.5 text-center text-gray-400 font-mono text-[11px]">
+                                    {perm.id}
+                                  </td>
+
+                                  {/* Modul & Nama Fitur */}
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-gray-900 dark:text-white text-xs">
+                                        {perm.name}
+                                      </span>
+                                      {perm.isCritical && (
+                                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                          Kritis
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1" title={perm.description}>
+                                      {perm.description}
+                                    </div>
+                                  </td>
+
+                                  {/* Roles: Sakelar Langsung Boleh (✓) atau Ditolak (✕) */}
+                                  {(["CEO", "GM", "HRD", "Supervisor", "Staff", "Admin IT"] as const).map((r) => {
+                                    const state = perm.roles[r];
+                                    return (
+                                      <td
+                                        key={r}
+                                        onClick={() => handleCellClick(perm, r)}
+                                        className={`px-2 py-2.5 text-center cursor-pointer transition-colors ${
+                                          r === "Admin IT" ? "bg-brand-50/20 dark:bg-brand-950/10" : ""
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-center">
+                                          {state.allowed ? (
+                                            <span
+                                              className="inline-flex size-6 sm:size-7 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 font-bold text-xs hover:scale-110 hover:bg-emerald-500/25 transition-all shadow-2xs"
+                                              title="Diizinkan (Klik untuk tolak akses)"
+                                            >
+                                              ✓
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className="inline-flex size-6 sm:size-7 items-center justify-center rounded-full bg-gray-100 text-gray-300 dark:bg-gray-800 dark:text-gray-600 font-medium text-xs hover:scale-110 hover:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                                              title="Ditolak (Klik untuk beri akses)"
+                                            >
+                                              ✕
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                          </React.Fragment>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

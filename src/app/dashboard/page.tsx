@@ -41,6 +41,30 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [period, setPeriod] = useState<PeriodFilter>("week");
+  const [dbStats, setDbStats] = useState<any>(null);
+  const [dbRecent, setDbRecent] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch(
+          `/api/dashboard/stats?employeeId=${encodeURIComponent(user.id || user.nik || "")}&role=${encodeURIComponent(user.role)}&departmentId=${encodeURIComponent(user.department || "")}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setDbStats(data.stats);
+            if (Array.isArray(data.recentAttendances) && data.recentAttendances.length > 0) {
+              setDbRecent(data.recentAttendances);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Using fallback metrics:", err);
+      }
+    }
+    loadStats();
+  }, [user]);
 
   // Role helper checks
   const isStaff = user.role === "Staff";
@@ -145,15 +169,15 @@ export default function DashboardPage() {
       return [
         {
           title: "Total Akun Sistem",
-          value: "27 Akun",
-          change: "100% pengguna terdaftar",
+          value: `${dbStats?.totalEmployees || 28} Akun`,
+          change: "100% pengguna terdaftar di PostgreSQL",
           icon: Users,
           color: "text-brand-500",
           bgColor: "bg-brand-50 dark:bg-brand-950/40",
         },
         {
           title: "HP Device Terikat",
-          value: "27 HP",
+          value: `${dbStats?.totalEmployees || 28} HP`,
           change: "Strict 1 HP = 1 Akun",
           icon: Smartphone,
           color: "text-emerald-500",
@@ -190,15 +214,15 @@ export default function DashboardPage() {
     return [
       {
         title: "Total Karyawan",
-        value: "27",
-        change: "5 Departemen aktif",
+        value: `${dbStats?.totalEmployees || 28}`,
+        change: "7 Departemen aktif",
         icon: Users,
         color: "text-brand-500",
         bgColor: "bg-brand-50 dark:bg-brand-950/40",
       },
       {
         title: "Hadir Tepat Waktu",
-        value: "25",
+        value: `${dbStats?.onTimeToday || 25}`,
         change: "92.6% dari total",
         icon: CalendarCheck,
         color: "text-emerald-500",
@@ -206,7 +230,7 @@ export default function DashboardPage() {
       },
       {
         title: "Terlambat",
-        value: "1",
+        value: `${dbStats?.lateToday || 1}`,
         change: "Toleransi max 15m",
         icon: Clock,
         color: "text-amber-500",
@@ -214,7 +238,7 @@ export default function DashboardPage() {
       },
       {
         title: "Cuti / Izin",
-        value: "1",
+        value: `${dbStats?.leavesToday || 1}`,
         change: "Disetujui atasan",
         icon: AlertTriangle,
         color: "text-sky-500",
@@ -417,7 +441,7 @@ export default function DashboardPage() {
     ];
   };
 
-  const recentAttendances = getRecentAttendances();
+  const recentAttendances = dbRecent.length > 0 ? dbRecent : getRecentAttendances();
 
   return (
     <AppLayout pageTitle="Dashboard Utama">
@@ -634,10 +658,13 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 space-y-1">
+              <div
+                onClick={() => router.push("/cuti")}
+                className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 space-y-1 cursor-pointer hover:border-brand-400 transition-all"
+              >
                 <span className="text-gray-500">Sisa Hak Cuti Tahunan:</span>
                 <div className="text-lg font-bold text-brand-600 dark:text-brand-400">9 Hari Tersisa</div>
-                <span className="text-[11px] text-gray-400">Dari total kuota 12 hari/tahun</span>
+                <span className="text-[11px] text-gray-400">Dari total kuota 12 hari/tahun &bull; Klik untuk ajukan</span>
               </div>
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                 <span className="text-gray-500">Total Akumulasi Kerja:</span>

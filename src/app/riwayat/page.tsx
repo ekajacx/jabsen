@@ -174,43 +174,64 @@ export default function RiwayatPage() {
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
 
-  // Ambil record dari localStorage (jika baru saja absen di halaman /absen)
+  // Ambil data riwayat dari PostgreSQL API (dengan fallback localStorage)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("j_absen_records");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const formattedStored: AttendanceItem[] = parsed.map((item: any) => ({
-            id: item.id,
-            date: item.timestamp ? item.timestamp.split("T")[0] : "2026-11-18",
-            dateFormatted: item.dateFormatted || "Hari Ini",
-            checkIn: item.type === "masuk" ? item.timeFormatted : "--:--",
-            checkOut: item.type === "pulang" ? item.timeFormatted : "--:--",
-            status: item.status || "Tepat Waktu",
-            office: item.officeName || "Kantor Pusat Bali",
-            distanceMeters: item.distanceMeters || 18,
-            latitude: item.latitude || -6.1752,
-            longitude: item.longitude || 106.8272,
-            photoUrl: item.photoUrl || user.avatar || "",
-            verificationHash: item.verificationHash || "SHA256-VERIFIED-WORM",
-            livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-            notes: "Absensi Live Selfie",
-            correctionStatus: "None",
-          }));
-
-          // Gabungkan catatan baru di atas
-          setRecords((prev) => {
-            const existingIds = new Set(prev.map((r) => r.id));
-            const newItems = formattedStored.filter((i) => !existingIds.has(i.id));
-            return [...newItems, ...prev];
-          });
+    let isMounted = true;
+    const fetchHistory = async () => {
+      try {
+        const empId = user.id || user.nik || "";
+        const res = await fetch(`/api/riwayat?employeeId=${encodeURIComponent(empId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted && Array.isArray(data.records) && data.records.length > 0) {
+            setRecords(data.records);
+            return;
+          }
         }
+      } catch (apiErr) {
+        console.warn("Gagal mengambil riwayat dari API, beralih ke cache:", apiErr);
       }
-    } catch (e) {
-      console.error("Gagal membaca riwayat storage:", e);
-    }
-  }, [user.avatar]);
+
+      try {
+        const stored = localStorage.getItem("j_absen_records");
+        if (stored && isMounted) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const formattedStored: AttendanceItem[] = parsed.map((item: any) => ({
+              id: item.id,
+              date: item.timestamp ? item.timestamp.split("T")[0] : "2026-11-18",
+              dateFormatted: item.dateFormatted || "Hari Ini",
+              checkIn: item.type === "masuk" ? item.timeFormatted : "--:--",
+              checkOut: item.type === "pulang" ? item.timeFormatted : "--:--",
+              status: item.status || "Tepat Waktu",
+              office: item.officeName || "Kantor Pusat Bali",
+              distanceMeters: item.distanceMeters || 18,
+              latitude: item.latitude || -6.1752,
+              longitude: item.longitude || 106.8272,
+              photoUrl: item.photoUrl || user.avatar || "",
+              verificationHash: item.verificationHash || "SHA256-VERIFIED-WORM",
+              livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
+              notes: "Absensi Live Selfie",
+              correctionStatus: "None",
+            }));
+
+            setRecords((prev) => {
+              const existingIds = new Set(prev.map((r) => r.id));
+              const newItems = formattedStored.filter((i) => !existingIds.has(i.id));
+              return [...newItems, ...prev];
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Gagal membaca riwayat storage:", e);
+      }
+    };
+
+    fetchHistory();
+    return () => {
+      isMounted = false;
+    };
+  }, [user.id, user.nik, user.avatar]);
 
   // Filter Data
   const filteredRecords = records.filter((r) => {
@@ -248,7 +269,7 @@ export default function RiwayatPage() {
   };
 
   // Submit Pengajuan Koreksi Absensi (PRD 5.11 - 2 Tahap Sequential SPV -> HRD)
-  const handleSubmitCorrection = () => {
+  const handleSubmitCorrection = async () => {
     if (!correctionReason.trim()) {
       showAlert({
         title: "Alasan Wajib Diisi",
@@ -259,7 +280,29 @@ export default function RiwayatPage() {
     }
 
     setCorrectionSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      if (correctionTarget) {
+        const res = await fetch("/api/approval/koreksi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: user.id || user.nik,
+            targetDate: correctionTarget.date,
+            originalClockIn: correctionTarget.checkIn,
+            proposedClockIn: correctionCheckIn,
+            originalClockOut: correctionTarget.checkOut,
+            proposedClockOut: correctionCheckOut,
+            reason: correctionReason,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || "Gagal mengirim pengajuan koreksi ke server.");
+        }
+      }
+
       if (correctionTarget) {
         setRecords((prev) =>
           prev.map((r) =>
@@ -269,17 +312,26 @@ export default function RiwayatPage() {
           )
         );
       }
-      setCorrectionSubmitting(false);
+
       setShowCorrectionModal(false);
       showAlert({
         title: "Pengajuan Koreksi Terkirim",
         message:
-          "Pengajuan Koreksi Berhasil Dikirim!\n\nWorkflow Approval (PRD P-3):\n1. Tahap 1: Verifikasi Supervisor (" +
+          "Pengajuan Koreksi Berhasil Dikirim dan Tersimpan di Database!\n\nWorkflow Approval (PRD P-3):\n1. Tahap 1: Verifikasi Supervisor (" +
           user.role +
           ")\n2. Tahap 2: Finalisasi Admin HRD\n\nStatus pengajuan kini: Pending Review Supervisor.",
         type: "success",
       });
-    }, 1000);
+    } catch (e: any) {
+      console.error("Gagal mengirim koreksi via API:", e);
+      showAlert({
+        title: "Gagal Mengajukan Koreksi",
+        message: e.message || "Terjadi kesalahan saat menyimpan pengajuan ke database.",
+        type: "error",
+      });
+    } finally {
+      setCorrectionSubmitting(false);
+    }
   };
 
   return (

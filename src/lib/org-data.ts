@@ -679,8 +679,34 @@ export function useOrgData() {
     setIsLoaded(true);
   }, []);
 
+  const fetchFromApi = useCallback(async () => {
+    try {
+      const [resDepts, resPositions] = await Promise.all([
+        fetch("/api/departemen"),
+        fetch("/api/positions"),
+      ]);
+      if (resDepts.ok) {
+        const dJson = await resDepts.json();
+        if (dJson.success && Array.isArray(dJson.departments) && dJson.departments.length > 0) {
+          setDepartments(dJson.departments);
+          saveStoredDepartments(dJson.departments);
+        }
+      }
+      if (resPositions.ok) {
+        const pJson = await resPositions.json();
+        if (pJson.success && Array.isArray(pJson.positions) && pJson.positions.length > 0) {
+          setPositions(pJson.positions);
+          saveStoredPositions(pJson.positions);
+        }
+      }
+    } catch (e) {
+      console.warn("Falling back to local storage:", e);
+    }
+  }, []);
+
   useEffect(() => {
     reloadData();
+    fetchFromApi();
     const handleUpdate = () => reloadData();
     window.addEventListener(UPDATE_EVENT_NAME, handleUpdate);
     window.addEventListener("storage", handleUpdate);
@@ -688,20 +714,30 @@ export function useOrgData() {
       window.removeEventListener(UPDATE_EVENT_NAME, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, [reloadData]);
+  }, [reloadData, fetchFromApi]);
 
   // Tambah Departemen Baru (Tanpa input kepala departemen di sini, kepala & staf ditambahkan di halaman hirarki)
   const addDepartment = (code: string, name: string, description: string) => {
-    const newDeptId = `dept-${Date.now()}`;
+    const cleanCode = code.toUpperCase().trim();
+    const formattedName = name.trim().startsWith("Departemen ") ? name.trim() : `Departemen ${name.trim()}`;
+    const newDeptId = `dept-${cleanCode.toLowerCase()}-${Date.now().toString().slice(-4)}`;
     const newDept: Department = {
       id: newDeptId,
-      code: code.toUpperCase().trim(),
-      name: name.trim().startsWith("Departemen ") ? name.trim() : `Departemen ${name.trim()}`,
-      description: description.trim() || `Unit operasional ${name.trim()}`,
+      code: cleanCode,
+      name: formattedName,
+      description: description.trim() || `Unit operasional ${formattedName}`,
     };
 
     const updatedDepts = [...getStoredDepartments(), newDept];
     saveStoredDepartments(updatedDepts);
+
+    // Sync to PostgreSQL DB
+    fetch("/api/departemen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newDept),
+    }).catch((err) => console.error("Error creating department in DB:", err));
+
     return newDept;
   };
 
@@ -712,6 +748,13 @@ export function useOrgData() {
       d.id === deptId ? { ...d, code: code.toUpperCase().trim(), name: formattedName, description: description.trim() } : d
     );
     saveStoredDepartments(updatedDepts);
+
+    // Sync to PostgreSQL DB
+    fetch("/api/departemen", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: deptId, code, name: formattedName, description }),
+    }).catch((err) => console.error("Error updating department in DB:", err));
   };
 
   // Hapus Departemen & Hapus Relasi di Bagan Hirarki
@@ -720,6 +763,11 @@ export function useOrgData() {
     const updatedPositions = getStoredPositions().filter((p) => p.departmentId !== deptId);
     saveStoredDepartments(updatedDepts);
     saveStoredPositions(updatedPositions);
+
+    // Sync to PostgreSQL DB
+    fetch(`/api/departemen?id=${encodeURIComponent(deptId)}`, {
+      method: "DELETE",
+    }).catch((err) => console.error("Error deleting department in DB:", err));
   };
 
   // Tambah Karyawan Lewat Halaman Hirarki (Mendukung Kepala & Staf, serta multiple karyawan per kotak)
@@ -819,6 +867,22 @@ export function useOrgData() {
       saveStoredPositions([...currentPositions, newStaffPos]);
     }
 
+    // Sync to PostgreSQL DB
+    fetch("/api/karyawan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nik: newHolder.nik,
+        name: newHolder.name,
+        email: newHolder.email,
+        phone: newHolder.phone,
+        departmentId: params.departmentId,
+        positionId: params.targetPositionId && params.targetPositionId !== "NEW" ? params.targetPositionId : undefined,
+        employmentStatus: newHolder.employmentStatus,
+        role: params.level === "Kepala" ? "Supervisor" : "Staff",
+      }),
+    }).catch((err) => console.error("Error creating employee in DB:", err));
+
     return newHolder;
   };
 
@@ -829,9 +893,12 @@ export function useOrgData() {
     if (!target) return;
 
     const holders = getNodeHolders(target);
+    const targetNik = holders[holderIndex]?.nik;
+
     if (holders.length <= 1) {
       // Jika tersisa 1 orang, bisa hapus jabatan
       saveStoredPositions(currentPositions.filter((p) => p.id !== positionId));
+      fetch(`/api/positions?id=${encodeURIComponent(positionId)}`, { method: "DELETE" }).catch(console.error);
       return;
     }
 
@@ -842,12 +909,17 @@ export function useOrgData() {
         : p
     );
     saveStoredPositions(updatedPositions);
+
+    if (targetNik) {
+      fetch(`/api/karyawan?id=${encodeURIComponent(targetNik)}`, { method: "DELETE" }).catch(console.error);
+    }
   };
 
   // Hapus Seluruh Posisi Jabatan
   const deletePosition = (positionId: string) => {
     const currentPositions = getStoredPositions();
     saveStoredPositions(currentPositions.filter((p) => p.id !== positionId));
+    fetch(`/api/positions?id=${encodeURIComponent(positionId)}`, { method: "DELETE" }).catch(console.error);
   };
 
   // Toggle Koneksi Hijau vs Hitam
@@ -934,10 +1006,12 @@ export function useOrgData() {
     newDeptId?: string
   ) => {
     const currentPositions = getStoredPositions();
+    let targetNik = "";
     const updatedPositions = currentPositions.map((p) => {
       if (p.id !== positionId) return p;
 
       const holders = getNodeHolders(p);
+      targetNik = holders[holderIndex]?.nik || "";
       const updatedHolders = holders.map((h, idx) =>
         idx === holderIndex ? { ...h, ...updatedData } : h
       );
@@ -952,18 +1026,37 @@ export function useOrgData() {
     });
 
     saveStoredPositions(updatedPositions);
+
+    if (targetNik || updatedData.nik) {
+      fetch("/api/karyawan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: targetNik || updatedData.nik,
+          name: updatedData.name,
+          email: updatedData.email,
+          phone: updatedData.phone,
+          departmentId: newDeptId,
+          employmentStatus: updatedData.employmentStatus,
+          status: updatedData.status,
+        }),
+      }).catch(console.error);
+    }
   };
 
   // Toggle Status Aktif / Nonaktif (Resign)
   const toggleEmployeeResignStatus = (positionId: string, holderIndex: number) => {
     const currentPositions = getStoredPositions();
+    let targetNik = "";
+    let nextStatus: "Aktif" | "Nonaktif" = "Aktif";
     const updatedPositions = currentPositions.map((p) => {
       if (p.id !== positionId) return p;
 
       const holders = getNodeHolders(p);
+      targetNik = holders[holderIndex]?.nik || "";
       const updatedHolders = holders.map((h, idx) => {
         if (idx !== holderIndex) return h;
-        const nextStatus: "Aktif" | "Nonaktif" = h.status === "Nonaktif" ? "Aktif" : "Nonaktif";
+        nextStatus = h.status === "Nonaktif" ? "Aktif" : "Nonaktif";
         return { ...h, status: nextStatus };
       });
 
@@ -975,6 +1068,17 @@ export function useOrgData() {
     });
 
     saveStoredPositions(updatedPositions);
+
+    if (targetNik) {
+      fetch("/api/karyawan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: targetNik,
+          status: nextStatus,
+        }),
+      }).catch(console.error);
+    }
   };
 
   // Hapus Karyawan dari Direktori Karyawan

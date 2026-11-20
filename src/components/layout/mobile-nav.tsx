@@ -17,7 +17,7 @@ export function MobileNav({ onOpenSidebar }: MobileNavProps) {
     { label: "Beranda", href: "/dashboard", icon: LayoutDashboard },
     { label: "Absen", href: "/absen", icon: Camera, isCenter: true },
     { label: "Jadwal", href: "/jadwal", icon: CalendarDays },
-    { label: "Cuti", href: "/approval/cuti", icon: FileCheck2 },
+    { label: "Cuti", href: "/cuti", icon: FileCheck2 },
   ];
 
   return (
