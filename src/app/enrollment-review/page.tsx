@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
 import { useModal } from "@/context/modal-context";
+import { triggerBadgesUpdate } from "@/lib/badge-data";
 import {
   ScanFace,
   CheckCircle2,
@@ -191,6 +192,7 @@ export default function EnrollmentReviewPage() {
         );
         setShowReviewModal(false);
         setHrReviewNote("");
+        triggerBadgesUpdate();
         showAlert({
           title: "Sampel Wajah Disetujui",
           message: `Sukses! Sampel wajah ${selectedEnr.employeeName} (${selectedEnr.employeeId}) telah DISETUJUI dan tersimpan di database PostgreSQL.\nKaryawan kini dapat melakukan presensi wajah.`,
@@ -248,6 +250,7 @@ export default function EnrollmentReviewPage() {
         );
         setShowReviewModal(false);
         setHrReviewNote("");
+        triggerBadgesUpdate();
         showAlert({
           title: "Sampel Wajah Ditolak",
           message: `Sampel wajah ${selectedEnr.employeeName} DITOLAK di database PostgreSQL. Karyawan akan diminta registrasi ulang.`,

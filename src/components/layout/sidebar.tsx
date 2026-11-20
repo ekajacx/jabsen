@@ -32,6 +32,7 @@ import { useAuth, UserRole } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { getCompanyProfile } from "@/lib/company-profile";
 import { checkPermission } from "@/lib/rbac-storage";
+import { useSystemBadges } from "@/lib/badge-data";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   CEO: "Direktur Utama",
@@ -72,6 +73,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { badges } = useSystemBadges();
 
   // Sinkronisasi reaktif jika matriks RBAC diubah di tab/halaman lain
   const [rbacTick, setRbacTick] = React.useState(0);
@@ -129,14 +131,14 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           title: "Approval Cuti",
           href: "/approval/cuti",
           icon: FileCheck2,
-          badge: "3",
+          badge: badges.pendingLeaves > 0 ? String(badges.pendingLeaves) : undefined,
           allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
         {
           title: "Approval Koreksi",
           href: "/approval/koreksi",
           icon: FileEdit,
-          badge: "1",
+          badge: badges.pendingCorrections > 0 ? String(badges.pendingCorrections) : undefined,
           allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
       ],
@@ -165,7 +167,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           title: "Review Wajah",
           href: "/enrollment-review",
           icon: ScanFace,
-          badge: "Baru",
+          badge: badges.pendingEnrollments > 0 ? String(badges.pendingEnrollments) : undefined,
           allowedRoles: ["HRD", "Admin IT", "CEO"],
         },
       ],
@@ -207,7 +209,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
       title: "Audit Log",
       href: "/audit-log",
       icon: FileText,
-      badge: "7",
+      badge: badges.totalAuditLogs > 0 ? String(badges.totalAuditLogs) : undefined,
       allowedRoles: ["Admin IT", "CEO"],
     },
   ];

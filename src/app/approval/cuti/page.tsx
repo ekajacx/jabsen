@@ -28,6 +28,7 @@ import {
   getStoredLeaveRequests,
   saveStoredLeaveRequests,
 } from "@/lib/leave-data";
+import { triggerBadgesUpdate } from "@/lib/badge-data";
 
 export default function ApprovalCutiPage() {
   const router = useRouter();
@@ -153,6 +154,7 @@ export default function ApprovalCutiPage() {
 
       setLeaveRequests(updated);
       saveStoredLeaveRequests(updated);
+      triggerBadgesUpdate();
       setShowReviewModal(false);
       setReviewNote("");
 

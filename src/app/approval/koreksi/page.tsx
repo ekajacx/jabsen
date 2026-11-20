@@ -27,6 +27,7 @@ import {
   Download,
 } from "lucide-react";
 import { exportCorrectionsToExcel } from "@/lib/excel-export";
+import { triggerBadgesUpdate } from "@/lib/badge-data";
 
 export interface CorrectionRequest {
   id: string;
@@ -273,6 +274,7 @@ export default function ApprovalKoreksiPage() {
 
       setShowReviewModal(false);
       setReviewNote("");
+      triggerBadgesUpdate();
       showAlert({
         title: "Koreksi Disetujui",
         message: data.message || `Permohonan koreksi ${selectedReq.id} telah berhasil disetujui di database PostgreSQL.`,
@@ -336,6 +338,7 @@ export default function ApprovalKoreksiPage() {
       );
       setShowReviewModal(false);
       setReviewNote("");
+      triggerBadgesUpdate();
       showAlert({
         title: "Koreksi Ditolak",
         message: data.message || `Permohonan koreksi ${selectedReq.id} telah ditolak di database.`,

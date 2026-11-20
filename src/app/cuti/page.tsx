@@ -31,6 +31,7 @@ import {
   getStoredLeaveRequests,
   saveStoredLeaveRequests,
 } from "@/lib/leave-data";
+import { triggerBadgesUpdate } from "@/lib/badge-data";
 
 export default function PengajuanCutiPage() {
   const { user } = useAuth();
@@ -199,6 +200,7 @@ export default function PengajuanCutiPage() {
 
       // Re-fetch data dari database agar 100% sinkron
       await fetchLeaves();
+      triggerBadgesUpdate();
 
       setShowApplyModal(false);
       // Reset formulir
@@ -233,6 +235,7 @@ export default function PengajuanCutiPage() {
       );
       setLeaveRequests(updated);
       saveStoredLeaveRequests(updated);
+      triggerBadgesUpdate();
       setIsCancelling(false);
       setShowDetailModal(false);
       showAlert({

@@ -60,7 +60,32 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // 5. Recent Attendances
+    // 5. Metrik Sistem Terkait Badge (Departemen, Wajah, Device Binding, Audit)
+    const totalDepartments = await prisma.department.count();
+    const pendingEnrollments = await prisma.faceEnrollment.count({
+      where: { status: "Menunggu Review" },
+    });
+    const totalAuditLogs = await prisma.auditLog.count();
+    const boundDevicesCount = await prisma.deviceBinding.count({
+      where: { deviceBindingStatus: "TERIKAT" },
+    });
+
+    // 6. Sisa Kuota Cuti Tahunan Pengguna Pribadi (PRD P-10: Default 12 Hari dikurangi terpakai)
+    let userLeaveBalance = 12;
+    if (employeeId) {
+      const userApprovedLeaves = await prisma.leaveRequest.findMany({
+        where: {
+          employeeId: employeeId,
+          leaveType: "Cuti Tahunan",
+          status: { in: ["Disetujui", "Menunggu HRD"] },
+        },
+        select: { daysCount: true },
+      });
+      const usedDays = userApprovedLeaves.reduce((sum, item) => sum + (item.daysCount || 1), 0);
+      userLeaveBalance = Math.max(0, 12 - usedDays);
+    }
+
+    // 7. Recent Attendances
     const recentWhere: any = {};
     if (role === "Staff" && employeeId) {
       recentWhere.employeeId = employeeId;
@@ -102,12 +127,17 @@ export async function GET(req: NextRequest) {
       success: true,
       stats: {
         totalEmployees,
+        totalDepartments,
+        boundDevicesCount,
         presentToday: presentToday > 0 ? presentToday : 25, // realistic active display
         onTimeToday: onTimeToday > 0 ? onTimeToday : 24,
         lateToday: lateToday > 0 ? lateToday : 1,
         leavesToday: leavesToday > 0 ? leavesToday : 1,
         pendingLeaves,
         pendingCorrections,
+        pendingEnrollments,
+        totalAuditLogs,
+        userLeaveBalance,
       },
       recentAttendances: formattedRecent,
     });

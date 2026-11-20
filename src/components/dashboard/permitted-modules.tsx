@@ -3,10 +3,17 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@/context/auth-context";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { checkPermission } from "@/lib/rbac-storage";
+import { useSystemBadges } from "@/lib/badge-data";
 import {
   Camera,
   History,
@@ -49,7 +56,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Presensi",
     href: "/absen",
     icon: Camera,
-    description: "Presensi check-in/out harian dengan MediaPipe Face Mesh & validasi radius 100m.",
+    description:
+      "Presensi check-in/out harian dengan MediaPipe Face Mesh & validasi radius 100m.",
     permissionNote: "Khusus Akses Smartphone Resmi",
     badge: "1 HP = 1 Akun",
     badgeVariant: "info",
@@ -61,7 +69,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Presensi",
     href: "/riwayat",
     icon: History,
-    description: "Rekap data kehadiran, jam masuk, jam pulang, dan bukti visual presensi.",
+    description:
+      "Rekap data kehadiran, jam masuk, jam pulang, dan bukti visual presensi.",
     permissionNote: "Akses Mandiri & Evaluasi Bulanan",
     badge: "Log Pribadi",
     badgeVariant: "default",
@@ -73,7 +82,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Presensi",
     href: "/jadwal",
     icon: CalendarDays,
-    description: "Kalender penugasan shift, jam operasional normal, dan hari libur nasional.",
+    description:
+      "Kalender penugasan shift, jam operasional normal, dan hari libur nasional.",
     permissionNote: "Lihat Roster & Jadwal Shift",
     badge: "Shift 08:00 - 17:00",
     badgeVariant: "default",
@@ -85,7 +95,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Presensi",
     href: "/cuti",
     icon: FileCheck2,
-    description: "Pengajuan permohonan cuti tahunan mandiri, cek kuota saldo, dan pantau status persetujuan.",
+    description:
+      "Pengajuan permohonan cuti tahunan mandiri, cek kuota saldo, dan pantau status persetujuan.",
     permissionNote: "Hak Cuti Tahunan Pribadi",
     badge: "Kuota 10 Hari",
     badgeVariant: "success",
@@ -99,7 +110,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Persetujuan",
     href: "/approval/cuti",
     icon: FileCheck2,
-    description: "Pemeriksaan dan wewenang persetujuan cuti berjenjang bawahan (SPV, HRD, Direksi).",
+    description:
+      "Pemeriksaan dan wewenang persetujuan cuti berjenjang bawahan (SPV, HRD, Direksi).",
     permissionNote: "Wewenang Review & Keputusan",
     badge: "3 Pending",
     badgeVariant: "warning",
@@ -111,7 +123,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Persetujuan",
     href: "/approval/koreksi",
     icon: FileEdit,
-    description: "Pemeriksaan permohonan koreksi absensi karena kendala teknis atau dinas luar.",
+    description:
+      "Pemeriksaan permohonan koreksi absensi karena kendala teknis atau dinas luar.",
     permissionNote: "Verifikasi Atasan Langsung",
     badge: "1 Pending",
     badgeVariant: "info",
@@ -125,7 +138,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Manajemen",
     href: "/karyawan",
     icon: Users,
-    description: "Direktori 27 karyawan aktif, biodata, status kepegawaian, dan dokumen legal.",
+    description:
+      "Direktori 27 karyawan aktif, biodata, status kepegawaian, dan dokumen legal.",
     permissionNote: "Kelola Master Data Personel",
     badge: "27 Personel",
     badgeVariant: "default",
@@ -137,7 +151,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Manajemen",
     href: "/organisasi",
     icon: Network,
-    description: "Bagan hierarki perusahaan, profil legalitas PT, dan template kop surat.",
+    description:
+      "Bagan hierarki perusahaan, profil legalitas PT, dan template kop surat.",
     permissionNote: "Informasi Struktur Resmi",
     badge: "5 Departemen",
     badgeVariant: "default",
@@ -149,7 +164,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Manajemen",
     href: "/departemen",
     icon: Building2,
-    description: "Konfigurasi unit departemen, penanggung jawab (Ka. Dept), dan pola shift kerja.",
+    description:
+      "Konfigurasi unit departemen, penanggung jawab (Ka. Dept), dan pola shift kerja.",
     permissionNote: "Struktur Organisasi & Shift",
     badge: "Akses Manajerial",
     badgeVariant: "default",
@@ -161,7 +177,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Manajemen",
     href: "/enrollment-review",
     icon: ScanFace,
-    description: "Verifikasi audit foto pendaftaran biometrik awal karyawan baru.",
+    description:
+      "Verifikasi audit foto pendaftaran biometrik awal karyawan baru.",
     permissionNote: "Verifikasi Kualitas Face Mesh",
     badge: "2 Menunggu",
     badgeVariant: "warning",
@@ -175,7 +192,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Manajemen",
     href: "/laporan",
     icon: FileSpreadsheet,
-    description: "Rekapitulasi berkala kehadiran, jam kerja, keterlambatan, dan ekspor spreadsheet.",
+    description:
+      "Rekapitulasi berkala kehadiran, jam kerja, keterlambatan, dan ekspor spreadsheet.",
     permissionNote: "Unduh Rekapitulasi Resmi",
     badge: "Excel Export",
     badgeVariant: "info",
@@ -189,7 +207,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Sistem & Keamanan",
     href: "/pengaturan/users",
     icon: KeyRound,
-    description: "Kontrol 1 HP = 1 Akun, reset ikatan smartphone karyawan, dan reset kata sandi.",
+    description:
+      "Kontrol 1 HP = 1 Akun, reset ikatan smartphone karyawan, dan reset kata sandi.",
     permissionNote: "Wewenang Eksklusif HP Binding",
     badge: "27 HP Terikat",
     badgeVariant: "success",
@@ -201,7 +220,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Sistem & Keamanan",
     href: "/pengaturan/rbac",
     icon: Shield,
-    description: "Konfigurasi wewenang 6 tingkatan role, pembatasan halaman, dan permission matrix.",
+    description:
+      "Konfigurasi wewenang 6 tingkatan role, pembatasan halaman, dan permission matrix.",
     permissionNote: "Hak Akses & Governance",
     badge: "6 Role Aktif",
     badgeVariant: "info",
@@ -213,7 +233,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Sistem & Keamanan",
     href: "/pengaturan",
     icon: SettingsIcon,
-    description: "Parameter radius GPS kantor, toleransi keterlambatan, dan tantangan acak wajah.",
+    description:
+      "Parameter radius GPS kantor, toleransi keterlambatan, dan tantangan acak wajah.",
     permissionNote: "Konfigurasi Inti Absensi",
     badge: "Radius 100m",
     badgeVariant: "default",
@@ -225,7 +246,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     category: "Sistem & Keamanan",
     href: "/audit-log",
     icon: FileText,
-    description: "Catatan audit trail kriptografi append-only SHA-256 tahan manipulasi (anti-fraud).",
+    description:
+      "Catatan audit trail kriptografi append-only SHA-256 tahan manipulasi (anti-fraud).",
     permissionNote: "Integritas Data Kriptografi",
     badge: "SHA-256 Valid",
     badgeVariant: "success",
@@ -240,6 +262,7 @@ interface PermittedModulesGridProps {
 
 export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
   const router = useRouter();
+  const { badges } = useSystemBadges();
 
   // Sinkronisasi reaktif jika matriks RBAC diubah
   const [rbacTick, setRbacTick] = React.useState(0);
@@ -256,9 +279,69 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
   // Filter modul hanya yang diizinkan untuk peran saat ini
   const permittedModules = ALL_SYSTEM_MODULES.filter((mod) => {
     if (!mod.allowedRoles.includes(role)) return false;
-    if (mod.href === "/karyawan" && !checkPermission(role, "employee.view", true)) return false;
+    if (
+      mod.href === "/karyawan" &&
+      !checkPermission(role, "employee.view", true)
+    )
+      return false;
     return true;
   });
+
+  // Logika Badge Dinamis Sinkron Database & Kuota Pengguna
+  const getDynamicBadge = (modId: string, defaultBadge?: string, defaultVariant?: string) => {
+    switch (modId) {
+      case "mod-cuti":
+        return {
+          badge: badges.userLeaveBalance > 0 ? `Kuota ${badges.userLeaveBalance} Hari` : "Kuota Habis",
+          variant: (badges.userLeaveBalance > 3 ? "success" : "warning") as any,
+        };
+      case "mod-approval-cuti":
+        return {
+          badge: `${badges.pendingLeaves} Pending`,
+          variant: (badges.pendingLeaves > 0 ? "warning" : "success") as any,
+        };
+      case "mod-approval-koreksi":
+        return {
+          badge: `${badges.pendingCorrections} Pending`,
+          variant: (badges.pendingCorrections > 0 ? "warning" : "success") as any,
+        };
+      case "mod-karyawan":
+        return {
+          badge: `${badges.totalEmployees} Personel`,
+          variant: "default" as any,
+        };
+      case "mod-organisasi":
+        return {
+          badge: `${badges.totalDepartments} Departemen`,
+          variant: "default" as any,
+        };
+      case "mod-departemen":
+        return {
+          badge: `${badges.totalDepartments} Unit`,
+          variant: "default" as any,
+        };
+      case "mod-review-wajah":
+        return {
+          badge: badges.pendingEnrollments > 0 ? `${badges.pendingEnrollments} Menunggu` : "0 Menunggu",
+          variant: (badges.pendingEnrollments > 0 ? "warning" : "default") as any,
+        };
+      case "mod-users":
+        return {
+          badge: `${badges.boundDevicesCount} HP Terikat`,
+          variant: "success" as any,
+        };
+      case "mod-audit-log":
+        return {
+          badge: `${badges.totalAuditLogs} Log SHA-256`,
+          variant: "success" as any,
+        };
+      default:
+        return {
+          badge: defaultBadge,
+          variant: defaultVariant,
+        };
+    }
+  };
 
   return (
     <Card className="border border-gray-200/90 shadow-theme-xs dark:border-gray-800">
@@ -273,7 +356,9 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
             </CardTitle>
           </div>
           <CardDescription className="text-xs text-gray-500 mt-1">
-            Daftar seluruh fitur dan wewenang yang diotorisasi khusus untuk peran <strong className="text-brand-600 font-semibold">{role}</strong>.
+            Daftar seluruh fitur dan wewenang yang diotorisasi khusus untuk
+            peran{" "}
+            <strong className="text-brand-600 font-semibold">{role}</strong>.
           </CardDescription>
         </div>
 
@@ -303,11 +388,15 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
                     <div className="flex size-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/70 dark:text-brand-400 group-hover:bg-brand-600 group-hover:text-white transition-colors">
                       <Icon className="size-5" />
                     </div>
-                    {item.badge && (
-                      <Badge variant={item.badgeVariant || "default"} size="sm">
-                        {item.badge}
-                      </Badge>
-                    )}
+                    {(() => {
+                      const dynamic = getDynamicBadge(item.id, item.badge, item.badgeVariant);
+                      if (!dynamic.badge) return null;
+                      return (
+                        <Badge variant={dynamic.variant || "default"} size="sm">
+                          {dynamic.badge}
+                        </Badge>
+                      );
+                    })()}
                   </div>
 
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
