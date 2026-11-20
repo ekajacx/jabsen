@@ -43,12 +43,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Verifikasi Password dengan bcrypt (dan fallback dev mode jika diperlukan)
+    // 2. Verifikasi Password dengan bcrypt
     const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
-    const isDevFallback =
-      process.env.NODE_ENV === "development" && password === "password123";
 
-    if (!isPasswordMatch && !isDevFallback) {
+    if (!isPasswordMatch) {
       await createAuditLog({
         userId: user.id,
         actorName: user.employee.name,

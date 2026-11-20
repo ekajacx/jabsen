@@ -179,90 +179,91 @@ export default function LoginPage() {
         return;
       }
 
-      if (!res.ok && res.status < 500) {
+      if (!res.ok) {
         setIsLoading(false);
-        setErrors({ general: data.message || "Gagal masuk. Periksa kembali kredensial Anda." });
+        const errMsg = data.message || "Gagal masuk. Periksa kembali username dan kata sandi Anda.";
+        setErrors({
+          general: errMsg,
+          password: errMsg.toLowerCase().includes("sandi") ? errMsg : undefined,
+        });
         return;
       }
     } catch (apiErr) {
       console.warn("Koneksi API PostgreSQL offline, beralih ke cache lokal:", apiErr);
-    }
 
-    // 2. Fallback ke Akun Lokal (Simulasi Offline / Storage)
-    const storedAccounts = getStoredUserAccounts();
-    const cleanUserLower = cleanUser.toLowerCase();
-    const matchedAccount = storedAccounts.find(
-      (a) =>
-        a.employeeId.toLowerCase() === cleanUserLower ||
-        a.username.toLowerCase() === cleanUserLower ||
-        a.name.toLowerCase() === cleanUserLower
-    );
+      // 2. Fallback ke Akun Lokal (HANYA jika server API offline/unreachable)
+      const storedAccounts = getStoredUserAccounts();
+      const cleanUserLower = cleanUser.toLowerCase();
+      const matchedAccount = storedAccounts.find(
+        (a) =>
+          a.employeeId.toLowerCase() === cleanUserLower ||
+          a.username.toLowerCase() === cleanUserLower ||
+          a.name.toLowerCase() === cleanUserLower
+      );
 
-    if (matchedAccount) {
-      // 1. Verifikasi Password
-      const isDevFallback = password === "password123";
-      const isActualMatch = password === matchedAccount.password;
+      if (matchedAccount) {
+        // 1. Verifikasi Password Ketat
+        const isActualMatch = password === matchedAccount.password;
 
-      if (!isActualMatch && !isDevFallback) {
-        setIsLoading(false);
-        setErrors({ password: "Kata sandi yang Anda masukkan salah. Silakan coba lagi." });
-        return;
-      }
+        if (!isActualMatch) {
+          setIsLoading(false);
+          setErrors({
+            password: "Kata sandi yang Anda masukkan salah. Silakan coba lagi.",
+            general: "Kata sandi salah.",
+          });
+          return;
+        }
 
-      // 2. Cek Status Akun
-      if (matchedAccount.accountStatus === "Terkunci") {
-        setIsLoading(false);
-        setErrors({
-          general: "Akun Anda saat ini terkunci demi keamanan. Silakan hubungi Admin IT atau HRD.",
-        });
-        return;
-      }
+        // 2. Cek Status Akun
+        if (matchedAccount.accountStatus === "Terkunci") {
+          setIsLoading(false);
+          setErrors({
+            general: "Akun Anda saat ini terkunci demi keamanan. Silakan hubungi Admin IT atau HRD.",
+          });
+          return;
+        }
 
-      // 3. Cek Apakah Wajib Ganti Password (Login Pertama Kali)
-      if (matchedAccount.mustChangePassword) {
-        setIsLoading(false);
-        setPendingAccountForPasswordChange(matchedAccount);
-        setNewPassword("");
-        setConfirmNewPassword("");
-        setChangePasswordError(null);
-        return;
-      }
+        // 3. Cek Apakah Wajib Ganti Password (Login Pertama Kali)
+        if (matchedAccount.mustChangePassword) {
+          setIsLoading(false);
+          setPendingAccountForPasswordChange(matchedAccount);
+          setNewPassword("");
+          setConfirmNewPassword("");
+          setChangePasswordError(null);
+          return;
+        }
 
-      // 4. Cek Validasi Device Binding (Anti Titip Absen)
-      const deviceRes = validateDeviceForLogin(matchedAccount, currentDev);
+        // 4. Cek Validasi Device Binding (Anti Titip Absen)
+        const deviceRes = validateDeviceForLogin(matchedAccount, currentDev);
 
-      if (!deviceRes.allowed) {
-        setIsLoading(false);
-        setErrors({ general: deviceRes.reason });
-        return;
-      }
+        if (!deviceRes.allowed) {
+          setIsLoading(false);
+          setErrors({ general: deviceRes.reason });
+          return;
+        }
 
-      // Jika ini login pertama di HP yang cocok, otomatis ikat
-      if (deviceRes.isFirstBinding) {
-        bindDeviceOnLogin(matchedAccount.employeeId, currentDev);
-      }
+        // Jika ini login pertama di HP yang cocok, otomatis ikat
+        if (deviceRes.isFirstBinding) {
+          bindDeviceOnLogin(matchedAccount.employeeId, currentDev);
+        }
 
-      // 5. Sukses Masuk
-      setTimeout(() => {
+        // 5. Sukses Masuk
         login(matchedAccount.username, matchedAccount.role, matchedAccount.employeeId);
         setIsLoading(false);
         setLoginSuccess(`Berhasil masuk sebagai ${matchedAccount.name}! Mengalihkan ke Dashboard...`);
         setTimeout(() => {
           router.push("/dashboard");
         }, 500);
-      }, 500);
+        return;
+      }
+
+      // Jika akun tidak ditemukan sama sekali: TOLAK!
+      setIsLoading(false);
+      setErrors({
+        general: "Akun atau NIK tidak ditemukan di sistem. Periksa kembali username Anda.",
+      });
       return;
     }
-
-    // Fallback jika login menggunakan username non-terdaftar (Demo Mode)
-    setTimeout(() => {
-      login(username, selectedRole, selectedEmployeeId);
-      setIsLoading(false);
-      setLoginSuccess(`Berhasil masuk sebagai ${username}! Mengalihkan ke Dashboard...`);
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 500);
-    }, 500);
   };
 
   // Simpan Kata Sandi Baru pada Aktivasi Pertama Kali & Kembali ke Login Bersih
