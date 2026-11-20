@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -52,12 +52,31 @@ import {
   generateWhatsAppAccountTemplate,
   UserAccount,
 } from "@/lib/user-account-data";
+import { checkPermission } from "@/lib/rbac-storage";
 
 export default function KaryawanPage() {
   const router = useRouter();
   const { user, isAuthReady } = useAuth();
   const { showAlert, showConfirm } = useModal();
   const canManageEmployees = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
+
+  // Otorisasi Dinamis RBAC untuk Melihat Direktori Karyawan
+  const [canViewEmployees, setCanViewEmployees] = useState<boolean>(() => {
+    return checkPermission(user?.role || "", "employee.view", true);
+  });
+
+  useEffect(() => {
+    const updatePerm = () => {
+      setCanViewEmployees(checkPermission(user?.role || "", "employee.view", true));
+    };
+    updatePerm();
+    window.addEventListener("rbac-updated", updatePerm);
+    window.addEventListener("storage", updatePerm);
+    return () => {
+      window.removeEventListener("rbac-updated", updatePerm);
+      window.removeEventListener("storage", updatePerm);
+    };
+  }, [user?.role]);
 
   const {
     departments,
@@ -396,7 +415,8 @@ export default function KaryawanPage() {
     );
   }
 
-  const isAuthorized = ["Staff", "Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
+  const isRoleAllowed = ["Staff", "Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
+  const isAuthorized = isRoleAllowed && canViewEmployees;
 
   if (!isAuthorized) {
     return (
@@ -408,7 +428,7 @@ export default function KaryawanPage() {
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-              Direktori Karyawan hanya dapat diakses oleh akun terotentikasi.
+              Hak akses melihat direktori karyawan ({user?.role || "Pengguna"}) dinonaktifkan dalam kebijakan Hak Akses (RBAC) oleh Administrator IT.
             </p>
           </div>
           <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">

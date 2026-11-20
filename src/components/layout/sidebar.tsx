@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useAuth, UserRole } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { getCompanyProfile } from "@/lib/company-profile";
+import { checkPermission } from "@/lib/rbac-storage";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   CEO: "Direktur Utama",
@@ -71,6 +72,18 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  // Sinkronisasi reaktif jika matriks RBAC diubah di tab/halaman lain
+  const [rbacTick, setRbacTick] = React.useState(0);
+  React.useEffect(() => {
+    const handler = () => setRbacTick((t) => t + 1);
+    window.addEventListener("rbac-updated", handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("rbac-updated", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, []);
 
   const menuSections: MenuSection[] = [
     {
@@ -384,9 +397,11 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           className="flex-1 overflow-y-auto px-3 py-4 space-y-5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700 hover:[&::-webkit-scrollbar-thumb]:bg-gray-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-gray-600"
         >
           {menuSections.map((section, idx) => {
-            const visibleItems = section.items.filter(
-              (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
-            );
+            const visibleItems = section.items.filter((item) => {
+              if (item.allowedRoles && !item.allowedRoles.includes(user.role)) return false;
+              if (item.href === "/karyawan" && !checkPermission(user.role, "employee.view", true)) return false;
+              return true;
+            });
 
             if (visibleItems.length === 0) return null;
 

@@ -6,6 +6,7 @@ import { UserRole } from "@/context/auth-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { checkPermission } from "@/lib/rbac-storage";
 import {
   Camera,
   History,
@@ -240,10 +241,24 @@ interface PermittedModulesGridProps {
 export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
   const router = useRouter();
 
+  // Sinkronisasi reaktif jika matriks RBAC diubah
+  const [rbacTick, setRbacTick] = React.useState(0);
+  React.useEffect(() => {
+    const handler = () => setRbacTick((t) => t + 1);
+    window.addEventListener("rbac-updated", handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("rbac-updated", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, []);
+
   // Filter modul hanya yang diizinkan untuk peran saat ini
-  const permittedModules = ALL_SYSTEM_MODULES.filter((mod) =>
-    mod.allowedRoles.includes(role)
-  );
+  const permittedModules = ALL_SYSTEM_MODULES.filter((mod) => {
+    if (!mod.allowedRoles.includes(role)) return false;
+    if (mod.href === "/karyawan" && !checkPermission(role, "employee.view", true)) return false;
+    return true;
+  });
 
   return (
     <Card className="border border-gray-200/90 shadow-theme-xs dark:border-gray-800">

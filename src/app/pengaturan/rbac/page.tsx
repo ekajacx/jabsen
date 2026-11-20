@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,28 +38,16 @@ import {
   Info,
 } from "lucide-react";
 
-// Tipe Data Permission
-export type DataScope = "Own" | "Subord" | "Dept" | "Org" | "None";
+import {
+  DataScope,
+  PermissionRule,
+  getStoredRbacMatrix,
+  saveStoredRbacMatrix,
+  clearStoredRbacMatrix,
+  mergePermissionsWithDb,
+} from "@/lib/rbac-storage";
 
-export interface PermissionRule {
-  id: number;
-  categoryCode: string;
-  categoryName: string;
-  code: string;
-  name: string;
-  description: string;
-  isCritical: boolean;
-  // Status per role: value either DENY or scope (Own, Subord, Dept, Org)
-  roles: {
-    CEO: { allowed: boolean; scope: DataScope };
-    GM: { allowed: boolean; scope: DataScope };
-    HRD: { allowed: boolean; scope: DataScope };
-    Supervisor: { allowed: boolean; scope: DataScope };
-    Staff: { allowed: boolean; scope: DataScope };
-    "Admin IT": { allowed: boolean; scope: DataScope };
-  };
-  note?: string;
-}
+export type { DataScope, PermissionRule };
 
 // Konfigurasi Nama Jabatan Riil Organisasi untuk Role Akses
 const ROLE_DISPLAY_CONFIG: Record<
@@ -1308,6 +1296,37 @@ export default function RbacPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
 
+  // Hydration & Sinkronisasi Matriks RBAC (Cache Lokal & PostgreSQL)
+  useEffect(() => {
+    // 1. Coba baca dari localStorage terlebih dahulu (tampil instan tanpa flicker)
+    const cached = getStoredRbacMatrix();
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      setPermissions(cached);
+    }
+
+    // 2. Sinkronkan dengan data izin di PostgreSQL
+    const syncWithApi = async () => {
+      try {
+        const res = await fetch("/api/rbac");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.permissions) && data.permissions.length > 0) {
+            setPermissions((prev) => {
+              const base = prev && prev.length > 0 ? prev : INITIAL_PERMISSIONS;
+              const merged = mergePermissionsWithDb(base, data.permissions);
+              saveStoredRbacMatrix(merged);
+              return merged;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Koneksi API RBAC offline, menggunakan cache lokal:", err);
+      }
+    };
+
+    syncWithApi();
+  }, []);
+
   // State Akordeon Kategori: Default semua terbuka
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -1426,8 +1445,8 @@ export default function RbacPage() {
       if (role === "Staff") autoScope = "Own";
       else if (role === "Supervisor") autoScope = "Dept";
 
-      setPermissions((prev) =>
-        prev.map((p) => {
+      setPermissions((prev) => {
+        const next = prev.map((p) => {
           if (p.id === perm.id) {
             return {
               ...p,
@@ -1441,8 +1460,26 @@ export default function RbacPage() {
             };
           }
           return p;
-        })
-      );
+        });
+
+        // Simpan langsung ke cache lokal agar persisten saat pindah menu
+        saveStoredRbacMatrix(next);
+        return next;
+      });
+
+      // Simpan permanen ke basis data PostgreSQL API
+      fetch("/api/rbac", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role,
+          permission: perm.code,
+          isAllowed: newAllowed,
+          actor: { name: user?.name, role: user?.role },
+        }),
+      }).catch((err) => {
+        console.warn("Gagal sinkronisasi izin RBAC ke PostgreSQL:", err);
+      });
 
       showToast(
         "success",
@@ -1463,8 +1500,8 @@ export default function RbacPage() {
   const handleSaveCell = () => {
     if (!editingCell) return;
 
-    setPermissions((prev) =>
-      prev.map((p) => {
+    setPermissions((prev) => {
+      const next = prev.map((p) => {
         if (p.id === editingCell.permission.id) {
           return {
             ...p,
@@ -1478,8 +1515,10 @@ export default function RbacPage() {
           };
         }
         return p;
-      })
-    );
+      });
+      saveStoredRbacMatrix(next);
+      return next;
+    });
 
     // Sync to PostgreSQL DB
     fetch("/api/rbac", {
@@ -1498,6 +1537,15 @@ export default function RbacPage() {
       `Hak akses '${editingCell.permission.name}' untuk role '${editingCell.role}' berhasil disimpan ke PostgreSQL.`
     );
     setEditingCell(null);
+  };
+
+  // Reset Seluruh Matriks ke Default Pabrik
+  const handleResetMatrix = () => {
+    if (confirm("Kembalikan seluruh matriks hak akses ke standar awal (default)?")) {
+      clearStoredRbacMatrix();
+      setPermissions(INITIAL_PERMISSIONS);
+      showToast("success", "Matriks RBAC berhasil dikembalikan ke pengaturan default pabrik.");
+    }
   };
 
   // Konfirmasi Re-Authentication Kredensial Riil (PRD P-7)
@@ -1654,6 +1702,15 @@ export default function RbacPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              onClick={handleResetMatrix}
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium text-gray-600 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400"
+              title="Kembalikan matriks ke pengaturan default pabrik"
+            >
+              Reset Default
+            </Button>
             <Badge variant={isReAuthenticated ? "success" : "secondary"} className="h-8 gap-1.5 px-3">
               <ShieldCheck className="size-3.5" />
               {isReAuthenticated ? "Re-Auth Aktif (10m)" : "Sesi Normal"}
