@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
           positionId: positionId || null,
           employmentStatus: employmentStatus || "Tetap",
           joinDate: new Date(),
-          avatarUrl: body.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+          avatarUrl: body.avatarUrl || body.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
         },
       });
 
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, name, email, phone, departmentId, positionId, employmentStatus, status, role, actor } = body;
+    const { id, name, email, phone, departmentId, positionId, employmentStatus, status, role, avatarUrl, avatar, actor } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -181,6 +181,7 @@ export async function PUT(req: NextRequest) {
           ...(departmentId && { departmentId }),
           ...(positionId && { positionId }),
           ...(employmentStatus && { employmentStatus }),
+          ...((avatarUrl || avatar) && { avatarUrl: avatarUrl || avatar }),
         },
         include: {
           department: true,

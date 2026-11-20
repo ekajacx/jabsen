@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,8 @@ import {
   Printer,
   Image as ImageIcon,
   Loader2,
+  Camera,
+  Upload,
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { cn } from "@/lib/utils";
@@ -96,9 +98,33 @@ export default function OrganisasiPage() {
   const [empPhone, setEmpPhone] = useState("");
   const [empAlamat, setEmpAlamat] = useState("");
   const [empStatus, setEmpStatus] = useState<"Tetap" | "Kontrak" | "DW" | "Magang">("Tetap");
+  const [empAvatar, setEmpAvatar] = useState("");
+  const empAvatarInputRef = useRef<HTMLInputElement>(null);
   const [empTanggalMasuk, setEmpTanggalMasuk] = useState("");
   const [empTanggalMulai, setEmpTanggalMulai] = useState("");
   const [empTanggalBerhenti, setEmpTanggalBerhenti] = useState("");
+
+  const handleEmpAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("error", "Format file tidak didukung. Harap pilih gambar (JPG, PNG, WebP).");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("error", "Ukuran foto terlalu besar (maksimal 2MB).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setEmpAvatar(base64);
+        showToast("success", "Foto avatar berhasil dipilih.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Toast
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -189,6 +215,8 @@ export default function OrganisasiPage() {
     setEmpTargetPositionId("");
     setEmpCustomTitle("");
     setEmpName("");
+    setEmpAvatar("");
+    if (empAvatarInputRef.current) empAvatarInputRef.current.value = "";
     setEmpKtp("");
     setEmpTanggalLahir("");
     setEmpEmail("");
@@ -274,6 +302,7 @@ export default function OrganisasiPage() {
       targetPositionId: empTargetPositionId || undefined,
       customTitle: empCustomTitle.trim() || undefined,
       name: empName.trim(),
+      avatar: empAvatar.trim() || undefined,
       ktp: empKtp.trim(),
       tanggalLahir: empTanggalLahir.trim(),
       email: empEmail.trim(),
@@ -837,6 +866,70 @@ export default function OrganisasiPage() {
                 )}
               </div>
             )}
+
+            {/* FOTO PROFIL / AVATAR KARYAWAN */}
+            <div className="flex items-center gap-3.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+              <div className="relative group shrink-0">
+                <img
+                  src={empAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
+                  alt="Avatar"
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48 }}
+                  className="w-12 h-12 rounded-full object-cover ring-2 ring-brand-500 shrink-0 shadow-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => empAvatarInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                  title="Pilih Foto Avatar"
+                >
+                  <Camera className="size-4" />
+                </button>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white block">
+                      Foto Profil / Avatar
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      Opsional. Format JPG, PNG, WebP (Maks. 2MB)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={empAvatarInputRef}
+                      onChange={handleEmpAvatarUpload}
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => empAvatarInputRef.current?.click()}
+                      className="text-[10px] h-6 px-2 gap-1 font-semibold"
+                    >
+                      <Upload className="size-3" />
+                      {empAvatar ? "Ganti Foto" : "Pilih Foto"}
+                    </Button>
+                    {empAvatar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmpAvatar("");
+                          if (empAvatarInputRef.current) empAvatarInputRef.current.value = "";
+                        }}
+                        className="text-[10px] text-red-500 hover:text-red-600 px-1 font-medium"
+                        title="Hapus Foto"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* FORMULIR DATA KARYAWAN LENGKAP */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

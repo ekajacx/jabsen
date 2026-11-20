@@ -274,6 +274,7 @@ model CompanyProfile {
   phone         String   @default("(0361) 849-8800")
   email         String   @default("corporate@antigravity.co.id")
   website       String   @default("https://www.antigravity.co.id")
+  logoUrl       String?  @db.Text
   updatedAt     DateTime @updatedAt
 
   @@map("company_profiles")

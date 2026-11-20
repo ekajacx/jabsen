@@ -34,6 +34,7 @@ export async function GET() {
           whatsapp: "+62 812-9988-7766",
           email: profile.email,
           website: profile.website,
+          logoUrl: profile.logoUrl || null,
           npwp: "01.234.567.8-012.000",
           nib: "9120009876543",
         }
@@ -50,6 +51,7 @@ export async function GET() {
           whatsapp: "+62 812-9988-7766",
           email: "corporate@antigravity.co.id",
           website: "https://www.antigravity.co.id",
+          logoUrl: null,
           npwp: "01.234.567.8-012.000",
           nib: "9120009876543",
         };
@@ -93,6 +95,7 @@ export async function PUT(req: NextRequest) {
           phone: profileData.phone,
           email: profileData.email,
           website: profileData.website,
+          ...(profileData.logoUrl !== undefined && { logoUrl: profileData.logoUrl }),
         },
         create: {
           id: "default-company",
@@ -103,6 +106,7 @@ export async function PUT(req: NextRequest) {
           phone: profileData.phone,
           email: profileData.email,
           website: profileData.website,
+          logoUrl: profileData.logoUrl || null,
         },
       });
 

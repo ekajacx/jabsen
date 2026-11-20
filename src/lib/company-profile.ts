@@ -17,6 +17,7 @@ export interface CompanyProfile {
   website: string;
   npwp: string;
   nib: string;
+  logoUrl?: string | null;
 }
 
 export const DEFAULT_COMPANY: CompanyProfile = {
@@ -32,6 +33,7 @@ export const DEFAULT_COMPANY: CompanyProfile = {
   website: "https://www.antigravity.co.id",
   npwp: "01.234.567.8-012.000",
   nib: "9120009876543",
+  logoUrl: null,
 };
 
 export const COMPANY_STORAGE_KEY = "j_absen_company_profile";

@@ -30,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth, UserRole } from "@/context/auth-context";
 import { Badge } from "@/components/ui/badge";
+import { getCompanyProfile } from "@/lib/company-profile";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   CEO: "Direktur Utama",
@@ -222,6 +223,15 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
     }
   }, [isSistemActive]);
 
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    try {
+      const p = getCompanyProfile();
+      if (p.logoUrl) setCompanyLogo(p.logoUrl);
+    } catch {}
+  }, []);
+
   const toggleSistem = () => {
     setSistemOpen((prev) => {
       const next = !prev;
@@ -309,16 +319,24 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           )}
         >
           {/* Logo J-Absen */}
-          {!collapsed && (
+          {!collapsed ? (
             <Link
               href="/dashboard"
               prefetch={true}
               onClick={handleMenuClick}
               className="flex items-center gap-3 overflow-hidden"
             >
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-theme-xs shadow-brand-500/25">
-                <ShieldCheck className="size-6" />
-              </div>
+              {companyLogo ? (
+                <img
+                  src={companyLogo}
+                  alt="Logo"
+                  className="size-10 shrink-0 rounded-xl object-contain border border-gray-200 dark:border-gray-700 bg-white p-1 shadow-xs"
+                />
+              ) : (
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-theme-xs shadow-brand-500/25">
+                  <ShieldCheck className="size-6" />
+                </div>
+              )}
               <div className="flex flex-col">
                 <span className="font-bold text-base tracking-tight text-gray-900 dark:text-white leading-none">
                   J-Absen
@@ -327,6 +345,20 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
                   EKA JACX &bull; v1.0
                 </span>
               </div>
+            </Link>
+          ) : (
+            <Link href="/dashboard" onClick={handleMenuClick} className="flex items-center justify-center">
+              {companyLogo ? (
+                <img
+                  src={companyLogo}
+                  alt="Logo"
+                  className="size-9 shrink-0 rounded-xl object-contain border border-gray-200 dark:border-gray-700 bg-white p-1 shadow-xs"
+                />
+              ) : (
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-theme-xs shadow-brand-500/25">
+                  <ShieldCheck className="size-5" />
+                </div>
+              )}
             </Link>
           )}
 

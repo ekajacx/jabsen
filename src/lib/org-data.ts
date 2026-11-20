@@ -662,6 +662,7 @@ export interface AddEmployeeParams {
   targetPositionId?: string; // id posisi jika menambahkan orang ke posisi yang sudah ada
   customTitle?: string; // nama posisi baru jika belum ada atau ingin nama baru
   name: string;
+  avatar?: string;
   ktp: string;
   tanggalLahir?: string;
   email: string;
@@ -786,7 +787,7 @@ export function useOrgData() {
     const newHolder: EmployeeHolder = {
       nik: params.ktp ? `EMP-${params.ktp.slice(-4)}` : `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
       name: params.name.trim(),
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+      avatar: params.avatar?.trim() || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
       email: params.email.trim(),
       phone: params.phone.trim(),
       ktp: params.ktp.trim(),
@@ -886,6 +887,7 @@ export function useOrgData() {
         positionId: params.targetPositionId && params.targetPositionId !== "NEW" ? params.targetPositionId : undefined,
         employmentStatus: newHolder.employmentStatus,
         role: params.level === "Kepala" ? "Supervisor" : "Staff",
+        avatarUrl: newHolder.avatar,
       }),
     }).catch((err) => console.error("Error creating employee in DB:", err));
 
@@ -1045,6 +1047,7 @@ export function useOrgData() {
           departmentId: newDeptId,
           employmentStatus: updatedData.employmentStatus,
           status: updatedData.status,
+          avatarUrl: updatedData.avatar,
         }),
       }).catch(console.error);
     }

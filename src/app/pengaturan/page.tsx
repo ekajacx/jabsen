@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -33,6 +33,8 @@ import {
   Sun,
   Users,
   Check,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 
 import {
@@ -83,6 +85,38 @@ function PengaturanContent() {
   // ==========================================
   const [company, setCompany] = useState<CompanyProfile>(getCompanyProfile);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("error", "Format file tidak didukung. Harap pilih gambar (PNG, JPG, WebP, SVG).");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("error", "Ukuran logo terlalu besar (maksimal 2MB).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setCompany((prev) => ({ ...prev, logoUrl: base64 }));
+        showToast("success", "Logo berhasil dipilih! Klik 'Simpan Data Perusahaan' untuk menerapkan.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setCompany((prev) => ({ ...prev, logoUrl: null }));
+    if (logoInputRef.current) logoInputRef.current.value = "";
+    showToast("success", "Logo perusahaan dihapus. Klik 'Simpan Data Perusahaan' untuk menerapkan.");
+  };
 
   // ==========================================
   // TAB 2: STATE LOKASI & GEOFENCE KANTOR
@@ -536,6 +570,69 @@ function PengaturanContent() {
 
                 <CardContent className="pt-4">
                   <form onSubmit={handleSaveCompany} className="space-y-4 text-xs">
+                    {/* Upload Logo Perusahaan */}
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 p-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-gray-800 dark:text-gray-200 text-xs flex items-center gap-1.5">
+                          <ImageIcon className="size-3.5 text-brand-500" />
+                          Logo Resmi Perusahaan / Instansi
+                        </label>
+                        <span className="text-[10px] text-gray-400">PNG, JPG, WebP, SVG (Maks. 2MB)</span>
+                      </div>
+
+                      <div className="flex items-center gap-4 pt-1">
+                        <div className="size-16 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                          {company.logoUrl ? (
+                            <img
+                              src={company.logoUrl}
+                              alt="Logo Perusahaan"
+                              className="size-full object-contain p-1"
+                            />
+                          ) : (
+                            <Building2 className="size-7 text-gray-300 dark:text-gray-600" />
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5 flex-1">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="file"
+                              ref={logoInputRef}
+                              onChange={handleLogoUpload}
+                              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                              className="hidden"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="xs"
+                              onClick={() => logoInputRef.current?.click()}
+                              className="text-xs font-semibold gap-1.5"
+                            >
+                              <Upload className="size-3" />
+                              {company.logoUrl ? "Ganti Logo" : "Unggah Logo"}
+                            </Button>
+
+                            {company.logoUrl && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="xs"
+                                onClick={handleRemoveLogo}
+                                className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1"
+                              >
+                                <Trash2 className="size-3" />
+                                Hapus
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                            Logo ini otomatis muncul pada Kop Surat dokumen cetak dan laporan resmi.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
@@ -735,9 +832,17 @@ function PengaturanContent() {
                   <div className="rounded-xl border border-gray-300 bg-white p-5 shadow-md dark:border-gray-700 dark:bg-gray-900 space-y-3">
                     {/* Header Kop Surat Formal */}
                     <div className="flex items-start gap-4 pb-2 border-b-2 border-gray-900 dark:border-gray-100">
-                      <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white font-black text-lg shadow-sm">
-                        JA
-                      </div>
+                      {company.logoUrl ? (
+                        <img
+                          src={company.logoUrl}
+                          alt="Logo Perusahaan"
+                          className="size-14 shrink-0 rounded-xl object-contain border border-gray-200 dark:border-gray-700 bg-white p-1 shadow-xs"
+                        />
+                      ) : (
+                        <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white font-black text-lg shadow-sm">
+                          JA
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h2 className="font-black text-sm uppercase tracking-tight text-gray-900 dark:text-white leading-tight">
                           {company.name}

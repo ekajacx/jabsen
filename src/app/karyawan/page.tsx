@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,6 +34,8 @@ import {
   Smartphone,
   ExternalLink,
   Download,
+  Camera,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -86,6 +88,8 @@ export default function KaryawanPage() {
 
   // Form Fields Modal Edit
   const [editName, setEditName] = useState("");
+  const [editAvatar, setEditAvatar] = useState("");
+  const editAvatarInputRef = useRef<HTMLInputElement>(null);
   const [editKtp, setEditKtp] = useState("");
   const [editTanggalLahir, setEditTanggalLahir] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -99,12 +103,36 @@ export default function KaryawanPage() {
   const [editTanggalMulai, setEditTanggalMulai] = useState("");
   const [editTanggalBerhenti, setEditTanggalBerhenti] = useState("");
 
+  const handleEditAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("error", "Format file tidak didukung. Harap pilih gambar (JPG, PNG, WebP).");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("error", "Ukuran foto terlalu besar (maksimal 2MB).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setEditAvatar(base64);
+        showToast("success", "Foto avatar berhasil dipilih.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // State Modal Tambah Karyawan Baru
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addDeptId, setAddDeptId] = useState("");
   const [addLevel, setAddLevel] = useState<"Kepala" | "Staff">("Staff");
   const [addJobTitle, setAddJobTitle] = useState("");
   const [addName, setAddName] = useState("");
+  const [addAvatar, setAddAvatar] = useState("");
+  const addAvatarInputRef = useRef<HTMLInputElement>(null);
   const [addKtp, setAddKtp] = useState("");
   const [addTanggalLahir, setAddTanggalLahir] = useState("");
   const [addEmail, setAddEmail] = useState("");
@@ -114,6 +142,28 @@ export default function KaryawanPage() {
   const [addTanggalMasuk, setAddTanggalMasuk] = useState("");
   const [addTanggalMulai, setAddTanggalMulai] = useState("");
   const [addTanggalBerhenti, setAddTanggalBerhenti] = useState("");
+
+  const handleAddAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("error", "Format file tidak didukung. Harap pilih gambar (JPG, PNG, WebP).");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("error", "Ukuran foto terlalu besar (maksimal 2MB).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setAddAvatar(base64);
+        showToast("success", "Foto avatar berhasil dipilih.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Modal Informasi Kredensial Akun Karyawan Baru (Password Acak Sementara)
   const [createdAccountModal, setCreatedAccountModal] = useState<{
@@ -127,6 +177,8 @@ export default function KaryawanPage() {
   const handleOpenEdit = (emp: FullEmployeeRecord) => {
     setEditingEmp(emp);
     setEditName(emp.name);
+    setEditAvatar(emp.avatar || "");
+    if (editAvatarInputRef.current) editAvatarInputRef.current.value = "";
     setEditKtp(emp.ktp || "");
     setEditTanggalLahir(emp.tanggalLahir || "");
     setEditEmail(emp.email);
@@ -152,6 +204,7 @@ export default function KaryawanPage() {
       editingEmp.holderIndex,
       {
         name: editName.trim(),
+        avatar: editAvatar.trim() || undefined,
         ktp: editKtp.trim(),
         tanggalLahir: editTanggalLahir.trim(),
         email: editEmail.trim(),
@@ -212,6 +265,8 @@ export default function KaryawanPage() {
     setAddLevel("Staff");
     setAddJobTitle("");
     setAddName("");
+    setAddAvatar("");
+    if (addAvatarInputRef.current) addAvatarInputRef.current.value = "";
     setAddKtp("");
     setAddTanggalLahir("");
     setAddEmail("");
@@ -241,6 +296,7 @@ export default function KaryawanPage() {
       level: addLevel,
       customTitle: addJobTitle.trim() || undefined,
       name: addName.trim(),
+      avatar: addAvatar.trim() || undefined,
       ktp: addKtp.trim(),
       tanggalLahir: addTanggalLahir.trim(),
       email: addEmail.trim(),
@@ -810,19 +866,63 @@ export default function KaryawanPage() {
               </div>
             )}
 
-            {/* FOTO & NAMA */}
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-              <img
-                src={editingEmp?.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
-                alt={editName}
-                style={{ width: 48, height: 48, minWidth: 48, minHeight: 48 }}
-                className="w-12 h-12 rounded-full object-cover ring-2 ring-brand-500 shrink-0"
-              />
+            {/* FOTO & NAMA DENGAN TOMBOL UPLOAD AVATAR */}
+            <div className="flex items-center gap-3.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+              <div className="relative group shrink-0">
+                <img
+                  src={editAvatar || editingEmp?.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
+                  alt={editName}
+                  style={{ width: 52, height: 52, minWidth: 52, minHeight: 52 }}
+                  className="w-[52px] h-[52px] rounded-full object-cover ring-2 ring-brand-500 shrink-0 shadow-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => editAvatarInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                  title="Pilih Foto Avatar Baru"
+                >
+                  <Camera className="size-4" />
+                </button>
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                  {editingEmp?.name}
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                    {editingEmp?.name}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={editAvatarInputRef}
+                      onChange={handleEditAvatarUpload}
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => editAvatarInputRef.current?.click()}
+                      className="text-[10px] h-6 px-2 gap-1 font-semibold"
+                    >
+                      <Upload className="size-3" />
+                      Ganti Foto
+                    </Button>
+                    {editAvatar && editAvatar !== editingEmp?.avatar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditAvatar(editingEmp?.avatar || "");
+                          if (editAvatarInputRef.current) editAvatarInputRef.current.value = "";
+                        }}
+                        className="text-[10px] text-gray-400 hover:text-red-500 font-medium px-1"
+                        title="Kembalikan Foto Awal"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[10px] text-gray-400 font-mono">
+                <div className="text-[10px] text-gray-400 font-mono mt-0.5">
                   NIK: {editingEmp?.id} &bull; Jabatan: {editingEmp?.jobTitle}
                 </div>
               </div>
@@ -1069,6 +1169,70 @@ export default function KaryawanPage() {
           className="max-w-xl text-xs"
         >
           <form onSubmit={handleSaveAdd} className="space-y-4 pt-2 max-h-[78vh] overflow-y-auto px-0.5">
+            {/* Foto Profil / Avatar Karyawan Baru */}
+            <div className="flex items-center gap-3.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+              <div className="relative group shrink-0">
+                <img
+                  src={addAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
+                  alt="Avatar Baru"
+                  style={{ width: 50, height: 50, minWidth: 50, minHeight: 50 }}
+                  className="w-[50px] h-[50px] rounded-full object-cover ring-2 ring-brand-500 shrink-0 shadow-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => addAvatarInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                  title="Pilih Foto Avatar"
+                >
+                  <Camera className="size-4" />
+                </button>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white block">
+                      Foto Profil / Avatar Karyawan
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      Opsional. Format JPG, PNG, WebP (Maks. 2MB)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      ref={addAvatarInputRef}
+                      onChange={handleAddAvatarUpload}
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => addAvatarInputRef.current?.click()}
+                      className="text-[10px] h-6 px-2 gap-1 font-semibold"
+                    >
+                      <Upload className="size-3" />
+                      {addAvatar ? "Ganti Foto" : "Pilih Foto"}
+                    </Button>
+                    {addAvatar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddAvatar("");
+                          if (addAvatarInputRef.current) addAvatarInputRef.current.value = "";
+                        }}
+                        className="text-[10px] text-red-500 hover:text-red-600 px-1 font-medium"
+                        title="Hapus Foto"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
