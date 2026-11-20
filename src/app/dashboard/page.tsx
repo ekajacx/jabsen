@@ -157,7 +157,7 @@ export default function DashboardPage() {
         {
           title: "Kepatuhan Geofence",
           value: "100%",
-          change: "Radius kantor 50m",
+          change: "Radius kantor 100m",
           icon: ShieldCheck,
           color: "text-teal-500",
           bgColor: "bg-teal-50 dark:bg-teal-950/40",
@@ -193,7 +193,7 @@ export default function DashboardPage() {
         },
         {
           title: "Radar GPS Geofence",
-          value: "Aktif 50m",
+          value: "Aktif 100m",
           change: "Kantor Pusat Bali",
           icon: MapPin,
           color: "text-sky-500",
@@ -267,7 +267,7 @@ export default function DashboardPage() {
           nik: user.nik,
           name: user.name,
           dept: user.department,
-          time: "07:54:12 WIB",
+          time: "07:54:12 WITA",
           date: "Jumat, 20 Nov 2026",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -278,7 +278,7 @@ export default function DashboardPage() {
           nik: user.nik,
           name: user.name,
           dept: user.department,
-          time: "07:48:30 WIB",
+          time: "07:48:30 WITA",
           date: "Kamis, 19 Nov 2026",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -289,7 +289,7 @@ export default function DashboardPage() {
           nik: user.nik,
           name: user.name,
           dept: user.department,
-          time: "07:56:15 WIB",
+          time: "07:56:15 WITA",
           date: "Rabu, 18 Nov 2026",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -300,7 +300,7 @@ export default function DashboardPage() {
           nik: user.nik,
           name: user.name,
           dept: user.department,
-          time: "07:50:02 WIB",
+          time: "07:50:02 WITA",
           date: "Selasa, 17 Nov 2026",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -311,7 +311,7 @@ export default function DashboardPage() {
           nik: user.nik,
           name: user.name,
           dept: user.department,
-          time: "07:52:44 WIB",
+          time: "07:52:44 WITA",
           date: "Senin, 16 Nov 2026",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -328,7 +328,7 @@ export default function DashboardPage() {
           nik: "OPS-302",
           name: "Budi Santoso",
           dept: "Operasional",
-          time: "07:54:12 WIB",
+          time: "07:54:12 WITA",
           date: "Hari ini",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -339,7 +339,7 @@ export default function DashboardPage() {
           nik: "OPS-303",
           name: "Cindy Permata",
           dept: "Operasional",
-          time: "07:49:15 WIB",
+          time: "07:49:15 WITA",
           date: "Hari ini",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -350,7 +350,7 @@ export default function DashboardPage() {
           nik: "OPS-304",
           name: "Dimas Prasetyo",
           dept: "Operasional",
-          time: "07:58:33 WIB",
+          time: "07:58:33 WITA",
           date: "Hari ini",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -361,7 +361,7 @@ export default function DashboardPage() {
           nik: "OPS-305",
           name: "Eko Susanto",
           dept: "Operasional",
-          time: "07:51:20 WIB",
+          time: "07:51:20 WITA",
           date: "Hari ini",
           status: "Hadir",
           liveness: "4 Gerakan Valid",
@@ -388,7 +388,7 @@ export default function DashboardPage() {
         nik: "TI-101",
         name: "Eka Jacx",
         dept: "Teknologi Informasi",
-        time: "07:45:10 WIB",
+        time: "07:45:10 WITA",
         date: "Hari ini",
         status: "Hadir",
         liveness: "4 Gerakan Valid",
@@ -399,7 +399,7 @@ export default function DashboardPage() {
         nik: "OPS-302",
         name: "Budi Santoso",
         dept: "Operasional",
-        time: "07:54:12 WIB",
+        time: "07:54:12 WITA",
         date: "Hari ini",
         status: "Hadir",
         liveness: "4 Gerakan Valid",
@@ -410,7 +410,7 @@ export default function DashboardPage() {
         nik: "HR-501",
         name: "Dewi Lestari",
         dept: "HR & GA",
-        time: "07:48:30 WIB",
+        time: "07:48:30 WITA",
         date: "Hari ini",
         status: "Hadir",
         liveness: "4 Gerakan Valid",
@@ -421,7 +421,7 @@ export default function DashboardPage() {
         nik: "MKT-402",
         name: "Rizky Ramadhan",
         dept: "Pemasaran",
-        time: "07:58:45 WIB",
+        time: "07:58:45 WITA",
         date: "Hari ini",
         status: "Hadir",
         liveness: "4 Gerakan Valid",
@@ -432,7 +432,7 @@ export default function DashboardPage() {
         nik: "SLS-602",
         name: "Dimas Anggara",
         dept: "Penjualan",
-        time: "08:14:02 WIB",
+        time: "08:14:02 WITA",
         date: "Hari ini",
         status: "Terlambat",
         liveness: "4 Gerakan Valid",
@@ -519,12 +519,12 @@ export default function DashboardPage() {
               <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-brand-100">
                 <span className="flex items-center gap-1.5">
                   <MapPin className="size-3.5 text-emerald-300" />
-                  {user.officeLocation} (Radius 50m)
+                  {user.officeLocation} (Radius 100m)
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="size-3.5 text-amber-300" />
-                  Shift Normal: 08:00 - 17:00 WIB
+                  Shift Normal: 08:00 - 17:00 WITA
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1.5">
@@ -822,7 +822,7 @@ export default function DashboardPage() {
               <CardContent className="space-y-2.5 pt-2 text-xs">
                 <div className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800">
                   <span className="text-gray-500">Radius Geofence:</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">50 Meter (Wajib)</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">100 Meter (Wajib)</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800">
                   <span className="text-gray-500">Tantangan Wajah:</span>

@@ -180,6 +180,9 @@ export default function LoginPage() {
       }
 
       if (!res.ok) {
+        if (res.status >= 500) {
+          throw new Error(data?.message || "Server PostgreSQL offline atau konfigurasi database tidak tersedia");
+        }
         setIsLoading(false);
         const errMsg = data.message || "Gagal masuk. Periksa kembali username dan kata sandi Anda.";
         setErrors({

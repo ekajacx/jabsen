@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-      }) + " WIB";
+      }) + " WITA";
 
     // 6. Simpan ke tabel PostgreSQL
     const savedRecord = await prisma.attendanceRecord.create({

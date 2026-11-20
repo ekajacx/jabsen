@@ -54,7 +54,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   {
     id: "notif-staff-002",
     title: "Koreksi Jam Masuk Disetujui",
-    message: "Pengajuan koreksi presensi tanggal 18 Nov (08:05 WIB) telah divalidasi oleh HRD.",
+    message: "Pengajuan koreksi presensi tanggal 18 Nov (08:05 WITA) telah divalidasi oleh HRD.",
     category: "koreksi",
     targetUrl: "/riwayat",
     createdAt: "1 jam yang lalu",
@@ -76,7 +76,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   {
     id: "notif-staff-004",
     title: "Pengingat Presensi Pulang",
-    message: "Jam kerja shift Anda berakhir pukul 17:00 WIB. Lakukan presensi pulang via kamera HP.",
+    message: "Jam kerja shift Anda berakhir pukul 17:00 WITA. Lakukan presensi pulang via kamera HP.",
     category: "presensi",
     targetUrl: "/absen",
     createdAt: "5 jam yang lalu",

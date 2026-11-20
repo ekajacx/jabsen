@@ -396,7 +396,7 @@ export default function KaryawanPage() {
     );
   }
 
-  const isAuthorized = ["Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
+  const isAuthorized = ["Staff", "Supervisor", "GM", "HRD", "CEO", "Admin IT"].includes(user?.role || "");
 
   if (!isAuthorized) {
     return (
@@ -408,7 +408,7 @@ export default function KaryawanPage() {
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-              Direktori Karyawan hanya dapat diakses oleh akun Supervisor, General Manager, HRD, Direktur Utama, atau Admin IT.
+              Direktori Karyawan hanya dapat diakses oleh akun terotentikasi.
             </p>
           </div>
           <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">

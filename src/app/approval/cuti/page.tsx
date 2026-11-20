@@ -20,6 +20,7 @@ import {
   FileText,
   Check,
   Download,
+  ShieldAlert,
 } from "lucide-react";
 import { exportLeaveRequestsToExcel } from "@/lib/excel-export";
 import {
@@ -668,7 +669,30 @@ export default function ApprovalCutiPage() {
 
             {/* Action Buttons */}
             <div className="mt-6 pt-2">
-              {isPendingApproval(selectedRequest.status) ? (
+              {user.role === "Admin IT" ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-start gap-2.5">
+                    <ShieldAlert className="size-4 shrink-0 text-rose-600 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Mode Tinjau Audit (Admin IT):</p>
+                      <p className="mt-0.5 text-[11px] leading-relaxed">
+                        Sesuai prinsip Pemisahan Tugas (Separation of Duties / SoD) &amp; PRD Bagian 4.2, Administrator IT tidak memiliki wewenang untuk menyetujui atau menolak permohonan cuti karyawan.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowReviewModal(false)}
+                      className="text-xs"
+                    >
+                      Tutup
+                    </Button>
+                  </div>
+                </div>
+              ) : isPendingApproval(selectedRequest.status) ? (
                 <div className="grid grid-cols-3 gap-2">
                   <Button
                     type="button"

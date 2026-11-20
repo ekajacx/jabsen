@@ -105,8 +105,8 @@ export async function GET(req: NextRequest) {
       }
 
       const dateStr = val.date.toISOString().split("T")[0];
-      const clockInTime = inRec ? inRec.timeFormatted.replace(" WIB", "") : null;
-      const clockOutTime = outRec ? outRec.timeFormatted.replace(" WIB", "") : null;
+      const clockInTime = inRec ? inRec.timeFormatted.replace(" WITA", "") : null;
+      const clockOutTime = outRec ? outRec.timeFormatted.replace(" WITA", "") : null;
 
       // Hitung durasi jam kerja
       let workHours = "-";

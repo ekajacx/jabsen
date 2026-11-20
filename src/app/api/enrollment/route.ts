@@ -29,7 +29,7 @@ export async function GET() {
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      }) + " WIB",
+      }) + " WITA",
       samples: {
         front: e.sampleFront,
         left: e.sampleLeft,

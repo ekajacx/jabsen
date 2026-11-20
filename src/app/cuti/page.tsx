@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth, UserRole } from "@/context/auth-context";
 import { useModal } from "@/context/modal-context";
+import { cn } from "@/lib/utils";
 import {
   FileCheck2,
   CalendarDays,
@@ -38,8 +39,18 @@ export default function PengajuanCutiPage() {
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Kuota Cuti Tahunan Pengguna (PRD P-10: default 12 hari)
-  const [annualLeaveBalance, setAnnualLeaveBalance] = useState<number>(10);
+  // Kuota Cuti Tahunan Pengguna (PRD P-10: Total kuota 12 hari; Approval Atasan/SPV mengurangi saldo)
+  const annualLeaveBalance = useMemo(() => {
+    const approvedDays = leaveRequests
+      .filter(
+        (r) =>
+          r.applicantId === user.id &&
+          r.leaveType === "Cuti Tahunan" &&
+          (r.status === "Disetujui" || r.status === "Menunggu HRD")
+      )
+      .reduce((sum, item) => sum + (item.durationDays || 1), 0);
+    return Math.max(0, 12 - approvedDays);
+  }, [leaveRequests, user.id]);
 
   // State Modal Pengajuan Cuti Baru
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -178,7 +189,7 @@ export default function PengajuanCutiPage() {
         attachmentName: newAttachment || undefined,
         status: "Menunggu SPV",
         currentApproverRole: targetApprover,
-        submittedAt: new Date().toLocaleDateString("id-ID") + " WIB",
+        submittedAt: new Date().toLocaleDateString("id-ID") + " WITA",
         quotaImpact: isAnnual,
       };
 
@@ -751,6 +762,31 @@ export default function PengajuanCutiPage() {
                   {selectedRequest.reason}
                 </p>
               </div>
+
+              {selectedRequest.approverNotes && (
+                <div className="pt-1">
+                  <span className="text-gray-400 block mb-1">Catatan / Alasan Keputusan Approver:</span>
+                  <div
+                    className={cn(
+                      "rounded-xl p-3 text-xs leading-relaxed border",
+                      selectedRequest.status === "Ditolak"
+                        ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                        : selectedRequest.status === "Perlu Revisi"
+                        ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    )}
+                  >
+                    <p className="font-semibold text-[11px] mb-0.5">
+                      {selectedRequest.status === "Ditolak"
+                        ? "Permohonan Ditolak dengan Alasan:"
+                        : selectedRequest.status === "Perlu Revisi"
+                        ? "Catatan Revisi dari Approver:"
+                        : "Catatan Persetujuan:"}
+                    </p>
+                    <p>{selectedRequest.approverNotes}</p>
+                  </div>
+                </div>
+              )}
 
               {selectedRequest.attachmentName && (
                 <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300">

@@ -135,7 +135,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           title: "Data Karyawan",
           href: "/karyawan",
           icon: Users,
-          allowedRoles: ["Supervisor", "GM", "HRD", "CEO", "Admin IT"],
+          allowedRoles: ["Staff", "Supervisor", "GM", "HRD", "CEO", "Admin IT"],
         },
         {
           title: "Struktur Organisasi",
@@ -146,7 +146,7 @@ export function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: 
           title: "Departemen",
           href: "/departemen",
           icon: Building2,
-          allowedRoles: ["HRD", "GM", "CEO", "Admin IT"],
+          allowedRoles: ["Supervisor", "HRD", "GM", "CEO", "Admin IT"],
         },
         {
           title: "Review Wajah",

@@ -53,7 +53,7 @@ const INITIAL_ENROLLMENTS: FaceEnrollmentSubmission[] = [
     employeeName: "Rian Hidayat",
     department: "Operasional",
     role: "Staff",
-    submissionDate: "18 Nov 2026, 14:10 WIB",
+    submissionDate: "18 Nov 2026, 14:10 WITA",
     samples: {
       front: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
       left: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&auto=format&fit=crop&q=80",
@@ -70,7 +70,7 @@ const INITIAL_ENROLLMENTS: FaceEnrollmentSubmission[] = [
     employeeName: "Ahmad Fauzi",
     department: "Logistik & Gudang",
     role: "Staff",
-    submissionDate: "18 Nov 2026, 10:45 WIB",
+    submissionDate: "18 Nov 2026, 10:45 WITA",
     samples: {
       front: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&auto=format&fit=crop&q=80",
       left: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
@@ -87,7 +87,7 @@ const INITIAL_ENROLLMENTS: FaceEnrollmentSubmission[] = [
     employeeName: "Budi Santoso",
     department: "Operasional",
     role: "Staff",
-    submissionDate: "15 Jan 2024, 09:00 WIB",
+    submissionDate: "15 Jan 2024, 09:00 WITA",
     samples: {
       front: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
       left: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",

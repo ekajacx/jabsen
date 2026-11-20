@@ -331,7 +331,7 @@ export function generateScheduleForEmployee(
     createdById: creator.id,
     createdByName: creator.name,
     createdByRole: creator.role,
-    createdAt: "15 Nov 2026, 09:00 WIB",
+    createdAt: "15 Nov 2026, 09:00 WITA",
     days,
   };
 }

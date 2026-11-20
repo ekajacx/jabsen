@@ -125,11 +125,17 @@ export default function AbsenPage() {
   // Device Detection: Desktop vs Mobile
   const [isMobileDevice, setIsMobileDevice] = useState<boolean>(true);
   const [bypassDesktop, setBypassDesktop] = useState<boolean>(false);
-  const [networkIp] = useState<string>("http://192.168.1.2:3000/absen");
+  const [networkIp, setNetworkIp] = useState<string>("/absen");
 
   // Jam Real-Time Digital
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDateFormatted, setCurrentDateFormatted] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setNetworkIp(`${window.location.origin}/absen`);
+    }
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -139,7 +145,7 @@ export default function AbsenPage() {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        }) + " WIB"
+        }) + " WITA"
       );
       setCurrentDateFormatted(
         now.toLocaleDateString("id-ID", {
@@ -665,7 +671,7 @@ export default function AbsenPage() {
       role: user.role,
       type: attendanceType,
       timestamp: now.toISOString(),
-      timeFormatted: now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " WIB",
+      timeFormatted: now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " WITA",
       dateFormatted: now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
       officeName: targetOffice.name,
       distanceMeters: geofence.distanceMeters,
@@ -948,7 +954,7 @@ export default function AbsenPage() {
                       {user.nik || "ID: EMP-001"} &bull; {user.role}
                     </p>
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5">
-                      Shift Reguler (08:00 - 17:00 WIB)
+                      Shift Reguler (08:00 - 17:00 WITA)
                     </span>
                   </div>
                 </div>
@@ -967,10 +973,10 @@ export default function AbsenPage() {
                   <span>{currentDateFormatted || "Memuat Tanggal..."}</span>
                 </div>
                 <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white font-mono">
-                  {currentTime || "00:00:00 WIB"}
+                  {currentTime || "00:00:00 WITA"}
                 </div>
                 <p className="text-[11px] text-gray-400">
-                  Waktu Indonesia Barat (Sinkron Server Presensi WORM)
+                  Waktu Indonesia Tengah (Kantor Pusat Bali &bull; Sinkron Server Presensi WORM)
                 </p>
               </div>
 

@@ -1355,6 +1355,8 @@ export default function RbacPage() {
   // Re-Authentication State (P-7: Grace period 10 menit)
   const [showReAuthModal, setShowReAuthModal] = useState<boolean>(false);
   const [reAuthPassword, setReAuthPassword] = useState<string>("");
+  const [reAuthError, setReAuthError] = useState<string | null>(null);
+  const [isVerifyingReAuth, setIsVerifyingReAuth] = useState<boolean>(false);
   const [isReAuthenticated, setIsReAuthenticated] = useState<boolean>(false);
   const [pendingCriticalAction, setPendingCriticalAction] = useState<(() => void) | null>(null);
 
@@ -1498,21 +1500,55 @@ export default function RbacPage() {
     setEditingCell(null);
   };
 
-  // Konfirmasi Re-Authentication (P-7)
-  const handleVerifyReAuth = (e: React.FormEvent) => {
+  // Konfirmasi Re-Authentication Kredensial Riil (PRD P-7)
+  const handleVerifyReAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (reAuthPassword === "admin123" || reAuthPassword.length >= 6) {
+    if (!reAuthPassword.trim()) {
+      setReAuthError("Kata sandi wajib diisi.");
+      return;
+    }
+
+    setIsVerifyingReAuth(true);
+    setReAuthError(null);
+
+    try {
+      // Verifikasi kata sandi secara riil ke backend API dengan hashing bcrypt di database
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: user?.username || user?.email || user?.id,
+          password: reAuthPassword,
+          deviceId: "reauth-check",
+          deviceName: "ReAuth Security Check",
+          isMobile: false,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        setReAuthError(
+          data.message || "Kata sandi otentikasi ulang salah. Akses otorisasi kritis ditolak."
+        );
+        return;
+      }
+
+      // Kredensial benar: Aktifkan sesi Re-Auth selama 10 menit
       setIsReAuthenticated(true);
       setShowReAuthModal(false);
       setReAuthPassword("");
-      showToast("success", "Re-Authentication berhasil. Sesi otorisasi kritis aktif selama 10 menit (P-7).");
+      setReAuthError(null);
+      showToast("success", "Re-Authentication berhasil terverifikasi. Sesi otorisasi kritis aktif selama 10 menit (P-7).");
 
       if (pendingCriticalAction) {
         pendingCriticalAction();
         setPendingCriticalAction(null);
       }
-    } else {
-      showToast("error", "Password otentikasi ulang salah. Akses ditolak.");
+    } catch (err: any) {
+      setReAuthError(err.message || "Gagal menghubungi server otentikasi.");
+    } finally {
+      setIsVerifyingReAuth(false);
     }
   };
 
@@ -2232,6 +2268,8 @@ export default function RbacPage() {
             onClose={() => {
               setShowReAuthModal(false);
               setPendingCriticalAction(null);
+              setReAuthError(null);
+              setReAuthPassword("");
             }}
             title="Verifikasi Kredensial Ulang [CRITICAL ACTION]"
           >
@@ -2247,6 +2285,17 @@ export default function RbacPage() {
                 </p>
               </div>
 
+              {/* Alert Error Pop-up Langsung di Dalam Modal */}
+              {reAuthError && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-300 animate-in fade-in duration-200">
+                  <XCircle className="size-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold text-xs">Otorisasi Kritis Ditolak</p>
+                    <p className="text-[11px] mt-0.5 text-red-700 dark:text-red-300">{reAuthError}</p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="mb-1 block font-semibold text-gray-700 dark:text-gray-300">
                   Password Administrator
@@ -2255,12 +2304,15 @@ export default function RbacPage() {
                   type="password"
                   placeholder="Ketik password login Anda..."
                   value={reAuthPassword}
-                  onChange={(e) => setReAuthPassword(e.target.value)}
-                  className="text-xs"
+                  onChange={(e) => {
+                    setReAuthPassword(e.target.value);
+                    if (reAuthError) setReAuthError(null);
+                  }}
+                  className={`text-xs ${reAuthError ? "border-red-400 focus:ring-red-400" : ""}`}
                   required
                 />
                 <span className="text-[10px] text-gray-400 mt-1 block">
-                  Ketik password akun Anda untuk konfirmasi identitas
+                  Ketik password akun Anda ({user?.username || user?.email || "Admin"}) untuk konfirmasi identitas
                 </span>
               </div>
 
@@ -2269,16 +2321,25 @@ export default function RbacPage() {
                   type="button"
                   variant="ghost"
                   size="sm"
+                  disabled={isVerifyingReAuth}
                   onClick={() => {
                     setShowReAuthModal(false);
                     setPendingCriticalAction(null);
+                    setReAuthError(null);
+                    setReAuthPassword("");
                   }}
                   className="rounded-full text-xs"
                 >
                   Batal
                 </Button>
-                <Button type="submit" variant="default" size="sm" className="rounded-full text-xs font-semibold">
-                  Verifikasi Kredensial
+                <Button
+                  type="submit"
+                  variant="default"
+                  size="sm"
+                  disabled={isVerifyingReAuth}
+                  className="rounded-full text-xs font-semibold"
+                >
+                  {isVerifyingReAuth ? "Memverifikasi..." : "Verifikasi Kredensial"}
                 </Button>
               </div>
             </form>

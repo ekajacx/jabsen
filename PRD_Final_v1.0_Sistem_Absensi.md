@@ -900,7 +900,7 @@ erDiagram
         date date
         string type "masuk, pulang"
         datetime timestamp
-        string timeFormatted "07:54:12 WIB"
+        string timeFormatted "07:54:12 WITA"
         int distanceMeters "Jarak Geofence"
         float latitude
         float longitude

@@ -11,6 +11,7 @@ import { useAuth } from "@/context/auth-context";
 import { useModal } from "@/context/modal-context";
 import * as XLSX from "xlsx";
 import { exportAttendanceReportToExcel } from "@/lib/excel-export";
+import { cn } from "@/lib/utils";
 import {
   FileSpreadsheet,
   Download,
@@ -361,13 +362,19 @@ export default function LaporanPage() {
     setPeriodPreset("bulan-ini");
     setStartDate("2026-11-01");
     setEndDate("2026-11-18");
-    setDepartmentFilter("Semua");
+    setDepartmentFilter(user?.role === "Supervisor" && user?.department ? user.department : "Semua");
     setOfficeFilter("Semua");
     setShiftFilter("Semua");
     setStatusFilter("Semua");
     setSearchQuery("");
     setCurrentPage(1);
   };
+
+  useEffect(() => {
+    if (user?.role === "Supervisor" && user?.department) {
+      setDepartmentFilter(user.department);
+    }
+  }, [user?.role, user?.department]);
 
   const [reportList, setReportList] = useState<AttendanceReportItem[]>(REPORT_DATA);
 
@@ -666,19 +673,29 @@ export default function LaporanPage() {
                   Departemen
                 </label>
                 <select
+                  disabled={user?.role === "Supervisor"}
                   value={departmentFilter}
                   onChange={(e) => {
                     setDepartmentFilter(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  className={cn(
+                    "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                    user?.role === "Supervisor" && "opacity-75 cursor-not-allowed bg-gray-100 dark:bg-gray-800"
+                  )}
                 >
-                  <option value="Semua">Semua Departemen</option>
-                  <option value="Operasional">Operasional</option>
-                  <option value="IT & Engineering">IT & Engineering</option>
-                  <option value="HRD & GA">HRD & GA</option>
-                  <option value="Finance & Accounting">Finance & Accounting</option>
-                  <option value="Marketing & Sales">Marketing & Sales</option>
+                  {user?.role === "Supervisor" ? (
+                    <option value={user.department}>{user.department} (Tim Anda)</option>
+                  ) : (
+                    <>
+                      <option value="Semua">Semua Departemen</option>
+                      <option value="Operasional">Operasional</option>
+                      <option value="IT & Engineering">IT & Engineering</option>
+                      <option value="HRD & GA">HRD & GA</option>
+                      <option value="Finance & Accounting">Finance & Accounting</option>
+                      <option value="Marketing & Sales">Marketing & Sales</option>
+                    </>
+                  )}
                 </select>
               </div>
 

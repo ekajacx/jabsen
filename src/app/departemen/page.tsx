@@ -41,7 +41,8 @@ export default function DepartemenPage() {
   const router = useRouter();
   const { user, isAuthReady } = useAuth();
   const { showConfirm } = useModal();
-  const isAuthorized = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
+  const isAuthorized = ["Admin IT", "CEO", "HRD", "GM", "Supervisor"].includes(user?.role || "");
+  const canManage = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
   const {
     departments,
@@ -212,14 +213,16 @@ export default function DepartemenPage() {
               <ExternalLink className="size-3 text-gray-400" />
             </Link>
 
-            <Button
-              onClick={handleOpenAddModal}
-              size="sm"
-              className="rounded-full px-4 text-xs font-semibold shadow-sm"
-            >
-              <Plus className="size-3.5 mr-1" />
-              Tambah Departemen
-            </Button>
+            {canManage && (
+              <Button
+                onClick={handleOpenAddModal}
+                size="sm"
+                className="rounded-full px-4 text-xs font-semibold shadow-sm"
+              >
+                <Plus className="size-3.5 mr-1" />
+                Tambah Departemen
+              </Button>
+            )}
           </div>
         </div>
 
@@ -366,22 +369,26 @@ export default function DepartemenPage() {
                               >
                                 <Network className="size-4" />
                               </Link>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditModal(dept)}
-                                className="p-1.5 text-gray-500 hover:text-brand-600 dark:hover:text-brand-400"
-                                title="Edit Departemen"
-                              >
-                                <Edit2 className="size-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(dept)}
-                                className="p-1.5 text-gray-400 hover:text-red-500"
-                                title="Hapus Departemen"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
+                              {canManage && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditModal(dept)}
+                                    className="p-1.5 text-gray-500 hover:text-brand-600 dark:hover:text-brand-400"
+                                    title="Edit Departemen"
+                                  >
+                                    <Edit2 className="size-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(dept)}
+                                    className="p-1.5 text-gray-400 hover:text-red-500"
+                                    title="Hapus Departemen"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>

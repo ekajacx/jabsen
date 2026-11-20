@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
           year: "numeric",
           hour: "2-digit",
           minute: "2-digit",
-        }).format(new Date(l.createdAt)) + " WIB",
+        }).format(new Date(l.createdAt)) + " WITA",
         quotaImpact: l.leaveType === "Cuti Tahunan",
       };
     });
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      }).format(new Date(newLeave.createdAt)) + " WIB",
+      }).format(new Date(newLeave.createdAt)) + " WITA",
       quotaImpact: newLeave.leaveType === "Cuti Tahunan",
     };
 
@@ -199,6 +199,17 @@ export async function PATCH(req: NextRequest) {
 
     if (!id || !action) {
       return NextResponse.json({ success: false, message: "ID dan action permohonan cuti wajib disertakan." }, { status: 400 });
+    }
+
+    // Prinsip Pemisahan Tugas (SoD): Admin IT dan Staff tidak memiliki hak approval cuti
+    if (actorRole === "Admin IT" || actorRole === "Staff") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Wewenang ditolak: Akun ${actorRole} tidak memiliki hak persetujuan cuti (Prinsip Pemisahan Tugas / SoD).`,
+        },
+        { status: 403 }
+      );
     }
 
     // Seluruh approval wajib mengisi kolom alasan / catatan (tidak boleh kosong)

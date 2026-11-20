@@ -1133,13 +1133,13 @@ function PengaturanContent() {
                       <div>
                         <span className="text-[10px] text-gray-400 block font-semibold">Jam Masuk - Pulang:</span>
                         <span className="font-bold text-sm text-brand-600 dark:text-brand-400">
-                          {shift.startTime} - {shift.endTime} WIB
+                          {shift.startTime} - {shift.endTime} WITA
                         </span>
                       </div>
                       <div>
                         <span className="text-[10px] text-gray-400 block font-semibold">Jam Istirahat:</span>
                         <span className="font-medium text-gray-700 dark:text-gray-300">
-                          {shift.breakStart || "-"} - {shift.breakEnd || "-"} WIB
+                          {shift.breakStart || "-"} - {shift.breakEnd || "-"} WITA
                         </span>
                       </div>
                     </div>

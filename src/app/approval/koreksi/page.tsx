@@ -63,14 +63,14 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
     applicantRole: "Staff",
     department: "Operasional",
     targetDate: "Senin, 16 Nov 2026",
-    originalCheckIn: "08:38 WIB",
-    originalCheckOut: "17:15 WIB",
-    proposedCheckIn: "08:00 WIB",
-    proposedCheckOut: "17:15 WIB",
+    originalCheckIn: "08:38 WITA",
+    originalCheckOut: "17:15 WITA",
+    proposedCheckIn: "08:00 WITA",
+    proposedCheckOut: "17:15 WITA",
     reason: "Menghadiri serah terima unit di lapangan sejak pukul 07:45 sebelum sinyal GPS stabil.",
     stage: "Tahap 1: Supervisor",
     status: "Menunggu SPV",
-    submittedAt: "16 Nov 2026, 18:30 WIB",
+    submittedAt: "16 Nov 2026, 18:30 WITA",
   },
   {
     id: "KOR-202611-002",
@@ -79,19 +79,19 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
     applicantRole: "Staff",
     department: "Departemen TI",
     targetDate: "Kamis, 12 Nov 2026",
-    originalCheckIn: "08:00 WIB",
-    originalCheckOut: "--:-- WIB",
-    proposedCheckIn: "08:00 WIB",
-    proposedCheckOut: "17:30 WIB",
+    originalCheckIn: "08:00 WITA",
+    originalCheckOut: "--:-- WITA",
+    proposedCheckIn: "08:00 WITA",
+    proposedCheckOut: "17:30 WITA",
     reason: "Lupa absen pulang karena mendadak lembur perbaikan mesin gudang sampai sore.",
     stage: "Tahap 2: HRD",
     status: "Menunggu HRD",
     supervisorApproval: {
       approvedBy: "Supervisor Operasional",
-      approvedAt: "13 Nov 2026, 09:15 WIB",
+      approvedAt: "13 Nov 2026, 09:15 WITA",
       notes: "Tervalidasi. Jam lembur sesuai surat perintah tugas.",
     },
-    submittedAt: "12 Nov 2026, 18:00 WIB",
+    submittedAt: "12 Nov 2026, 18:00 WITA",
   },
   {
     id: "KOR-202610-003",
@@ -100,24 +100,24 @@ const INITIAL_CORRECTIONS: CorrectionRequest[] = [
     applicantRole: "Staff",
     department: "Operasional",
     targetDate: "Senin, 26 Okt 2026",
-    originalCheckIn: "08:45 WIB",
-    originalCheckOut: "17:00 WIB",
-    proposedCheckIn: "08:00 WIB",
-    proposedCheckOut: "17:00 WIB",
+    originalCheckIn: "08:45 WITA",
+    originalCheckOut: "17:00 WITA",
+    proposedCheckIn: "08:00 WITA",
+    proposedCheckOut: "17:00 WITA",
     reason: "Kendala jaringan seluler di pintu masuk basement parkir kantor.",
     stage: "Selesai",
     status: "Disetujui Final",
     supervisorApproval: {
       approvedBy: "Supervisor Operasional",
-      approvedAt: "27 Okt 2026, 10:00 WIB",
+      approvedAt: "27 Okt 2026, 10:00 WITA",
       notes: "Sesuai rekam CCTV parkir.",
     },
     hrdApproval: {
       approvedBy: "Dewi Lestari (HRD)",
-      approvedAt: "27 Okt 2026, 14:00 WIB",
+      approvedAt: "27 Okt 2026, 14:00 WITA",
       notes: "Data absensi telah disesuaikan di database.",
     },
-    submittedAt: "26 Okt 2026, 17:30 WIB",
+    submittedAt: "26 Okt 2026, 17:30 WITA",
   },
 ];
 
@@ -241,7 +241,7 @@ export default function ApprovalKoreksiPage() {
                   year: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
-                }).format(new Date()) + " WIB",
+                }).format(new Date()) + " WITA",
                 notes: cleanNotes,
               },
             };
@@ -261,7 +261,7 @@ export default function ApprovalKoreksiPage() {
                   year: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
-                }).format(new Date()) + " WIB",
+                }).format(new Date()) + " WITA",
                 notes: cleanNotes,
               },
             };
@@ -661,9 +661,31 @@ export default function ApprovalKoreksiPage() {
             )}
 
             {/* Actions */}
-            <div className="mt-6 flex gap-2.5 pt-2">
-              {selectedReq.status.startsWith("Menunggu") ? (
-                <>
+            <div className="mt-6 flex flex-col gap-2.5 pt-2">
+              {user.role === "Admin IT" ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 flex items-start gap-2.5">
+                    <ShieldAlert className="size-4 shrink-0 text-rose-600 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Mode Tinjau Audit (Admin IT):</p>
+                      <p className="mt-0.5 text-[11px] leading-relaxed">
+                        Sesuai prinsip Pemisahan Tugas (Separation of Duties / SoD), Admin IT tidak memiliki wewenang untuk menyetujui koreksi data absensi. Persetujuan menjadi wewenang Supervisor dan HRD.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full text-xs"
+                      onClick={() => setShowReviewModal(false)}
+                    >
+                      Tutup
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedReq.status.startsWith("Menunggu") ? (
+                <div className="flex gap-2.5">
                   <Button
                     type="button"
                     variant="destructive"
@@ -686,7 +708,7 @@ export default function ApprovalKoreksiPage() {
                       ? "Setujui Tahap 1 (SPV)"
                       : "Finalisasi Data (HRD)"}
                   </Button>
-                </>
+                </div>
               ) : (
                 <Button
                   type="button"

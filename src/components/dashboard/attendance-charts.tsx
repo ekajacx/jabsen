@@ -35,13 +35,13 @@ export function WeeklyTrendChart({ role, period, departmentName = "Operasional",
   const isStaff = role === "Staff";
   const isSpv = role === "Supervisor";
 
-  // Data Staff (Personal check-in times in minutes relative to 08:00 WIB)
+  // Data Staff (Personal check-in times in minutes relative to 08:00 WITA)
   const staffData = [
-    { day: "Sen", date: "16 Nov", time: "07:52 WIB", minutesEarly: 8, status: "Tepat Waktu", hoursWorked: 8.5 },
-    { day: "Sel", date: "17 Nov", time: "07:50 WIB", minutesEarly: 10, status: "Tepat Waktu", hoursWorked: 8.6 },
-    { day: "Rab", date: "18 Nov", time: "07:56 WIB", minutesEarly: 4, status: "Tepat Waktu", hoursWorked: 8.4 },
-    { day: "Kam", date: "19 Nov", time: "07:48 WIB", minutesEarly: 12, status: "Tepat Waktu", hoursWorked: 8.7 },
-    { day: "Jum", date: "20 Nov", time: "07:54 WIB", minutesEarly: 6, status: "Tepat Waktu", hoursWorked: 8.5 },
+    { day: "Sen", date: "16 Nov", time: "07:52 WITA", minutesEarly: 8, status: "Tepat Waktu", hoursWorked: 8.5 },
+    { day: "Sel", date: "17 Nov", time: "07:50 WITA", minutesEarly: 10, status: "Tepat Waktu", hoursWorked: 8.6 },
+    { day: "Rab", date: "18 Nov", time: "07:56 WITA", minutesEarly: 4, status: "Tepat Waktu", hoursWorked: 8.4 },
+    { day: "Kam", date: "19 Nov", time: "07:48 WITA", minutesEarly: 12, status: "Tepat Waktu", hoursWorked: 8.7 },
+    { day: "Jum", date: "20 Nov", time: "07:54 WITA", minutesEarly: 6, status: "Tepat Waktu", hoursWorked: 8.5 },
   ];
 
   // Data SPV (Team Operasional: 5 Karyawan)
@@ -76,7 +76,7 @@ export function WeeklyTrendChart({ role, period, departmentName = "Operasional",
           </div>
           <CardDescription className="text-xs text-gray-500 mt-1">
             {isStaff 
-              ? `Pencatatan waktu check-in ${userName} dibandingkan batas jam masuk 08:00 WIB.`
+              ? `Pencatatan waktu check-in ${userName} dibandingkan batas jam masuk 08:00 WITA.`
               : isSpv 
               ? `Monitoring tingkat kepatuhan dan presensi 5 anggota tim ${departmentName}.`
               : "Ringkasan rasio kehadiran 27 karyawan seluruh departemen sepekan ini."}
@@ -113,13 +113,13 @@ export function WeeklyTrendChart({ role, period, departmentName = "Operasional",
       <CardContent className="pt-6">
         {/* Interactive Chart Container */}
         {isStaff ? (
-          // Staff View: Jam Masuk vs Target 08:00 WIB
+          // Staff View: Jam Masuk vs Target 08:00 WITA
           <div className="space-y-4">
             <div className="relative h-56 w-full flex items-end justify-between gap-3 sm:gap-6 pt-6 pb-2 px-2 border-b border-gray-100 dark:border-gray-800">
-              {/* Target Line: 08:00 WIB */}
+              {/* Target Line: 08:00 WITA */}
               <div className="absolute left-0 right-0 top-12 border-t-2 border-dashed border-amber-400/80 z-0">
                 <span className="absolute -top-3.5 right-2 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/70 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900">
-                  Target Shift: 08:00 WIB
+                  Target Shift: 08:00 WITA
                 </span>
               </div>
 
@@ -301,7 +301,7 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
 
   // Status breakdown based on Role
   let segments = [
-    { label: "Tepat Waktu", count: 25, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "Hadir sebelum 08:00 WIB" },
+    { label: "Tepat Waktu", count: 25, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "Hadir sebelum 08:00 WITA" },
     { label: "Terlambat", count: 1, color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-600", desc: "Toleransi < 15 menit" },
     { label: "Cuti Resmi", count: 1, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Disetujui berjenjang" },
     { label: "Belum Absen", count: 0, color: "#94a3b8", bgClass: "bg-slate-400", textClass: "text-slate-500", desc: "Shift sore / Libur" },
@@ -336,7 +336,7 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
     // Admin IT: Status Perangkat & Kredensial
     segments = [
       { label: "HP Terikat Valid", count: 27, color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-600", desc: "100% Device Binding" },
-      { label: "Geofence 50m", count: 27, color: "#3b82f6", bgClass: "bg-blue-500", textClass: "text-blue-600", desc: "Semua dalam radius" },
+      { label: "Geofence 100m", count: 27, color: "#3b82f6", bgClass: "bg-blue-500", textClass: "text-blue-600", desc: "Semua dalam radius" },
       { label: "WORM SHA-256", count: 27, color: "#0ea5e9", bgClass: "bg-sky-500", textClass: "text-sky-600", desc: "Append-only utuh" },
       { label: "Anomali / Breach", count: 0, color: "#ef4444", bgClass: "bg-rose-500", textClass: "text-rose-600", desc: "Nol pelanggaran sistem" },
     ];

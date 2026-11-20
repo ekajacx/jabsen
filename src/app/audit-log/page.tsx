@@ -1335,7 +1335,7 @@ export default function AuditLogPage() {
 
                 <div className="rounded-xl border border-gray-100 dark:border-gray-800 p-3">
                   <span className="text-[10px] text-gray-400 font-semibold uppercase">Jaringan & Waktu</span>
-                  <div className="font-semibold text-gray-900 dark:text-white mt-0.5">{selectedLog.timestamp} WIB</div>
+                  <div className="font-semibold text-gray-900 dark:text-white mt-0.5">{selectedLog.timestamp} WITA</div>
                   <div className="text-[11px] text-gray-500">IP Address: {selectedLog.ipAddress}</div>
                 </div>
               </div>

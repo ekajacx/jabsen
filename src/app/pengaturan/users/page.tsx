@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,8 +53,10 @@ const ROLE_BADGE_STYLES: Record<string, string> = {
 };
 
 export default function UserAccountsPage() {
-  const { user } = useAuth();
-  const canManage = ["Admin IT", "HRD", "CEO"].includes(user?.role || "");
+  const router = useRouter();
+  const { user, isAuthReady } = useAuth();
+  const isAuthorized = ["Admin IT", "HRD", "CEO"].includes(user?.role || "");
+  const canManage = isAuthorized;
 
   const [accounts, setAccounts] = useState<UserAccount[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -272,6 +275,27 @@ export default function UserAccountsPage() {
       showToast("error", err.message || "Gagal mengubah status akun.");
     }
   };
+
+  if (isAuthReady && !isAuthorized) {
+    return (
+      <AppLayout pageTitle="Akses Dibatasi">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto space-y-4">
+          <div className="size-16 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-sm">
+            <ShieldAlert className="size-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Akses Dibatasi</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              Halaman Manajemen Akun Pengguna hanya dapat diakses oleh Administrator IT, HRD, dan Direktur Utama (CEO).
+            </p>
+          </div>
+          <Button onClick={() => router.push("/dashboard")} size="sm" variant="secondary" className="rounded-full text-xs">
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout pageTitle="Manajemen Akun Pengguna">

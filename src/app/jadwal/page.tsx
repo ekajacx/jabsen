@@ -487,7 +487,7 @@ export default function JadwalPage() {
         createdById: user?.id || "EMP-SYS",
         createdByName: user?.name || "Administrator",
         createdByRole: user?.role || "Supervisor",
-        createdAt: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) + " WIB",
+        createdAt: new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) + " WITA",
         days: formDays,
       };
 
@@ -1055,11 +1055,11 @@ export default function JadwalPage() {
                                         ) : (
                                           <div>
                                             <span className="font-bold text-brand-600 dark:text-brand-400">
-                                              {day.startTime} - {day.endTime} WIB
+                                              {day.startTime} - {day.endTime} WITA
                                             </span>
                                             {day.breakStart && (
                                               <span className="text-[10px] text-gray-400 block">
-                                                Istirahat: {day.breakStart} - {day.breakEnd} WIB
+                                                Istirahat: {day.breakStart} - {day.breakEnd} WITA
                                               </span>
                                             )}
                                           </div>

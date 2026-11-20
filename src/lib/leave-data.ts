@@ -35,7 +35,7 @@ export const INITIAL_LEAVE_DATA: LeaveRequest[] = [
     reason: "Acara perayaan keluarga di luar kota",
     status: "Menunggu SPV",
     currentApproverRole: "Supervisor",
-    submittedAt: "18 Nov 2026, 09:30 WIB",
+    submittedAt: "18 Nov 2026, 09:30 WITA",
     quotaImpact: true,
   },
   {
@@ -53,7 +53,7 @@ export const INITIAL_LEAVE_DATA: LeaveRequest[] = [
     status: "Menunggu HRD",
     currentApproverRole: "HRD",
     approverNotes: "Surat sakit tervalidasi oleh Supervisor",
-    submittedAt: "10 Nov 2026, 08:30 WIB",
+    submittedAt: "10 Nov 2026, 08:30 WITA",
     quotaImpact: false,
   },
   {
@@ -70,7 +70,7 @@ export const INITIAL_LEAVE_DATA: LeaveRequest[] = [
     status: "Disetujui",
     currentApproverRole: "HRD",
     approverNotes: "Disetujui penuh oleh HRD",
-    submittedAt: "12 Okt 2026, 08:30 WIB",
+    submittedAt: "12 Okt 2026, 08:30 WITA",
     quotaImpact: true,
   },
   {
@@ -87,7 +87,7 @@ export const INITIAL_LEAVE_DATA: LeaveRequest[] = [
     status: "Disetujui",
     currentApproverRole: "Supervisor",
     approverNotes: "Disetujui. Pekerjaan telah didelegasikan sementara.",
-    submittedAt: "10 Okt 2026, 08:00 WIB",
+    submittedAt: "10 Okt 2026, 08:00 WITA",
     quotaImpact: true,
   },
   {
@@ -104,7 +104,7 @@ export const INITIAL_LEAVE_DATA: LeaveRequest[] = [
     status: "Disetujui",
     currentApproverRole: "Supervisor",
     approverNotes: "Disetujui oleh Supervisor. Shift dialihkan ke cuti resmi.",
-    submittedAt: "16 Nov 2026, 08:30 WIB",
+    submittedAt: "16 Nov 2026, 08:30 WITA",
     quotaImpact: true,
   },
 ];

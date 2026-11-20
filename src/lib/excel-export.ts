@@ -109,7 +109,7 @@ export function formatExportDateTime(date: Date = new Date()): string {
   const hours = date.getHours().toString().padStart(2, "0");
   const mins = date.getMinutes().toString().padStart(2, "0");
 
-  return `${d} ${m} ${y}, ${hours}:${mins} WIB`;
+  return `${d} ${m} ${y}, ${hours}:${mins} WITA`;
 }
 
 /**
@@ -1080,8 +1080,8 @@ export function exportCorrectionsToExcel(
         : "Tidak Ada Rekaman";
 
     // Usulan jam koreksi
-    const usulanMasuk = cor.proposedCheckIn || cor.proposedClockIn || "08:00 WIB";
-    const usulanPulang = cor.proposedCheckOut || cor.proposedClockOut || "17:00 WIB";
+    const usulanMasuk = cor.proposedCheckIn || cor.proposedClockIn || "08:00 WITA";
+    const usulanPulang = cor.proposedCheckOut || cor.proposedClockOut || "17:00 WITA";
     const jamUsulan = `${usulanMasuk} - ${usulanPulang}`;
 
     // Status / Tahap approval
@@ -1150,7 +1150,7 @@ export function exportRealtimeMonitoringToExcel(
     m.clockIn || "-",
     m.clockOut || "-",
     m.status,
-    m.inGeofence ? "Valid (Dalam Radius 50m)" : m.clockIn ? "Luar Radius" : "-",
+    m.inGeofence ? "Valid (Dalam Radius 100m)" : m.clockIn ? "Luar Radius" : "-",
   ]);
 
   const fileName = generateStandardExcelFilename(
@@ -1193,7 +1193,7 @@ export function exportAuditLogsToExcel(
 ) {
   const headers = [
     "No",
-    "Waktu Transaksi (WIB)",
+    "Waktu Transaksi (WITA)",
     "Aktor (Pengguna)",
     "Role Sistem",
     "Aktivitas / Aksi",
