@@ -1,130 +1,117 @@
 # PRODUCT REQUIREMENTS DOCUMENT (PRD)
 ## Sistem Absensi Karyawan Berbasis Verifikasi Wajah dan Geolokasi
-**Dokumen:** PRD Final v1.0  
-**Status:** Baseline pengembangan  
-**Tanggal:** 18 November 2026  
-**Platform:** Web application responsif (mobile dan desktop)
+**Dokumen:** PRD Final v2.0 (As-Built Production Specification)  
+**Status:** Produksi / As-Built Aktif (100% Selaras Implementasi Kode)  
+**Tanggal Rilis:** 20 November 2026  
+**Platform:** Web Application Responsif (Mobile & Desktop)  
+**Database:** PostgreSQL 17 via Prisma ORM  
 
 ---
 
 ## 1. Ringkasan Produk
 
 **Nama aplikasi:** J-Absen  
-**Pengembang:** EKA JACX
+**Pengembang:** EKA JACX  
+**Versi Sistem:** v2.0 (Full-Stack Production Release)  
 
-J-Absen adalah sistem absensi karyawan merupakan aplikasi web untuk mengelola data karyawan, akun dan hak akses, jadwal kerja, absensi masuk dan pulang, pengajuan cuti, monitoring kehadiran, koreksi absensi, serta laporan.
+J-Absen adalah sistem absensi karyawan enterprise modern berbasis web application untuk mengelola data karyawan, akun dan hak akses berjenjang (Configurable RBAC), jadwal kerja & roster mingguan, absensi masuk dan pulang biometrik, pengajuan dan persetujuan cuti bertingkat, koreksi absensi dua tahap, monitoring kehadiran real-time, pencatatan audit trail WORM (Write Once Read Many), serta ekspor laporan resmi terintegrasi Kop Surat perusahaan.
 
-Absensi melalui perangkat mobile menggunakan verifikasi wajah dengan challenge gerakan acak (liveness challenge) dan validasi lokasi/geofence. Fungsi manajemen dan administrasi utama ditujukan untuk penggunaan desktop/PC. Sistem dirancang agar aturan jam kerja, shift, toleransi keterlambatan, lokasi kantor, dan parameter operasional dapat dikonfigurasi oleh administrator yang berwenang.
+Aplikasi telah beroperasi penuh di atas arsitektur **PostgreSQL 17** dan **Prisma ORM** dengan seluruh data tersimpan secara persisten (28 Karyawan, 6 Departemen Operasional, 27 Jabatan Hierarkis, 4 Pola Shift Kerja, 196 Penugasan Roster Mingguan, dan 41 Aturan Hak Akses RBAC). Absensi mobile dilengkapi verifikasi wajah 3 sudut (Frontal, Kiri, Kanan) + deteksi liveness 4 gerakan acak, validasi geofence GPS kantor radius meter, serta kontrol pengikatan perangkat (Device Binding 1 Akun 1 HP).
+
+Fungsi administrasi sistem desktop dilengkapi modul terisolasi: **Konfigurasi Master Pola Shift** dipusatkan secara aman di menu Pengaturan (`/pengaturan?tab=shift`) yang dilindungi otorisasi manajerial (Staff diblokir total), sedangkan modul `/jadwal` didedikasikan secara bersih untuk pembuatan dan pemantauan **Roster Kerja Mingguan Tim** yang bebas bentrok dengan cuti resmi karyawan.
 
 ## 2. Tujuan
 
-1. Menyediakan pencatatan kehadiran yang terstruktur dan dapat diaudit.
-2. Mengurangi risiko absensi yang tidak sah melalui verifikasi wajah, challenge liveness, geofence, dan kontrol perangkat.
-3. Mendukung jadwal kerja tetap dan shift.
-4. Memudahkan HR/administrator mengelola karyawan, jadwal, cuti, koreksi, serta laporan.
-5. Menyediakan data kehadiran yang konsisten untuk kebutuhan operasional dan evaluasi.
+1. **Akuntabilitas & Audit Trail Kriptografis:** Menyediakan pencatatan kehadiran yang terstruktur, anti-manipulasi, dan terverifikasi secara kriptografis menggunakan rantai hash SHA-256 (WORM Ledger).
+2. **Keamanan Absensi Multi-Lapis:** Mengeliminasi kecurangan absensi (*titip absen* atau *fake GPS*) melalui verifikasi wajah biometrik, challenge liveness dinamis, validasi radius geofence OpenStreetMap, dan hardware fingerprinting / device binding.
+3. **Fleksibilitas Operasional & Shift Lintas Hari:** Mendukung pola kerja fleksibel (Office Reguler dan Operasional Shift) termasuk shift malam lintas pergantian hari (*overnight shift*), jam istirahat, serta toleransi keterlambatan presensi.
+4. **Otorisasi Manajerial & Kepatuhan RBAC:** Memisahkan wewenang antara Staff, Supervisor, HRD, GM, CEO, dan Admin IT secara server-side dan client-side, menjamin konfigurasi master kerja tidak dapat diintervensi oleh level staf.
+5. **Efisiensi Kolaborasi & Bebas Bentrok Jadwal:** Mengintegrasikan kalender roster tim dengan workflow cuti disetujui, mengunci otomatis hari libur cuti agar tidak tertimpa jam shift kerja.
+6. **Standarisasi Dokumen Resmi:** Menyediakan profil legalitas perusahaan (Kop Surat otomatis) pada setiap pencetakan lembar kehadiran dan ekspor laporan Excel (`.xlsx`).
 
 ## 3. Pengguna dan Peran
 
-Hak akses wajib diterapkan di server (RBAC), bukan sekadar menyembunyikan menu di antarmuka.
+Hak akses diterapkan secara ketat baik di tingkat server (Next.js API Routes & database validation) maupun antarmuka pengguna (Route Guard & conditional rendering).
 
-| Peran | Tanggung jawab dan akses utama |
-|---|---|
-| CEO | Akses dashboard dan laporan tingkat perusahaan serta fungsi yang diberikan melalui konfigurasi hak akses. |
-| General Manager (GM) | Monitoring dan pengelolaan operasional sesuai unit/otorisasi. |
-| HR/Admin HR | Membuat dan mengelola data karyawan, akun, enrollment wajah, jadwal, cuti, koreksi, serta laporan sesuai kewenangan. |
-| Supervisor | Monitoring tim, review/approval permintaan yang menjadi kewenangannya, dan akses data tim. |
-| Staff/Karyawan | Absensi masuk/pulang, melihat riwayat dan jadwal pribadi, serta mengajukan cuti/permintaan yang disediakan. |
-| Admin Sistem/IT | Pemeliharaan sistem, konfigurasi teknis, keamanan, dan pengelolaan akses teknis; tidak otomatis memiliki kewenangan persetujuan HR kecuali diberikan. Pada tahap awal implementasi, Admin IT juga menjadi pemegang kewenangan administratif penuh sistem (keputusan final P-2, lihat 5.15.14). Admin IT tidak memiliki hak approval bisnis secara default (lihat 5.16.5). |
-
-Peran dan permission harus dapat dikonfigurasi. Pembatasan data berdasarkan unit, departemen, lokasi, atau tim dapat diterapkan sesuai kebutuhan organisasi.
-
-Daftar role pada tabel di atas adalah role awal. Permission dan cakupan data setiap role dikelola secara dinamis (lihat 5.15) dan tidak ditanam di kode berdasarkan nama role.
+| Peran | Level | Tanggung Jawab dan Cakupan Akses Aktual |
+|---|---|---|
+| **CEO** (Direktur Utama) | 1 | Pengawasan strategis perusahaan, dashboard analitik eksekutif, rekapitulasi audit log WORM, serta wewenang penjadwalan global seluruh organisasi. |
+| **GM** (General Manager) | 2 | Monitoring operasional lintas departemen, pembuatan jadwal bagi Kepala Departemen & staf, peninjauan eskalasi cuti/koreksi, dan konfigurasi master sistem. |
+| **HRD** (Kepala HR) | 3 | Pengelolaan siklus hidup karyawan (rekrutmen hingga nonaktif), manajemen akun pengguna, review & approval pendaftaran wajah biometrik, approval final cuti & koreksi absensi, konfigurasi master shift & geofence, serta ekspor laporan payroll. |
+| **Supervisor** (Kepala Departemen) | 3 | Monitoring presensi tim divisi, pembuatan & penerbitan roster jadwal mingguan bawahan langsung di departemennya, dan persetujuan tahap pertama cuti / koreksi absensi. Tidak memiliki akses ke konfigurasi sistem. |
+| **Staff** (Karyawan) | 4 | Absensi masuk/pulang mobile, pendaftaran sampel wajah biometrik mandiri, pemantauan riwayat kehadiran pribadi, dan pengajuan cuti mandiri melalui portal `/cuti`. Dilarang dan diblokir total dari halaman `/pengaturan` dan `/approval/*`. |
+| **Admin IT** (Administrator) | 4 | Pemeliharaan teknis sistem, manajemen perangkat (reset device binding), konfigurasi parameter teknis & titik geofence, pemantauan log audit WORM. Tidak memiliki hak approval bisnis secara default. |
 
 ## 4. Platform dan Batas Antarmuka
 
 ### 4.1 Mobile
-Mobile ditujukan terutama untuk karyawan dan mendukung:
-- Login.
-- Registrasi/enrollment wajah (dapat dilakukan melalui mobile maupun desktop, selama browser, perangkat, dan kamera mendukung serta memenuhi persyaratan keamanan sistem).
-- Absensi masuk dan pulang.
-- Verifikasi wajah dan challenge gerakan.
-- Validasi lokasi/geofence.
-- Melihat jadwal dan riwayat absensi.
-- Pengajuan cuti serta melihat status pengajuan.
-
-Antarmuka mobile harus responsif, mudah digunakan, dan menghindari teks, tombol, atau panel yang bertumpuk.
+Mobile ditujukan terutama untuk pengalaman karyawan di lapangan dan mendukung:
+- Login akun dan autentikasi perangkat (Device Binding).
+- Registrasi/enrollment sampel biometrik wajah 3 sudut (Frontal, Kiri, Kanan).
+- Absensi masuk dan pulang biometrik + 4 challenge liveness acak.
+- Validasi geofence GPS real-time (radius 100m dari Kantor Pusat Bali).
+- Melihat kalender roster penugasan shift pribadi.
+- Pengajuan cuti mandiri dan pemantauan riwayat status di portal `/cuti`.
+- Notifikasi in-app untuk persetujuan cuti dan jadwal baru.
 
 ### 4.2 Desktop/PC
-Desktop ditujukan terutama untuk fungsi manajemen:
-- Dashboard dan monitoring.
-- Pengelolaan karyawan dan akun.
-- Pengelolaan role, permission, cakupan data, dan konfigurasi workflow persetujuan (5.15, 5.16).
-- Registrasi/enrollment wajah (juga dapat dilakukan dari desktop, selama browser, perangkat, dan kamera mendukung serta memenuhi persyaratan keamanan sistem).
-- Review enrollment wajah.
-- Pengaturan jam kerja, shift, toleransi, lokasi/geofence, dan kebijakan.
-- Pengelolaan jadwal.
-- Approval cuti dan koreksi absensi.
-- Laporan dan ekspor Excel.
-- Audit log dan pengaturan sistem.
+Desktop ditujukan untuk operasional manajerial, monitoring, dan tata kelola:
+- Dashboard monitoring kehadiran real-time dan statistik ringkasan.
+- Manajemen Karyawan, Departemen, dan Struktur Jabatan Hierarkis.
+- Portal Khusus Approval: `/approval/cuti`, `/approval/koreksi`, dan `/approval/wajah`.
+- Modul Roster Kerja Mingguan Tim (`/jadwal`): Pembuatan, pengeditan, dan ekspor jadwal mingguan terintegrasi cuti.
+- Modul Pengaturan Sistem (`/pengaturan`):
+  - **Tab 1: Data Perusahaan & Kop Surat** (identitas legalitas, NPWP, NIB, kontak).
+  - **Tab 2: Koordinat & Peta Geofence** (titik koordinat GPS dan radius meter kantor).
+  - **Tab 3: Pola Jam Kerja & Shift** (master jam shift, toleransi, jam istirahat, overnight).
+- Manajemen Akun Pengguna, Keamanan Kredensial & Reset Device Binding HP (`/pengaturan/users`).
+- Matriks Hak Akses Dinamis 41 Baseline Permissions (`/pengaturan/rbac`).
+- Ledger Audit Log Integritas WORM dengan Rantai Hash SHA-256 (`/audit-log`).
+- Laporan Kehadiran Karyawan & Ekspor Excel ber-Kop Surat (`/laporan`).
 
-Desktop menggunakan sidebar kiri dan area konten di sebelah kanan. Navigasi dan transisi antarmuka harus konsisten; perpindahan menu tidak boleh meninggalkan artefak tampilan dari halaman sebelumnya.
+### 4.3 Hirarki Organisasi dan Departemen Aktual
 
-### 4.3 Hirarki Organisasi dan Departemen
-
-Struktur organisasi baseline J-Absen:
-
-```mermaid
-flowchart TD
-    CEO[CEO] --> GM[General Manager (GM)]
-    GM --> HR[Supervisor HRD]
-    GM --> MKT[Supervisor Marketing]
-    GM --> SALES[Supervisor Sales]
-    GM --> OPS[Supervisor Operasional]
-    HR --> HRSTAFF[Staff HRD]
-    MKT --> MKTSTAFF[Staff Marketing]
-    SALES --> SALESSTAFF[Staff Sales]
-    OPS --> OPSSTAFF[Staff Operasional]
-```
-
-#### 4.3.1 Struktur dan tanggung jawab
-
-| Tingkat | Jabatan/Unit | Tanggung jawab ringkas |
-|---|---|---|
-| 1 | CEO | Pengawasan strategis, ringkasan perusahaan, keputusan tingkat perusahaan. |
-| 2 | GM | Mengawasi departemen, koordinasi operasional, laporan dan eskalasi. |
-| 3 | Supervisor HRD | Mengelola kegiatan HRD dan supervisi Staff HRD. |
-| 3 | Supervisor Marketing | Mengelola kegiatan marketing dan supervisi Staff Marketing. |
-| 3 | Supervisor Sales | Mengelola kegiatan sales dan supervisi Staff Sales. |
-| 3 | Supervisor Operasional | Mengelola kegiatan operasional dan supervisi Staff Operasional. |
-| 4 | Staff HRD | Melaksanakan proses HR sesuai akses yang diberikan. |
-| 4 | Staff Marketing | Melaksanakan kegiatan marketing sesuai akses yang diberikan. |
-| 4 | Staff Sales | Melaksanakan kegiatan sales sesuai akses yang diberikan. |
-| 4 | Staff Operasional | Melaksanakan kegiatan operasional sesuai akses yang diberikan. |
-
-#### 4.3.2 Aturan kewenangan
-
-- CEO berada di tingkat teratas struktur organisasi.
-- GM melapor kepada CEO dan mengawasi para supervisor departemen.
-- Setiap supervisor bertanggung jawab kepada GM dan mengawasi staff di departemennya.
-- Staff berada di bawah supervisor departemen masing-masing.
-- Struktur ini adalah struktur baseline. Penambahan departemen, jabatan, atau perubahan hubungan pelaporan harus melalui konfigurasi yang berwenang.
-- Struktur organisasi dan permission merupakan dua hal berbeda: jabatan menentukan struktur pelaporan, sedangkan role/permission menentukan tindakan yang diizinkan di sistem.
-- Akses lintas departemen tidak diberikan otomatis hanya karena seseorang berada pada tingkat jabatan yang sama.
-- **Keputusan (Revisi 1):** Untuk saat ini digunakan struktur departemen dan hierarki organisasi baseline di atas. Modul Team terpisah tidak dibuat kecuali ada kebutuhan yang telah disetujui.
-
-#### 4.3.3 Diagram workflow pengelolaan organisasi dan akun
+Struktur organisasi J-Absen mengadopsi hierarki 4 tingkat (Level 1 s.d. Level 4) dengan **Direksi & Eksekutif** sebagai pucuk pimpinan strategis dan **6 Unit Departemen Operasional Riil**:
 
 ```mermaid
 flowchart TD
-    A[HR/Admin berwenang] --> B[Buat data karyawan]
-    B --> C[Assign departemen dan jabatan]
-    C --> D[Assign supervisor / manager]
-    D --> E[Buat atau aktifkan akun]
-    E --> F[Assign role dan permission]
-    F --> G[Karyawan login]
-    G --> H[Data organisasi dan akses berlaku]
+    CEO["Direktur Utama (CEO)<br>Level 1 • Eka Jacx"] --> GM["Manajer Umum (GM)<br>Level 2 • Hendra Wijaya, ST"]
+    
+    GM --> TI["Kepala TI<br>Level 3 • Budi Santoso"]
+    GM --> KEU["Kepala Keuangan<br>Level 3 • Maya Indah"]
+    GM --> OPS["Kepala Operasional<br>Level 3 • Bambang Suprianto"]
+    GM --> MKT["Kepala Pemasaran<br>Level 3 • Anita Wijaya"]
+    GM --> HR["Kepala HR<br>Level 3 • Dewi Lestari"]
+    GM --> SALES["Kepala Penjualan<br>Level 3 • Agus Pratama"]
+    
+    TI --> TISTAFF["Staf TI (Level 4)<br>• Infrastruktur • Dev Sistem<br>• Helpdesk • Admin IT"]
+    KEU --> KEUSTAFF["Staf Keuangan (Level 4)<br>• Akuntansi • Kasir/Pajak<br>• Payroll & Penggajian"]
+    OPS --> OPSSTAFF["Staf Operasional (Level 4)<br>• Logistik & Gudang • Lapangan<br>• Quality Control"]
+    MKT --> MKTSTAFF["Staf Pemasaran (Level 4)<br>• Digital Marketing • Content Creator<br>• Event & Promosi"]
+    HR --> HRSTAFF["Staf HR (Level 4)<br>• Rekrutmen • Pelatihan/Budaya<br>• Administrasi Personalia"]
+    SALES --> SALESSTAFF["Staf Penjualan (Level 4)<br>• Account Exec B2B • Sales Counter<br>• Customer Care"]
 ```
+
+#### 4.3.1 Daftar 6 Departemen Operasional Riil
+
+| ID Dept | Kode | Nama Departemen | Kepala Departemen (SPV) | Ruang Lingkup Operasional |
+|---|---|---|---|---|
+| `dept-ti` | TI | Departemen Teknologi Informasi | Budi Santoso | Infrastruktur server, jaringan kantor, helpdesk, dan keamanan data. |
+| `dept-fin` | KEU | Departemen Keuangan | Maya Indah | Akuntansi, rekonsiliasi kas, perpajakan, dan payroll karyawan. |
+| `dept-ops` | OPS | Departemen Operasional | Bambang Suprianto | Logistik gudang kacamata/lensa, QC, dan operasional lapangan. |
+| `dept-mkt` | MKT | Departemen Pemasaran | Anita Wijaya | Strategi digital marketing, content creation medsos, dan kampanye event. |
+| `dept-hrd` | HR | Departemen HR | Dewi Lestari | Rekrutmen, verifikasi enrollment wajah, pelatihan, dan administrasi HR. |
+| `dept-sales` | SALES | Departemen Penjualan | Agus Pratama | Penjualan B2B instansi, sales counter ritel, dan layanan customer care. |
+
+*Catatan Khusus Direksi:* Pimpinan puncak (CEO & GM) dikelompokkan ke dalam unit `dept-exec` (Direksi & Eksekutif). Unit ini diproteksi secara khusus pada bagan organisasi visual agar tampil di puncak struktur pohon (tanpa memunculkan kotak kosong *"Belum ada kepala departemen"*).
+
+#### 4.3.2 Matriks 27 Jabatan Hierarkis (Database `positions`)
+
+Sistem menerapkan 27 jabatan terstruktur yang terikat pada hierarki pelaporan vertikal (`parentId`):
+1. **Level 1 (Pucuk):** Direktur Utama (`pos-dirut`).
+2. **Level 2 (Eksekutif):** Manajer Umum / General Manager (`pos-gm`).
+3. **Level 3 (Kepala Departemen):** Kepala TI, Kepala Keuangan, Kepala Operasional, Kepala Pemasaran, Kepala HR, Kepala Penjualan.
+4. **Level 4 (Staf Pelaksana):** 19 posisi spesifik terdistribusi pada masing-masing unit kerja (misal: Staf Pengembangan Sistem, Staf Payroll, Staf Quality Control, Staf Rekrutmen, Account Executive B2B, dll).
 
 ## 5. Ruang Lingkup Fungsional
 
@@ -151,181 +138,161 @@ Data wajib dan formatnya ditentukan oleh konfigurasi sistem dan kebijakan organi
 - Akun tidak aktif atau dinonaktifkan tidak dapat mengakses sistem.
 - Role switcher atau simulasi role hanya boleh digunakan pada development/testing; tidak boleh menjadi mekanisme otorisasi production.
 
-### 5.4 Enrollment/Registrasi Wajah
-Alur enrollment:
-1. HR/Admin membuat data karyawan dan akun.
-2. Karyawan login dengan akun yang diberikan.
-3. Karyawan melakukan registrasi wajah menggunakan kamera perangkat yang kompatibel, melalui desktop maupun mobile, selama browser, perangkat, dan kamera mendukung serta memenuhi persyaratan keamanan sistem.
-4. Sistem memeriksa kualitas gambar, pencahayaan, posisi wajah, dan kondisi teknis yang relevan.
-5. Data/representasi wajah dan status enrollment dikirim atau disimpan sesuai arsitektur dan kebijakan privasi yang ditetapkan.
-6. Enrollment masuk ke status **Menunggu Review**.
-7. Admin/HR yang berwenang memeriksa dan menyetujui atau menolak enrollment.
-8. Jika ditolak, alasan penolakan disampaikan dan karyawan dapat melakukan registrasi ulang.
-9. Enrollment yang disetujui dapat digunakan untuk verifikasi absensi.
+### 5.4 Enrollment/Registrasi Wajah (3-Angle Biometric Engine)
+Alur enrollment produksi:
+1. HR/Admin membuat data karyawan dan akun di sistem.
+2. Karyawan login menggunakan akun yang diberikan.
+3. Karyawan membuka modul registrasi biometrik wajah melalui kamera perangkat (desktop/laptop webcam atau smartphone mobile).
+4. **Engine 3 Sudut Biometrik (Multi-Angle Biometrics):**
+   - Sistem memandu karyawan mengambil 3 sudut foto biometrik berurutan:
+     - **Sudut 1 - Wajah Depan (Frontal):** Pengambilan tegak lurus dengan pandangan lurus ke kamera.
+     - **Sudut 2 - Menoleh ke Kanan (30° Yaw Right):** Memastikan kontur rahang dan pipi kanan terpetakan.
+     - **Sudut 3 - Menoleh ke Kiri (30° Yaw Left):** Memastikan kontur rahang dan pipi kiri terpetakan.
+   - Deteksi postur sudut (pose estimation) dan pengecekan liveness berlangsung secara real-time via MediaPipe Vision.
+   - Sistem memverifikasi kualitas gambar (pencahayaan cukup, wajah tidak buram, bounding box proporsional) dengan indikator Quality Score (minimal ambang batas 75%).
+5. Sistem mengompresi representasi vektor wajah dan membuat thumbnail foto avatar secara otomatis.
+6. Data biometrik dikirim ke server dan masuk ke status **Menunggu Review** (`PENDING_REVIEW`).
+7. HRD / Admin yang berwenang meninjau permohonan biometrik pada modul `/approval/wajah`.
+8. Peninjau membandingkan ketiga foto sudut wajah dengan profil karyawan:
+   - **Disetujui (`APPROVED`):** Template biometrik aktif dan karyawan langsung diizinkan melakukan presensi masuk/pulang.
+   - **Ditolak (`REJECTED`):** Peninjau wajib menyertakan alasan penolakan (misal: pencahayaan gelap, memakai kacamata hitam/masker, wajah buram) dan status karyawan berubah menjadi **Perlu Registrasi Ulang** (`NEEDS_REENROLLMENT`). Karyawan menerima notifikasi in-app untuk melakukan foto ulang.
 
-Status enrollment minimal:
-- Belum terdaftar.
-- Menunggu Review.
-- Disetujui.
-- Ditolak.
-- Perlu Registrasi Ulang.
-- Dinonaktifkan.
+Status enrollment resmi:
+- `NOT_ENROLLED` (Belum terdaftar)
+- `PENDING_REVIEW` (Menunggu Review HRD)
+- `APPROVED` (Disetujui & Aktif)
+- `REJECTED` (Ditolak)
+- `NEEDS_REENROLLMENT` (Perlu Registrasi Ulang)
+- `DEACTIVATED` (Dinonaktifkan)
 
-Persetujuan admin wajib sebelum enrollment dapat dipakai untuk absensi, kecuali perubahan kebijakan secara eksplisit dilakukan oleh administrator yang berwenang.
+Persetujuan HRD wajib sebelum enrollment dapat dipakai untuk absensi masuk maupun pulang.
 
 ### 5.5 Verifikasi Wajah dan Challenge Liveness
-Verifikasi wajah diwajibkan pada absensi masuk dan pulang.
+Verifikasi wajah biometrik diwajibkan pada setiap transaksi absensi masuk dan absensi pulang.
 
-Challenge menggunakan **4 gerakan yang dipilih secara acak** dari daftar challenge yang dikonfigurasi. Kandidat gerakan:
-- Senyum.
-- Menoleh ke kiri.
-- Menoleh ke kanan.
-- Mengangkat/menundukkan arah wajah (atas).
-- Mengangkat/menundukkan arah wajah (bawah).
+Challenge menggunakan **4 gerakan acak (4-Step Random Liveness Challenge)** yang dipilih secara real-time dari pool instruksi:
+- Senyum natural (Smile).
+- Menoleh ke arah kiri (Turn Left).
+- Menoleh ke arah kanan (Turn Right).
+- Mengangkat arah wajah ke atas (Pitch Up) / Menunduk ke bawah (Pitch Down).
 
-Ketentuan:
-- Sistem memilih empat instruksi challenge secara acak untuk setiap sesi verifikasi, dengan aturan agar instruksi dapat dijalankan dan urutan tidak mudah diprediksi.
-- Challenge ditampilkan satu per satu dengan instruksi yang jelas.
-- Sistem mengevaluasi respons kamera secara real-time atau selama sesi challenge.
-- Challenge harus memiliki batas waktu, status berhasil/gagal, dan mekanisme retry yang wajar.
-- Verifikasi identitas dilakukan dengan membandingkan wajah live dengan enrollment yang disetujui.
-- Challenge liveness dan face matching tidak boleh dianggap sebagai jaminan anti-spoofing absolut.
-- Proses verifikasi gagal jika challenge tidak selesai, wajah tidak terdeteksi, kualitas tidak memadai, hasil matching di bawah threshold, sesi kedaluwarsa, atau validasi lainnya gagal.
-- Hasil, timestamp, dan status verifikasi dicatat dalam data absensi dan/atau audit log sesuai kebijakan retensi.
+Ketentuan operasional:
+- Generator acak sisi client memilih 4 gerakan yang tidak dapat diprediksi sebelumnya oleh pengguna guna menangkal serangan replay video, foto cetak, atau topeng 3D (anti-spoofing).
+- Setiap instruksi gerakan ditampilkan step-by-step dengan panduan visual dan indikator waktu (timeout 10 detik per gerakan).
+- Komponen MediaPipe Vision mengevaluasi orientasi landmark wajah dan threshold ekspresi secara real-time.
+- Setelah 4 tantangan liveness tervalidasi, sistem membandingkan geometri wajah aktual dengan template 3 sudut enrollment yang telah disetujui HRD (Face Matching Engine).
+- Ambang batas pencocokan (matching confidence score) minimal 80%. Jika tidak memenuhi syarat, absensi ditolak seketika.
 
-Implementasi awal menggunakan MediaPipe untuk deteksi/landmark atau komponen vision yang sesuai. Threshold dan konfigurasi teknis harus dapat disesuaikan dan diuji. Pemeriksaan sisi klien tidak menggantikan validasi sisi server.
+### 5.6 Geofence dan Validasi Lokasi (Kantor Pusat Bali & Leaflet Engine)
+- Absensi hanya valid jika perangkat karyawan berada dalam radius geofence resmi kantor penempatan aktif.
+- **Lokasi Default Kantor Pusat Bali:**
+  - Latitude: `-8.409518`
+  - Longitude: `115.188916`
+  - Radius Default: `100 Meter`
+- **Engine Peta Interaktif & GPS 1-Klik:**
+  - Terintegrasi modul Leaflet dan OpenStreetMap pada `/pengaturan?tab=lokasi`.
+  - Dilengkapi tombol **"Gunakan Koordinat GPS Saat Ini"** (1-Klik GPS Autofill) yang memanfaatkan Browser Geolocation API berakurasi tinggi untuk mengisi otomatis latitude, longitude, dan menampilkan lingkaran radius geofence secara visual pada peta.
+- **Validasi Server-Side (Haversine Formula):**
+  - Koordinat GPS yang dikirimkan perangkat karyawan dihitung jarak jarak lengkung buminya (*great-circle distance*) menggunakan rumus Haversine di server API Next.js.
+  - Jika jarak aktual > radius kantor, transaksi ditolak seketika dengan pesan: *"Anda berada di luar radius kantor resmi (Jarak: X meter dari batas)"*.
 
-### 5.6 Geofence dan Validasi Lokasi
-- Absensi hanya dapat diproses jika lokasi perangkat memenuhi aturan lokasi kantor yang aktif.
-- Administrator dapat mengelola lokasi kantor, koordinat, radius geofence, dan status lokasi.
-- Sistem meminta izin lokasi perangkat saat diperlukan.
-- Sistem memeriksa hasil lokasi, akurasi yang tersedia, timestamp, serta aturan geofence.
-- Jika lokasi tidak tersedia atau di luar batas, sistem menampilkan alasan kegagalan dan tidak menerima absensi, kecuali terdapat alur pengecualian resmi yang disetujui.
-- Validasi server wajib dilakukan terhadap data yang dikirim.
-- Kebijakan pengecualian, koreksi, atau absensi di luar geofence harus memiliki jejak audit.
-- **Keputusan (Revisi 1):** Workflow pengecualian geofence belum ditetapkan dan berada di luar scope implementasi saat ini. Aturan geofence pada bagian ini tetap berlaku tanpa pengecualian sampai ada keputusan dan change request yang disetujui.
+### 5.7 Pengaturan Pola Jam Kerja, Shift, dan Keterlambatan
+- **Lokasi Modul Produksi:** Seluruh konfigurasi pola shift terpusat di `/pengaturan?tab=shift` (Pengaturan Pola Jam Kerja & Shift).
+- **Proteksi Hak Akses (Role-Based Restriction):**
+  - Akses modul pengaturan pola shift dibatasi ketat via RBAC.
+  - Hanya dapat diakses oleh Super Admin / Admin IT, HRD, dan GM.
+  - Karyawan ber-role **Staff diblokir penuh** dari konfigurasi shift (tampilan dialihkan atau menampilkan banner proteksi akses jika mencoba mengakses URL langsung).
+- **Konfigurasi Shift Produksi:**
+  - **Reguler Office (Pusat Bali):** 08:00 - 17:00 WITA, Istirahat: 12:00 - 13:00 WITA, Toleransi: 15 menit. Berlaku untuk: HRD, Keuangan, TI, Direksi, Eksekutif.
+  - **Shift 1 - Pagi Operasional:** 06:00 - 14:00 WITA, Istirahat: 11:30 - 12:30 WITA, Toleransi: 15 menit. Berlaku untuk: Operasional, Pemasaran, Penjualan.
+  - **Shift 2 - Siang Operasional:** 14:00 - 22:00 WITA, Istirahat: 18:00 - 19:00 WITA, Toleransi: 15 menit. Berlaku untuk: Operasional, Penjualan.
+  - **Shift 3 - Malam (Lintas Tengah Malam):** 22:00 - 06:00 WITA (keesokan harinya), Istirahat: 02:00 - 03:00 WITA, Toleransi: 15 menit, flag `isOvernight = true`. Berlaku untuk: Operasional, TI.
+- Sistem secara otomatis menghitung status kehadiran: **Tepat Waktu** (`ON_TIME`) atau **Terlambat** (`LATE`) berdasarkan jam masuk aktual dikurangi toleransi shift.
 
-### 5.7 Pengaturan Jam Kerja, Shift, dan Keterlambatan
-Aturan kerja harus dikonfigurasi, bukan ditanam permanen (hard-coded).
+### 5.8 Absensi Masuk dan Pulang (1-Device Binding & Security Lock)
+Alur transaksi presensi:
+1. Karyawan login pada smartphone / laptop.
+2. **Validasi 1-Device Binding (Pengikatan Smartphone):**
+   - Sistem mendeteksi Hardware/Browser Fingerprint (Device UUID).
+   - Akun karyawan dikunci hanya dapat presensi dari 1 perangkat terdaftar (`device_bindings`).
+   - Jika karyawan berganti perangkat tanpa izin, sistem memblokir presensi dengan pesan: *"Perangkat belum terikat pada akun Anda. Hubungi Admin IT untuk reset pengikatan perangkat"*.
+   - Admin IT dapat melepas ikatan perangkat melalui modul manajemen karyawan dengan pencatatan audit log otomatis.
+3. Sistem memeriksa izin lokasi dan menghitung posisi perangkat dalam Geofence kantor.
+4. Karyawan menjalankan 4-Step Random Liveness Challenge.
+5. Sistem mencocokkan wajah dengan template 3 sudut yang telah disetujui.
+6. Server memvalidasi seluruh parameter secara terenkripsi:
+   - Check-In: Mencatat waktu masuk, foto snapshot, status keterlambatan, koordinat, dan deviasi radius.
+   - Check-Out: Mencatat waktu pulang, durasi jam kerja efektif, dan status kepulangan lebih awal (*early departure*).
+7. Transaksi dicatat ke database dan dikunci dari duplikasi (*idempotent transaction*).
 
-Administrator dapat mengatur:
-- Jam mulai dan selesai kerja.
-- Jam istirahat, bila diterapkan.
-- Toleransi keterlambatan.
-- Durasi/aturan lembur jika termasuk konfigurasi versi ini.
-- Hari kerja dan hari libur.
-- Shift pagi, siang, malam, atau shift lain yang didefinisikan.
-- Shift lintas tengah malam.
-- Aturan check-in/check-out.
-- Penugasan jadwal per karyawan, tim, departemen, atau kelompok.
+### 5.9 Roster & Jadwal Mingguan Tim (Matriks Hierarki & Anti-Collision Cuti)
+- **Lokasi Modul Produksi:** Dikelola pada modul `/jadwal` (Roster & Jadwal Mingguan Tim).
+- **Struktur Matriks Hierarki Atasan-Bawahan:**
+  - Jadwal disusun dalam grid mingguan (Senin hingga Minggu) dengan pemilih rentang minggu dinamis.
+  - Mengikuti struktur pelaporan hierarki `reports_to`:
+    - **Staff:** Hanya dapat melihat jadwal roster pribadi minggu berjalan.
+    - **Supervisor / Kepala Departemen:** Menampilkan daftar seluruh anggota tim bawahan langsungnya, dengan fitur penetapan shift kerja harian per staf.
+    - **GM & HRD:** Menampilkan matriks roster per departemen dengan kemampuan pengelolaan lintas divisi.
+- **Integrasi Cuti Otomatis Anti-Tabrakan (*Anti-Collision Leave Locking*):**
+  - Modul jadwal terhubung langsung secara real-time dengan status `leave_requests`.
+  - Jika karyawan memiliki cuti berstatus `APPROVED` pada tanggal tertentu, sel jadwal pada hari tersebut otomatis terkunci dan menampilkan badge hijau bertuliskan **"Cuti Disetujui"**.
+  - Atasan tidak dapat menimpa (*overwrite*) sel cuti dengan shift kerja operasional, mencegah potensi kesalahan penjadwalan ganda.
+- **Ekspor Roster Mingguan:** Fitur unduh format Excel (.xlsx) rapi lengkap dengan Kop Surat Perusahaan dan matriks nama, tanggal, serta nama shift yang ditugaskan.
 
-Ketentuan penugasan:
-- Karyawan non-office dapat ditugaskan ke shift pagi atau siang (dan shift lain jika dikonfigurasi).
-- Karyawan office seperti HRD, Accounting, GM, CEO, dan posisi office lainnya dapat menggunakan jadwal office yang ditentukan.
-- Kategori office/non-office dan aturan pengecualian harus dapat diubah administrator, bukan diasumsikan berdasarkan nama jabatan semata.
-- Sistem menentukan keterlambatan berdasarkan jadwal yang berlaku, waktu check-in, dan toleransi.
-- Jadwal yang berlaku untuk tanggal absensi harus dapat ditelusuri.
-- Perubahan jadwal harus dicatat dan tidak mengubah histori tanpa jejak.
-
-### 5.8 Absensi Masuk dan Pulang
-Alur dasar:
-1. Karyawan login pada mobile.
-2. Karyawan membuka fitur absensi.
-3. Sistem memeriksa akun, jadwal yang berlaku, perangkat/kamera, dan lokasi.
-4. Sistem memulai challenge liveness empat gerakan acak.
-5. Sistem melakukan verifikasi wajah terhadap enrollment yang disetujui.
-6. Sistem melakukan validasi lokasi/geofence dan aturan waktu.
-7. Jika semua pemeriksaan berhasil, sistem mencatat check-in atau check-out.
-8. Sistem menampilkan hasil transaksi dan waktu pencatatan.
-9. Jika gagal, sistem menampilkan pesan yang dapat dipahami dan tidak mencatat absensi sukses.
-
-Sistem harus menangani:
-- Absensi masuk dan pulang.
-- Status hadir, terlambat, tidak lengkap, dan status lain yang ditetapkan kebijakan.
-- Pencegahan transaksi duplikat sesuai aturan.
-- Penanganan jaringan terputus atau transaksi yang gagal.
-- Koreksi melalui workflow resmi, bukan mengubah rekaman secara diam-diam.
-
-### 5.9 Jadwal dan Kalender
-- HR/Admin dapat membuat dan mengelola jadwal.
-- Jadwal dapat ditugaskan kepada karyawan atau kelompok.
-- Karyawan dapat melihat jadwal pribadi.
-- Sistem mendukung shift dan jadwal khusus.
-- Konflik jadwal dan perubahan jadwal ditampilkan atau ditandai.
-- Jadwal historis tetap dapat ditelusuri.
-
-### 5.10 Pengajuan dan Approval Cuti
-- Karyawan dapat mengajukan cuti melalui mobile.
-- Pengajuan mencakup jenis cuti, tanggal, durasi, dan keterangan/dokumen pendukung jika diperlukan.
-- Karyawan dapat melihat status pengajuan.
-- Supervisor/approver dapat menyetujui, menolak, atau meminta perbaikan sesuai workflow.
-- HR/Admin dapat melakukan pengelolaan sesuai permission.
-- Saldo cuti dan aturan cuti mengikuti konfigurasi dan kebijakan organisasi.
-- Setiap keputusan approval dicatat.
-- Workflow cuti dapat dikonfigurasi, mendukung approval bertingkat maupun parallel approval, validasi saldo sesuai jenis cuti, audit trail, dan larangan self-approval secara default.
-- **Workflow Baseline Cuti (FINAL P-3):**
-  - Staff / Karyawan: 1 Tahap -> Atasan Langsung (Direct Supervisor) berdasarkan relasi hierarki `reports_to`. Disetujui -> Saldo cuti terpotong -> Status Disetujui.
-  - Supervisor: 1 Tahap -> General Manager (GM).
-  - General Manager (GM): 1 Tahap -> CEO.
-  - CEO: Executive Notice (tercatat di audit log dan kalender tanpa self-approval).
-- **Aturan Validasi Saldo Cuti (FINAL P-10):**
-  - Entitas `LEAVE_TYPE` memiliki konfigurasi `requires_quota` (Boolean) dan `allow_negative_balance` (Boolean, default `false`).
-  - Untuk jenis cuti dengan `requires_quota = true` (misal: Cuti Tahunan), jika saldo cuti tidak mencukupi durasi pengajuan dan `allow_negative_balance = false`, formulir pengajuan diblokir sejak validasi client-side dan server-side.
-  - Jenis cuti khusus (Sakit dengan surat dokter, cuti duka, melahirkan) dapat dikonfigurasi `requires_quota = false`.
-
-Workflow approval dan hierarki approver dapat dikonfigurasi sesuai struktur organisasi; approver tidak dikunci berdasarkan jabatan (lihat 5.16).
+### 5.10 Pengajuan dan Approval Cuti (Separasi Rute & Smart Notification)
+- **Separasi Rute Berdasarkan Role (Role-Based Route Separation):**
+  - **Karyawan / Staff -> `/cuti` (Pengajuan & Riwayat Cuti Pribadi):**
+    - Berisi formulir pengajuan cuti (Cuti Tahunan, Sakit, Alasan Penting), informasi sisa saldo kuota cuti tahunan (default 12 hari/tahun), serta riwayat pengajuan dan statusnya.
+  - **Atasan (Supervisor, GM, HRD, Direksi) -> `/approval/cuti` (Modul Persetujuan Cuti Tim):**
+    - Berisi tabel daftar permohonan cuti anggota tim bawahan yang menunggu keputusan, informasi tanggal, alasan, dokumen lampiran, serta tombol **Setujui** dan **Tolak** (disertai isian alasan penolakan).
+  - **Proteksi & Navigasi Cerdas:**
+    - Jika user ber-role Staff mengakses `/approval/cuti`, sistem tidak menampilkan error fatal melainkan kartu informasi ramah: *"Halaman ini diperuntukkan bagi level Atasan (Supervisor, GM, HRD, Direksi) untuk memeriksa dan memutuskan permohonan cuti anggota tim. Untuk mengajukan cuti pribadi, silakan gunakan menu Pengajuan Cuti"* dilengkapi tombol Call-to-Action langsung menuju `/cuti`.
+    - **In-App Notification Click Routing:** Saat karyawan mengklik notifikasi persetujuan cuti (misal: "Permohonan Cuti Tahunan Disetujui"), sistem secara cerdas mengevaluasi role pengguna; jika pengguna adalah Staff, diarahkan langsung ke `/cuti`, sedangkan jika Atasan diarahkan ke `/approval/cuti`.
+- **Workflow Baseline Cuti (FINAL P-3 & P-10):**
+  - Staff -> 1 Tahap persetujuan oleh Atasan Langsung (`reports_to`). Saat disetujui, saldo cuti tahunan dipotong otomatis dan sel roster jadwal mingguan terkunci.
+  - Supervisor -> 1 Tahap oleh General Manager (GM).
+  - General Manager -> 1 Tahap oleh CEO.
+  - CEO -> Executive Notice.
+  - Validasi kuota cuti: Sistem memblokir pengajuan cuti tahunan jika saldo tidak mencukupi (`allow_negative_balance = false`).
 
 ### 5.11 Koreksi Absensi
-- Pengajuan koreksi dapat dilakukan oleh:
-  - Karyawan yang bersangkutan.
-  - HR/Admin HR atas nama karyawan, jika diperlukan untuk administrasi.
-- Supervisor, GM, dan CEO hanya dapat mengajukan koreksi atas nama karyawan apabila diberikan kewenangan secara eksplisit melalui konfigurasi permission; kewenangan ini tidak diberikan otomatis; pemberian kewenangan dilakukan melalui konfigurasi permission (lihat 5.15).
-- Permintaan mencantumkan tanggal, data yang ingin dikoreksi, alasan, dan bukti jika dibutuhkan.
-- Supervisor/HR yang berwenang meninjau permintaan (approver dan tahapan mengikuti konfigurasi workflow, lihat 5.16).
-- Perubahan tidak menghapus data awal; rekam perubahan, approver, alasan, dan waktu harus disimpan.
-- Status permintaan dapat dilihat oleh pemohon sesuai akses.
-- Koreksi absensi melalui pengajuan, alasan, approval sesuai workflow, dan audit trail.
-- Record asli tidak dihapus. Perubahan menyimpan nilai sebelum dan sesudah.
-- Koreksi manual juga wajib memiliki permission dan audit log.
-- **Workflow Baseline Koreksi Absensi (FINAL P-3):**
-  - Staff / Karyawan: 2 Tahap Sequential:
-    - Tahap 1: Atasan Langsung (verifikasi alasan, jam kehadiran aktual, dan bukti).
-    - Tahap 2: HR/Admin HR (verifikasi data rekaman mesin/geofence dan pembaruan record absensi).
-  - Supervisor: Tahap 1: GM -> Tahap 2: HR/Admin HR.
-  - GM: Tahap 1: CEO -> Tahap 2: HR/Admin HR.
+- Pengajuan koreksi absensi dilakukan jika terjadi kendala teknis perangkat atau penugasan luar kantor.
+- Karyawan mengisi formulir koreksi di `/koreksi` dengan mencantumkan tanggal, jenis koreksi (jam masuk/jam pulang), jam sebenarnya, alasan logis, dan bukti pendukung.
+- **Workflow 2-Tahap Sequential (FINAL P-3):**
+  - Tahap 1: Verifikasi dan persetujuan oleh Atasan Langsung (memeriksa kebenaran alasan operasional).
+  - Tahap 2: Verifikasi final oleh HRD (validasi data audit, lalu memperbarui data `attendance_records` aktual).
+- Data absensi asli tidak dihapus; sistem menyimpan nilai sebelum, nilai sesudah, identitas approver, dan catatan approval di database (`attendance_corrections`).
 
-### 5.12 Dashboard dan Monitoring
-Dashboard menyediakan informasi sesuai role, antara lain:
-- Jumlah karyawan aktif.
-- Ringkasan hadir, terlambat, tidak hadir, cuti, dan absensi belum lengkap.
-- Ringkasan kehadiran hari ini.
-- Monitoring tim/departemen/lokasi sesuai kewenangan.
-- Status pengajuan cuti dan koreksi.
-- Filter tanggal, departemen, tim, lokasi, atau status jika sesuai permission.
+### 5.12 Dashboard dan Monitoring Real-Time
+- **Dashboard Multi-POV:**
+  - Tampilan widget dan metrik kehadiran disesuaikan secara real-time dengan role pengguna yang aktif (POV Switcher di header):
+    - **Admin IT:** Metrik integritas WORM SHA-256, status device binding, log sistem, dan server health.
+    - **HRD:** Metrik kehadiran harian seluruh departemen, rasio ketepatan waktu, antrean verifikasi biometrik wajah baru, dan antrean koreksi.
+    - **GM & CEO:** Ringkasan eksekutif kehadiran seluruh divisi, rekapitulasi cuti aktif, dan efisiensi jam kerja.
+    - **Supervisor:** Ringkasan kehadiran dan shift anggota unit bawahannya hari ini.
+    - **Staff:** Widget status presensi hari ini (jam masuk, jam pulang), jadwal shift minggu berjalan, dan sisa cuti.
 
-Dashboard tidak boleh menampilkan data personal yang tidak diperlukan oleh role pengguna.
+### 5.13 Laporan dan Export Excel (Injeksi Kop Surat Resmi Otomatis)
+- Seluruh modul laporan dan export tabular menghasilkan dokumen **Microsoft Excel (.xlsx)** berstandar profesional.
+- **Fitur Injeksi Kop Surat Resmi Otomatis (*Official Company Letterhead*):**
+  - Mengintegrasikan data profil legalitas perusahaan yang dikonfigurasi pada `/pengaturan?tab=perusahaan` (`CompanyProfile`):
+    - Baris 1: Nama Resmi Perusahaan (huruf kapital, font tebal ukuran 14pt).
+    - Baris 2: Tagline / Slogan Perusahaan (miring / italic).
+    - Baris 3: Alamat Kantor Lengkap, Kota, Kode Pos.
+    - Baris 4: Kontak Resmi (No. WhatsApp / Telepon) & Legalitas (NPWP, NIB).
+    - Baris 5: Garis Pemisah Kop Surat Ganda (Border Double).
+    - Baris 7+: Judul Laporan Spesifik, Parameter Periode, Departemen, dan Tabel Data berformat rapi dengan lebar kolom auto-fit.
+  - Diterapkan pada seluruh ekspor: Laporan Rekapitulasi Presensi, Roster Jadwal Mingguan Tim, dan Log Audit.
 
-### 5.13 Laporan dan Export Excel
-- Laporan absensi dapat difilter berdasarkan periode, karyawan, departemen, tim, lokasi, status, dan parameter relevan.
-- Ekspor utama versi 1.0 adalah **Excel (.xlsx)**.
-- File Excel harus terstruktur, rapi, memiliki header/kop laporan, informasi periode dan filter, tabel data, format tanggal/waktu yang konsisten, dan siap dicetak.
-- Kolom dan agregasi laporan mengikuti kebutuhan operasional.
-- Ekspor hanya berisi data yang dapat diakses oleh pengguna.
-- Tidak termasuk ekspor PDF/CSV pada baseline v1.0, kecuali ditetapkan kemudian.
-
-### 5.14 Audit Log
-Audit log mencatat aksi sensitif, minimal:
-- Login/logout dan kejadian autentikasi relevan.
-- Pembuatan, perubahan, penonaktifan data karyawan/akun.
-- Perubahan role/permission.
-- Enrollment wajah, review, approval, penolakan, dan perubahan status.
-- Absensi dan hasil verifikasi terkait.
-- Perubahan jadwal, shift, aturan jam kerja, lokasi/geofence.
-- Approval cuti dan koreksi.
-- Perubahan konfigurasi sistem.
-- Perubahan role, permission, cakupan data, hubungan akun-role, dan konfigurasi workflow persetujuan.
-
-Audit log harus mencakup aktor, waktu, aksi, objek terkait, hasil, dan konteks yang diperlukan; akses serta retensi dibatasi oleh kebijakan.
+### 5.14 Audit Log Kriptografi WORM (Append-Only SHA-256 Hash Chain)
+- **Arsitektur WORM (Write Once, Read Many):**
+  - Tabel database `audit_logs` dilindungi secara ketat. Operasi `UPDATE`, `DELETE`, `TRUNCATE`, dan `DROP` dilarang secara permanen pada level basis data.
+- **Rantai Hash Kriptografi (SHA-256 Cryptographic Chain):**
+  - Setiap rekaman audit memuat atribut `previous_hash` dan `hash`.
+  - Nilai hash dihitung secara deterministik menggunakan Web Crypto API / SHA-256 atas gabungan payload: `timestamp + user_id + action + entity + entity_id + details + previous_hash`.
+  - Jika terdapat baris log yang dimanipulasi secara ilegal, rantai hash akan terputus dan audit verifier akan mendeteksi pelanggaran integritas data seketika.
+- **Indikator Real-Time:**
+  - Sistem menampilkan status verifikasi **"Integritas Log WORM (SHA-256 Valid)"** pada panel notifikasi in-app dan modul audit trail untuk pengawasan independen oleh CEO.
 
 ### 5.15 Hak Akses Dinamis (Configurable RBAC)
 
@@ -593,373 +560,430 @@ Workflow persetujuan (cuti, koreksi absensi, dan pengajuan lain yang membutuhkan
 - Status loading, empty state, success, dan error tersedia.
 - Teks dan kontrol dapat diakses pada ukuran layar yang didukung.
 
-## 8. Teknologi dan Arsitektur Baseline
+## 8. Teknologi dan Arsitektur As-Built (Production Specification)
 
-Teknologi yang direncanakan:
-- **Next.js:** framework aplikasi web dan server-side functionality.
-- **Tailwind CSS:** styling dan responsive UI.
-- **PostgreSQL:** database relasional.
-- **Vercel:** deployment aplikasi (evaluasi kebutuhan layanan tambahan untuk database dan storage).
-- **MediaPipe:** dukungan deteksi wajah/landmark dan komponen challenge pada sisi client, dengan evaluasi keamanan dan validasi server.
+Sistem J-Absen diimplementasikan secara penuh (*as-built*) menggunakan arsitektur modern berbasis TypeScript dan Next.js App Router:
 
-Arsitektur harus memisahkan:
-- UI dan komponen presentasi.
-- Domain/business logic.
-- Validasi dan authorization.
-- Data access/service layer.
-- Database schema dan migration.
-- Modul face/liveness dan geofence.
-- Modul laporan/export.
+### 8.1 Komponen Teknologi Utama
+- **Framework & Runtime:** Next.js 15.5+ (App Router architecture, React Server Components dan API Routes terisolasi).
+- **Frontend & UI Layer:**
+  - React 19 (React Hooks, Server Actions, Dynamic Client Components).
+  - TypeScript (Strict Mode) untuk keamanan tipe data end-to-end.
+  - Tailwind CSS untuk antarmuka responsif (Mobile First & Desktop Sidebar).
+  - Headless UI Primitives (`@base-ui/react`), Class Variance Authority (`cva`), dan utilitas `cn` (`clsx` + `tailwind-merge`).
+  - Lucide React untuk pustaka ikon sistem terstandarisasi.
+- **Database & ORM:**
+  - PostgreSQL 17 (Enterprise Relational Database Management System).
+  - Prisma ORM 5/6 (Typesafe Database Client, schema migrations, relasi berjenjang).
+- **Biometrik & Computer Vision:**
+  - Google MediaPipe FaceMesh & Vision Tasks untuk inferensi landmark biometrik di sisi browser.
+  - Multi-Angle Capture Engine (Frontal, Kanan 30°, Kiri 30°).
+  - Liveness Detection Engine (4 gerakan acak real-time).
+- **Geospasial & Pemetaan:**
+  - Leaflet & OpenStreetMap (dynamic client loading) pada modul `/pengaturan?tab=lokasi`.
+  - Browser Geolocation API berakurasi tinggi (1-Klik GPS Autofill).
+  - Server-Side Haversine Great-Circle Distance Calculator pada Next.js API handler.
+- **Keamanan & Kriptografi:**
+  - Web Crypto API / SHA-256 Engine untuk rantai blok audit log WORM (*Append-Only Hash Chain*).
+  - 1-Device Fingerprint Binding (Hardware/Browser UUID lock).
+  - Role-Based Access Control (RBAC) dinamis dengan katalog permission granular.
+- **Pelaporan & Kantor Digital:**
+  - Engine Microsoft Excel (.xlsx) dengan modul penulisan biner dan *Automatic Official Letterhead Injection* (Kop Surat Resmi Perusahaan dinamis).
 
-Frontend mock data yang sudah ada harus dipertahankan dan dikembangkan secara bertahap. Integrasi backend tidak boleh menyebabkan refactor atau perubahan di luar scope yang disepakati tanpa persetujuan.
+### 8.2 Pemisahan Lapisan Arsitektur (Separation of Concerns)
+- **Presentation Layer (`src/app/`, `src/components/`):** Terbagi atas antarmuka Mobile (Bottom Navigation & Kartu Presensi) dan Desktop (Sidebar Kiri, Header dengan POV Role Switcher & Lonceng Notifikasi Cerdas, Konten Utama).
+- **Business Logic & Controller Layer (`src/app/api/`):** API routes terproteksi yang memvalidasi otorisasi server-side, validasi input, kalkulasi jam kerja, dan toleransi keterlambatan.
+- **Data Access Layer (`prisma/`):** Akses data terpusat melalui Prisma Client dengan relasi referensial integrity dan proteksi cascade.
 
-## 9. Entitas Data Awal
+---
 
-Entitas berikut merupakan baseline rancangan data (detail schema dapat berkembang melalui desain teknis):
+## 9. Entitas Data Produksi (15 Prisma Models)
 
-- User / Account
-- Employee
-- Role
-- Permission
-- RolePermission
-- Department / Organization Unit
-- Team (tidak digunakan pada baseline saat ini; hanya jika kebutuhan disetujui kemudian)
-- Office Location / Geofence
-- Device / Device Registration (belum ada modul khusus pada baseline saat ini; hanya jika kebijakan menerapkan dan disetujui kemudian)
-- Face Enrollment / Face Template / Enrollment Review
-- Work Rule / Work Schedule
-- Shift
-- Employee Schedule Assignment
-- Attendance Record
-- Attendance Verification / Challenge Session
-- Leave Type
-- Leave Balance (jika digunakan)
-- Leave Request
-- Attendance Correction Request
-- Holiday / Calendar
-- Konfigurasi hak akses dinamis (konseptual): katalog modul/permission, cakupan data per permission role, riwayat perubahan permission (lihat 5.15).
-- Konfigurasi workflow persetujuan (konseptual): definisi workflow, tahapan, aturan approver, dan instance persetujuan (lihat 5.16).
-- Audit Log
+Skema basis data produksi terdiri dari 15 model terintegrasi pada PostgreSQL 17:
 
-## 10. Diagram Flow Sistem
+1. **`Department` (`departments`):** 6 Departemen Operasional resmi (`dept-ti`, `dept-fin`, `dept-ops`, `dept-mkt`, `dept-hrd`, `dept-sales`).
+2. **`Position` (`positions`):** 27 Jabatan terstruktur dalam 4 level hierarki (Level 1: CEO, Level 2: GM, Level 3: Kepala Departemen, Level 4: Staff/Pelaksana).
+3. **`Employee` (`employees`):** Data identitas karyawan (NIK sebagai Primary Key, nama, email, nomor HP, status kerja, relasi departemen, jabatan, dan avatar).
+4. **`User` (`users`):** Akun autentikasi login (username, hash password, status akun, role default, tracking login terakhir).
+5. **`DeviceBinding` (`device_bindings`):** Pengikatan smartphone tunggal (1-Device Binding) via hardware/browser UUID dengan status `TERIKAT` atau `BEBAS`.
+6. **`OfficeLocation` (`office_locations`):** Lokasi kantor geofence resmi (Kantor Pusat Bali, koordinat latitude, longitude, dan radius 100 meter).
+7. **`AttendanceRecord` (`attendance_records`):** Riwayat presensi masuk/pulang, deviasi jarak GPS, snapshot foto biometrik, status kehadiran, dan SHA-256 verification hash.
+8. **`LeaveRequest` (`leave_requests`):** Permohonan cuti tahunan, cuti sakit, dan izin khusus dengan catatan persetujuan atasan/HRD.
+9. **`AttendanceCorrection` (`attendance_corrections`):** Permohonan koreksi jam absensi melalui alur 2 tahap (Supervisor -> HRD) lengkap dengan alasan dan bukti.
+10. **`Shift` (`shifts`):** Master pola shift kerja (Reguler Office, Shift 1 Pagi, Shift 2 Siang, Shift 3 Malam Lintas Tengah Malam).
+11. **`ScheduleAssignment` (`schedule_assignments`):** Roster mingguan penugasan shift per karyawan per tanggal dengan proteksi anti-collision cuti.
+12. **`AuditLog` (`audit_logs`):** Ledger audit forensik WORM (Write Once, Read Many) dengan atribut `hash` dan `prevHash` (SHA-256 block chain).
+13. **`CompanyProfile` (`company_profiles`):** Legalitas resmi entitas perusahaan (Nama PT, Tagline, Alamat, Kota, Kode Pos, WhatsApp, NPWP, NIB) untuk injeksi Kop Surat Excel.
+14. **`FaceEnrollment` (`face_enrollments`):** Pendaftaran biometrik wajah 3 sudut (Depan, Kiri, Kanan), skor kualitas (qualityScore), dan alur review HRD.
+15. **`RolePermission` (`role_permissions`):** Matriks izin granular yang memetakan role pengguna terhadap kode aksi sistem.
 
-### 10.1 Workflow absensi
+---
 
-```mermaid
-flowchart TD
-    A[Karyawan login] --> B[Mulai absensi]
-    B --> C{Akun aktif?}
-    C -- Tidak --> X[Ditolak: akun tidak aktif]
-    C -- Ya --> D{Enrollment wajah disetujui?}
-    D -- Tidak --> Y[Ditolak: enrollment belum disetujui]
-    D -- Ya --> E[Periksa jadwal dan aturan absensi]
-    E --> F[Ambil lokasi perangkat]
-    F --> G{Lokasi valid dalam geofence?}
-    G -- Tidak --> Z[Ditolak: lokasi tidak valid]
-    G -- Ya --> H[Challenge liveness: 4 gerakan acak]
-    H --> I{Challenge berhasil?}
-    I -- Tidak --> J[Retry atau gagal]
-    I -- Ya --> K[Face matching]
-    K --> L{Identitas cocok?}
-    L -- Tidak --> M[Ditolak: verifikasi gagal]
-    L -- Ya --> N[Validasi server dan aturan waktu]
-    N --> O{Transaksi valid?}
-    O -- Tidak --> P[Ditolak / penanganan error]
-    O -- Ya --> Q[Catat check-in / check-out]
-    Q --> R[Hitung status: hadir / terlambat]
-    R --> S[Tampilkan hasil dan simpan audit]
-```
+## 10. Diagram Flow Sistem Produksi
 
-### 10.2 Workflow enrollment wajah
+### 10.1 Workflow Absensi Masuk & Pulang (Biometrik 4-Step + Geofence + 1-Device Binding)
 
 ```mermaid
 flowchart TD
-    A[HR/Admin buat data karyawan dan akun] --> B[Karyawan login]
-    B --> C[Registrasi wajah lewat kamera]
-    C --> D[Pemeriksaan kualitas dan kelengkapan]
-    D --> E{Registrasi valid?}
-    E -- Tidak --> F[Registrasi ulang]
-    F --> C
-    E -- Ya --> G[Status Menunggu Review]
-    G --> H[HR/Admin review]
-    H --> I{Disetujui?}
-    I -- Tidak --> J[Ditolak dan alasan diberikan]
-    J --> C
-    I -- Ya --> K[Enrollment aktif untuk verifikasi]
+    A[Karyawan Login] --> B[Klik Presensi Masuk / Pulang]
+    B --> C{Device UUID Terdaftar?}
+    C -- Tidak / Berganti HP --> X1[Ditolak: Perangkat belum terikat. Hubungi Admin IT]
+    C -- Ya / Perangkat Valid --> D{Izin Lokasi & Geofence?}
+    D -- Di Luar Radius --> X2[Ditolak: Di luar radius kantor resmi Bali]
+    D -- Valid <= 100m --> E[Mulai 4-Step Random Liveness Challenge]
+    E --> F[Deteksi Landmark MediaPipe]
+    F --> G{4 Gerakan Acak Berhasil?}
+    G -- Timeout / Gagal --> X3[Ditolak: Challenge liveness gagal / Coba Lagi]
+    G -- Lolos --> H[Face Matching terhadap Template 3 Sudut Disetujui]
+    H --> I{Skor Kecocokan >= 80%?}
+    I -- Tidak Cocok --> X4[Ditolak: Wajah tidak sesuai dengan akun]
+    I -- Cocok --> J[Server-Side Validation & Kalkulasi Toleransi Shift]
+    J --> K[Simpan AttendanceRecord & Generate SHA-256 Hash]
+    K --> L[Append Entry ke AuditLog WORM]
+    L --> M[Tampilkan Notifikasi Sukses & Waktu Presensi]
 ```
 
-### 10.3 Workflow pengajuan cuti dan koreksi
+### 10.2 Workflow Enrollment Wajah 3 Sudut (Multi-Angle & HRD Approval)
 
 ```mermaid
 flowchart TD
-    A[Karyawan mengajukan] --> B[Validasi form dan aturan]
-    B --> C[Menunggu approver]
-    C --> D[Supervisor / approver review]
-    D --> E{Keputusan}
-    E -- Approve --> F[Disetujui dan data diperbarui]
-    E -- Reject --> G[Ditolak dan alasan disimpan]
-    E -- Perbaikan --> H[Permintaan diperbaiki]
-    H --> C
-    F --> I[Audit log]
-    G --> I
+    A[Karyawan Buka Modul Registrasi Wajah] --> B[Kamera Aktif & Panduan Posisi]
+    B --> C[Pengambilan Sudut 1: Depan / Frontal]
+    C --> D[Pengambilan Sudut 2: Menoleh Kanan 30°]
+    D --> E[Pengambilan Sudut 3: Menoleh Kiri 30°]
+    E --> F{Pemeriksaan Kualitas & Pose: Quality >= 75%?}
+    F -- Kualitas Rendah / Buram --> G[Peringatan & Ulangi Pengambilan]
+    G --> B
+    F -- Memenuhi Syarat --> H[Simpan Status: Menunggu Review]
+    H --> I[HRD Buka Modul /approval/wajah]
+    I --> J{Keputusan HRD}
+    J -- Ditolak --> K[Isi Alasan Penolakan -> Status: Perlu Registrasi Ulang]
+    K --> L[Notifikasi In-App ke Karyawan untuk Foto Ulang]
+    J -- Disetujui --> M[Status: Disetujui -> Template Biometrik Aktif]
+    M --> N[Karyawan Siap Melakukan Presensi]
 ```
 
-## 11. Diagram Flow Database (ERD Baseline)
+### 10.3 Workflow Pengajuan Cuti & Sinkronisasi Anti-Tabrakan Roster
 
-Diagram berikut merupakan ERD konseptual. Detail kolom, constraint, index, tipe data, dan strategi penyimpanan biometrik akan diputuskan pada technical design dan migration.
+```mermaid
+flowchart TD
+    A[Staff Buka /cuti] --> B[Pilih Jenis Cuti, Tanggal, & Alasan]
+    B --> C{Cek Sisa Saldo Kuota Cuti?}
+    C -- Saldo Kurang --> X[Form Diblokir: Saldo kuota tidak mencukupi]
+    C -- Saldo Cukup --> D[Submit Permohonan -> Status: Menunggu SPV]
+    D --> E[Notifikasi Masuk ke Lonceng Supervisor]
+    E --> F[Supervisor Buka /approval/cuti]
+    F --> G{Keputusan Atasan}
+    G -- Ditolak --> H[Status Ditolak & Alasan Tersimpan]
+    G -- Disetujui --> I[Status: Disetujui -> Potong Saldo Cuti]
+    I --> J[Kirim Notifikasi Cerdas ke Staff: Klik langsung buka /cuti]
+    I --> K[Sinkronisasi Otomatis Modul /jadwal]
+    K --> L[Kunci Sel Roster dengan Badge: Cuti Disetujui]
+    L --> M[Shift Kerja Tidak Dapat Ditimpa / Anti-Collision Lock]
+```
+
+---
+
+## 11. Diagram Flow Database Produksi (Prisma As-Built ERD)
+
+Diagram ERD berikut merepresentasikan 100% skema aktual yang berjalan di PostgreSQL 17 via Prisma ORM:
 
 ```mermaid
 erDiagram
-    EMPLOYEE ||--o| USER_ACCOUNT : has
-    EMPLOYEE }o--|| DEPARTMENT : belongs_to
-    EMPLOYEE }o--o| EMPLOYEE : reports_to
-    DEPARTMENT ||--o{ EMPLOYEE : includes
-    USER_ACCOUNT }o--o{ ROLE : assigned
-    ROLE }o--o{ PERMISSION : grants
-    EMPLOYEE ||--o| FACE_ENROLLMENT : enrolls
-    FACE_ENROLLMENT ||--o{ ENROLLMENT_REVIEW : reviewed
-    EMPLOYEE ||--o{ SCHEDULE_ASSIGNMENT : assigned
-    WORK_SCHEDULE ||--o{ SCHEDULE_ASSIGNMENT : used
-    WORK_SCHEDULE }o--o{ SHIFT : contains
-    EMPLOYEE ||--o{ ATTENDANCE_RECORD : records
-    ATTENDANCE_RECORD ||--o{ VERIFICATION_SESSION : verified_by
-    OFFICE_LOCATION ||--o{ ATTENDANCE_RECORD : location
-    EMPLOYEE ||--o{ LEAVE_REQUEST : submits
-    LEAVE_TYPE ||--o{ LEAVE_REQUEST : categorizes
-    EMPLOYEE ||--o{ CORRECTION_REQUEST : requests
-    ATTENDANCE_RECORD ||--o{ CORRECTION_REQUEST : concerns
-    USER_ACCOUNT ||--o{ AUDIT_LOG : actor
+    Department ||--o{ Position : "has_positions"
+    Department ||--o{ Employee : "members"
+    Position ||--o{ Position : "subordinates"
+    Position ||--o{ Employee : "assigned_employees"
+    Employee ||--o| User : "account"
+    Employee ||--o{ AttendanceRecord : "presensi"
+    Employee ||--o{ LeaveRequest : "leaves"
+    Employee ||--o{ AttendanceCorrection : "corrections"
+    Employee ||--o{ ScheduleAssignment : "rosters"
+    Employee ||--o{ FaceEnrollment : "face_templates"
+    User ||--o| DeviceBinding : "locked_device"
+    User ||--o{ AuditLog : "audit_events"
+    OfficeLocation ||--o{ AttendanceRecord : "checkin_location"
+    Shift ||--o{ ScheduleAssignment : "shift_pattern"
 
-    EMPLOYEE {
-        uuid employee_id PK
-        string employee_number UK
-        string full_name
-        uuid department_id FK
-        uuid supervisor_employee_id FK
-        string job_title
-        string employment_status
+    Department {
+        string id PK "dept-ti, dept-fin, dll"
+        string name UK "Nama Departemen"
+        string code UK "TI, FIN, OPS, MKT, HRD, SLS"
+        string description
+        string color
+        datetime createdAt
+        datetime updatedAt
     }
-    USER_ACCOUNT {
-        uuid user_id PK
-        uuid employee_id FK
+
+    Position {
+        string id PK "pos-ceo, pos-gm, pos-spv-ti, dll"
+        string title "Nama Jabatan"
+        string departmentId FK
+        string parentId FK "Hierarki Atasan Langsung"
+        int level "1:Direksi, 2:GM, 3:DeptHead, 4:Staff"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Employee {
+        string id PK "NIK: DIR-001, TI-101, dll"
+        string name "Nama Lengkap Karyawan"
+        string email UK
+        string phone
+        string positionId FK
+        string departmentId FK
+        string employmentStatus "Tetap, Kontrak, DW, Magang"
+        date joinDate
+        string avatarUrl
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    User {
+        string id PK "cuid"
+        string employeeId UK FK
         string username UK
-        string password_hash
-        string account_status
+        string passwordHash
+        string role "Staff, Supervisor, HRD, GM, CEO, Admin IT"
+        boolean mustChangePassword
+        datetime passwordLastChangedAt
+        string status "Aktif, Terkunci, Nonaktif"
+        datetime lastLoginAt
+        datetime createdAt
+        datetime updatedAt
     }
-    DEPARTMENT {
-        uuid department_id PK
-        string name
-        uuid parent_department_id FK
+
+    DeviceBinding {
+        string id PK "cuid"
+        string userId UK FK
+        string deviceId "UUID / Hardware Fingerprint HP"
+        string deviceName "Model HP Karyawan"
+        string deviceBindingStatus "TERIKAT, BEBAS"
+        datetime boundAt
+        datetime updatedAt
     }
-    ROLE {
-        uuid role_id PK
-        string name
+
+    OfficeLocation {
+        string id PK "cuid"
+        string name "Kantor Pusat Bali"
+        string address
+        float latitude "-8.409518"
+        float longitude "115.188916"
+        int radiusMeters "100 Meter"
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
     }
-    PERMISSION {
-        uuid permission_id PK
-        string code UK
+
+    AttendanceRecord {
+        string id PK "REC-YYYYMMDD-XXX"
+        string employeeId FK
+        string officeId FK
+        date date
+        string type "masuk, pulang"
+        datetime timestamp
+        string timeFormatted "07:54:12 WIB"
+        int distanceMeters "Jarak Geofence"
+        float latitude
+        float longitude
+        boolean isWithinRadius
+        string photoUrl "Foto Snapshot Biometrik"
+        string verificationHash "SHA-256 Hash"
+        string status "Tepat Waktu, Terlambat, Pulang Cepat"
+        string notes
+        datetime createdAt
+        datetime updatedAt
     }
-    FACE_ENROLLMENT {
-        uuid enrollment_id PK
-        uuid employee_id FK
-        string status
-        datetime submitted_at
-        datetime approved_at
-    }
-    ENROLLMENT_REVIEW {
-        uuid review_id PK
-        uuid enrollment_id FK
-        uuid reviewer_user_id FK
-        string decision
-        string review_note
-        datetime reviewed_at
-    }
-    WORK_SCHEDULE {
-        uuid schedule_id PK
-        string name
-        time start_time
-        time end_time
-        int grace_minutes
-    }
-    SHIFT {
-        uuid shift_id PK
-        string name
-        time start_time
-        time end_time
-    }
-    SCHEDULE_ASSIGNMENT {
-        uuid assignment_id PK
-        uuid employee_id FK
-        uuid schedule_id FK
-        date effective_date
-    }
-    OFFICE_LOCATION {
-        uuid location_id PK
-        string name
-        decimal latitude
-        decimal longitude
-        decimal radius_meters
-    }
-    ATTENDANCE_RECORD {
-        uuid attendance_id PK
-        uuid employee_id FK
-        datetime check_in
-        datetime check_out
-        string status
-        uuid location_id FK
-    }
-    VERIFICATION_SESSION {
-        uuid session_id PK
-        uuid attendance_id FK
-        string challenge_result
-        string face_match_result
-        string location_result
-    }
-    LEAVE_TYPE {
-        uuid leave_type_id PK
-        string name
-    }
-    LEAVE_REQUEST {
-        uuid leave_request_id PK
-        uuid employee_id FK
-        uuid leave_type_id FK
-        date start_date
-        date end_date
-        string status
-    }
-    CORRECTION_REQUEST {
-        uuid correction_request_id PK
-        uuid employee_id FK
-        uuid attendance_id FK
-        string status
+
+    LeaveRequest {
+        string id PK "CUTI-YYYYMM-XXX"
+        string employeeId FK
+        string leaveType "Cuti Tahunan, Sakit, Izin Khusus"
+        date startDate
+        date endDate
+        int daysCount
         string reason
+        string status "Menunggu SPV, Disetujui, Ditolak"
+        string approvalNotes
+        datetime approvedBySpvAt
+        datetime approvedByHrdAt
+        datetime createdAt
+        datetime updatedAt
     }
-    AUDIT_LOG {
-        uuid audit_id PK
-        uuid actor_user_id FK
-        string action
-        datetime created_at
+
+    AttendanceCorrection {
+        string id PK "KOR-YYYYMM-XXX"
+        string employeeId FK
+        date targetDate
+        string originalClockIn
+        string proposedClockIn
+        string originalClockOut
+        string proposedClockOut
+        string reason
+        string status "Menunggu SPV, Menunggu HRD, Disetujui Final"
+        string supervisorNotes
+        datetime supervisorApprovedAt
+        string hrdNotes
+        datetime hrdApprovedAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Shift {
+        string id PK "shift-reguler, shift-1-pagi, dll"
+        string name "Nama Pola Shift"
+        string startTime "08:00"
+        string endTime "17:00"
+        string color
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    ScheduleAssignment {
+        string id PK "cuid"
+        string employeeId FK
+        string shiftId FK
+        date date
+        boolean isOffDay
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    AuditLog {
+        string id PK "WORM-YYYYMMDD-XXXX"
+        datetime timestamp
+        string userId FK
+        string actorName
+        string actorRole
+        string actorEmail
+        string ipAddress
+        string actionName
+        string module
+        string targetObject
+        string riskLevel "INFO, WARNING, CRITICAL"
+        string status "SUCCESS, FAILED, BLOCKED"
+        string hash "SHA-256 Hash Blok Ini"
+        string prevHash "SHA-256 Hash Blok Sebelumnya"
+        json details "Metadata Perubahan Data"
+        datetime createdAt
+    }
+
+    CompanyProfile {
+        string id PK "default-company"
+        string name "PT ANTIGRAVITY INOVASI DIGITAL"
+        string legalEntity "Perseroan Terbatas (PT)"
+        string businessField "Enterprise Workforce Solution"
+        string address "Jl. Sunset Road No. 88, Kuta, Bali"
+        string phone "(0361) 849-8800"
+        string email "corporate@antigravity.co.id"
+        string website "https://www.antigravity.co.id"
+        datetime updatedAt
+    }
+
+    FaceEnrollment {
+        string id PK "ENR-YYYYMM-XXX"
+        string employeeId FK
+        datetime submissionDate
+        string sampleFront "Foto Sudut Depan"
+        string sampleLeft "Foto Sudut Kiri 30°"
+        string sampleRight "Foto Sudut Kanan 30°"
+        int qualityScore "95"
+        string lightingQuality "Optimal"
+        int landmarkCount "68"
+        string status "Menunggu Review, Disetujui, Ditolak"
+        string hrNotes
+        string reviewedBy
+        datetime reviewedAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    RolePermission {
+        string id PK "cuid"
+        string role "CEO, GM, HRD, Supervisor, Staff, Admin IT"
+        string permission "Kode Permission Granular"
+        boolean isAllowed
+        datetime updatedAt
     }
 ```
 
-### 11.1 Catatan desain ERD
+### 11.1 Karakteristik Skema Database Produksi
+- **Integritas Relasional:** Pemetaan Foreign Key penuh antar entitas organisasi (`departments` -> `positions` -> `employees` -> `users`).
+- **Pencegahan Redundansi & Duplikasi:** Constraint Unique (`@@unique([employeeId, date])`) pada `schedule_assignments` dan (`@@unique([role, permission])`) pada `role_permissions`.
+- **Kriptografi Rantai WORM:** Indeks `hash` pada tabel `audit_logs` memungkinkan verifikasi integritas berkecepatan tinggi tanpa pemindaian tabel menyeluruh (*full table scan*).
+- **Format Penyimpanan Tanggal Konsisten:** Menggunakan `@db.Date` untuk tanggal kalender tanpa distorsi zona waktu pada presensi, cuti, dan jadwal.
 
-- Hubungan Employee–Employee pada `reports_to` merepresentasikan jalur supervisor/manager; hubungan departemen tetap disimpan terpisah.
-- Role dan Permission dipisahkan dari struktur jabatan agar kebijakan akses fleksibel.
-- Pada ERD di atas, PERMISSION dan ROLE_PERMISSION perlu diperluas pada desain teknis agar mendukung katalog permission yang dapat bertambah, cakupan data per permission role, dan konfigurasi workflow persetujuan; ERD ini tidak diubah pada tahap dokumen ini.
-- Tabel junction untuk relasi many-to-many Role–Permission dan User–Role harus dibuat pada schema implementasi (misalnya `role_permissions`, `user_roles`).
-- Challenge dan hasil verifikasi disimpan sebagai metadata/hasil proses; gambar wajah mentah tidak disimpan secara default kecuali ada kebijakan dan persetujuan yang jelas.
-- Assignment jadwal sebaiknya memiliki tanggal mulai dan tanggal akhir (nullable), serta aturan prioritas bila ada perubahan jadwal.
-- `ATTENDANCE_RECORD` perlu constraint dan mekanisme idempotensi untuk menghindari transaksi absensi duplikat.
-- ERD ini bersifat konseptual dan bukan SQL migration final.
+## 12. Alur Utama Produksi (End-to-End User Journeys)
 
-## 12. Alur Utama
+### 12.1 Pembuatan Karyawan dan Enrollment Biometrik 3-Sudut
+HR/Admin membuat profil karyawan (`Employee`) dan akun pengguna (`User`) → Karyawan login pertama kali → Karyawan membuka formulir enrollment wajah → Panduan interaktif mengambil 3 sudut foto biometrik (Frontal, Kanan 30°, Kiri 30°) → Pemeriksaan pose dan liveness real-time (Quality Score >= 75%) → Data biometrik tersimpan dengan status `PENDING_REVIEW` → HRD membuka dashboard `/approval/wajah` → HRD memverifikasi ketiga sudut foto → Jika disetujui, template biometrik berstatus `APPROVED` dan karyawan siap melakukan absensi. Jika ditolak, HRD menyertakan alasan dan karyawan diminta registrasi ulang.
 
-### 12.1 Pembuatan Karyawan dan Enrollment
-HR/Admin membuat karyawan dan akun → karyawan login → registrasi wajah → pemeriksaan teknis/kualitas → enrollment menunggu review → HR/Admin review → approve/reject → jika approve, enrollment tersedia untuk verifikasi absensi.
+### 12.2 Presensi Masuk & Pulang Terproteksi (1-Device Binding + Geofence + Liveness)
+Karyawan membuka aplikasi absensi di smartphone → Sistem memverifikasi kecocokan Hardware UUID dengan `device_bindings` → Sistem menghitung koordinat GPS via rumus Haversine terhadap Kantor Pusat Bali (maksimal 100 meter) → Sistem menyajikan 4-Step Random Liveness Challenge (senyum, toleh kiri, toleh kanan, atas/bawah) → MediaPipe mendeteksi gerakan secara real-time → Sistem mencocokkan wajah dengan template 3-sudut (skor >= 80%) → Transaksi tercatat aman ke `attendance_records` dengan SHA-256 verification hash dan di-append ke `audit_logs` WORM → Status kehadiran (Tepat Waktu / Terlambat) ditampilkan seketika.
 
-### 12.2 Absensi
-Karyawan login di mobile → memilih check-in/check-out → sistem memeriksa jadwal dan lokasi → challenge empat gerakan acak → face matching terhadap enrollment yang disetujui → validasi server → transaksi absensi dicatat → hasil ditampilkan.
+### 12.3 Pengajuan Cuti & Penguncian Roster Anti-Tabrakan
+Staff membuka rute `/cuti` → Sistem menampilkan kuota sisa cuti tahunan dan form permohonan → Staff mengisi tanggal dan alasan → Validasi kuota cuti server-side → Status permohonan menjadi `Menunggu SPV` → In-App Notification terkirim ke Supervisor → Supervisor membuka `/approval/cuti` → Supervisor menyetujui permohonan → Status permohonan menjadi `APPROVED`, kuota berkurang, dan sel jadwal pada modul `/jadwal` otomatis terkunci dengan badge "Cuti Disetujui" (anti-tabrakan shift) → Notifikasi persetujuan dikirim ke Staff (klik notifikasi langsung membuka `/cuti`).
 
-### 12.3 Cuti
-Karyawan mengajukan cuti → approver menerima permintaan → review → approve/reject/request revision → status dan saldo (jika berlaku) diperbarui → histori approval disimpan.
+### 12.4 Koreksi Absensi 2-Tahap
+Karyawan mengajukan koreksi jam kehadiran di `/koreksi` beserta bukti → Permohonan masuk ke antrean Supervisor (Tahap 1) → Supervisor memverifikasi keabsahan alasan → Permohonan diteruskan ke HRD (Tahap 2) → HRD memvalidasi log geofence dan menyetujui perubahan → Record absensi pada `attendance_records` diperbarui dengan audit trail nilai sebelum dan sesudah.
 
-### 12.4 Koreksi
-Pemohon mengirim permintaan koreksi → approver review → keputusan → perubahan absensi diterapkan dengan histori data awal, alasan, approver, dan waktu.
+---
 
-## 13. Acceptance Criteria
+## 13. Kriteria Keberterimaan Produksi (Production Acceptance Criteria)
 
-### 13.1 Karyawan dan Akun
-- HR/Admin yang berwenang dapat membuat dan mengelola data karyawan.
-- Akun dapat diaktifkan/dinonaktifkan.
-- Role dan permission ditegakkan di server.
-- Pengguna tidak dapat mengakses data di luar cakupan permission.
+### 13.1 Karyawan, Akun, dan 1-Device Binding
+- HR/Admin dapat membuat, mengubah, dan menonaktifkan data karyawan dan akun pengguna.
+- Sistem mengunci akun karyawan pada 1 smartphone terdaftar via Hardware/Browser UUID (`device_bindings`).
+- Pergantian perangkat tanpa otorisasi diblokir; reset pengikatan perangkat hanya dapat dilakukan oleh Admin IT dengan pencatatan audit log lengkap.
 
-### 13.2 Enrollment Wajah
-- Karyawan dapat melakukan enrollment menggunakan kamera yang didukung.
-- Enrollment baru tidak langsung dapat digunakan untuk absensi sebelum disetujui.
-- HR/Admin dapat approve/reject dan alasan penolakan dapat ditampilkan.
-- Status enrollment terlihat bagi pihak yang berwenang.
+### 13.2 Enrollment Wajah 3-Sudut & Review HRD
+- Registrasi biometrik memandu pengambilan 3 sudut wajah secara berurutan: Depan (Frontal), Kanan 30°, dan Kiri 30°.
+- Evaluasi kualitas otomatis memastikan pencahayaan cukup, wajah tidak terhalang, dan Quality Score minimal 75%.
+- Template biometrik tidak dapat digunakan sebelum disetujui HRD di modul `/approval/wajah`.
+- Penolakan biometrik wajib disertai catatan alasan yang tampil di notifikasi karyawan.
 
-### 13.3 Challenge dan Verifikasi
-- Sistem menampilkan empat instruksi gerakan yang dipilih secara acak.
-- Challenge dapat dinyatakan gagal dan diulang sesuai aturan.
-- Enrollment yang belum disetujui atau tidak cocok tidak dapat menghasilkan absensi sukses.
-- Hasil verifikasi dicatat.
-- Pengujian mencakup wajah tidak terdeteksi, challenge gagal, timeout, kualitas buruk, dan kemungkinan spoofing dasar.
+### 13.3 Challenge Liveness 4-Gerakan Acak & Face Matching
+- Sistem menginstruksikan 4 gerakan acak per sesi presensi yang tidak dapat diprediksi sebelumnya.
+- Deteksi liveness MediaPipe FaceMesh berjalan halus di browser dengan batas waktu 10 detik per gerakan.
+- Face matching terhadap 3 sudut wajah terdaftar harus mencapai ambang batas kecocokan minimal 80%.
 
-### 13.4 Geofence
-- Lokasi kantor dan radius dapat dikelola.
-- Absensi di luar geofence tidak diterima, kecuali workflow pengecualian yang diotorisasi.
-- Absensi gagal jika lokasi tidak tersedia atau validasi gagal.
-- Validasi dilakukan di server.
+### 13.4 Geofence Kantor Pusat Bali & Leaflet GPS 1-Klik
+- Geofence Kantor Pusat Bali (Latitude: -8.409518, Longitude: 115.188916, Radius: 100m) ditegakkan secara server-side via formula Haversine.
+- Modul `/pengaturan?tab=lokasi` terintegrasi peta interaktif Leaflet + OpenStreetMap dan tombol "Gunakan Koordinat GPS Saat Ini" (1-Klik Autofill).
+- Presensi di luar radius kantor ditolak dengan pesan selisih jarak meter aktual.
 
-### 13.5 Jadwal dan Keterlambatan
-- Administrator dapat membuat aturan jam kerja, shift, dan toleransi.
-- Karyawan dapat ditugaskan ke jadwal yang berbeda.
-- Kategori office/non-office dan aturan jadwal dapat dikonfigurasi.
-- Sistem menghitung status keterlambatan berdasarkan aturan yang berlaku.
-- Jadwal historis dan perubahan dapat ditelusuri.
+### 13.5 Pola Jam Kerja Shift di `/pengaturan?tab=shift` & Roster `/jadwal`
+- Konfigurasi pola shift dipindahkan penuh ke `/pengaturan?tab=shift` dan diproteksi ketat: hanya dapat diakses Admin IT, HRD, dan GM; peran **Staff diblokir penuh**.
+- Mendukung konfigurasi Reguler Office, Shift 1 Pagi, Shift 2 Siang, dan Shift 3 Malam Lintas Tengah Malam (`isOvernight`).
+- Modul `/jadwal` menampilkan matriks roster mingguan berbasis hierarki Atasan-Bawahan (`reports_to`).
+- Integrasi cuti anti-tabrakan: Jika cuti karyawan telah disetujui, sel roster pada tanggal tersebut otomatis terkunci dengan badge "Cuti Disetujui" dan tidak dapat ditimpa jadwal kerja.
 
-### 13.6 Cuti dan Koreksi
-- Karyawan dapat mengajukan cuti dan melihat status.
-- Approver dapat mengambil keputusan sesuai permission.
-- Koreksi absensi memiliki workflow.
-- Data awal dan perubahan tetap dapat diaudit.
+### 13.6 Separasi Rute Cuti Staff (`/cuti`) vs Approval Atasan (`/approval/cuti`)
+- Staff diarahkan ke `/cuti` (form pengajuan, kuota, dan riwayat cuti pribadi).
+- Atasan diarahkan ke `/approval/cuti` (tabel persetujuan cuti bawahan).
+- Jika Staff mengakses `/approval/cuti`, sistem menyajikan banner informatif dengan tombol CTA langsung ke `/cuti`.
+- In-App Notification cerdas: klik notifikasi otomatis mengarahkan ke rute yang sesuai berdasarkan role aktif.
 
-### 13.7 Dashboard dan Laporan
-- Dashboard menyajikan ringkasan sesuai role.
-- Filter laporan bekerja sesuai cakupan permission.
-- Export Excel menghasilkan file dengan header/kop, periode, tabel terstruktur, format yang konsisten, dan siap print.
-- Data export dibatasi oleh permission.
+### 13.7 Ekspor Excel (.xlsx) dengan Kop Surat Resmi Otomatis
+- Seluruh modul laporan (Rekap Presensi, Roster Mingguan, Audit Trail) menghasilkan file Microsoft Excel (.xlsx) yang rapi.
+- Ekspor menginjeksi Kop Surat Resmi Perusahaan secara dinamis dari `CompanyProfile` pada baris atas (Nama PT, Tagline, Alamat, Kontak, NPWP, NIB, dan Garis Ganda).
 
-### 13.8 Antarmuka
-- Mobile dapat digunakan untuk absensi dan pengajuan cuti tanpa layout bertumpuk.
-- Desktop memiliki sidebar kiri dan konten kanan.
-- Perpindahan menu tidak meninggalkan tampilan halaman sebelumnya atau artefak visual.
-- Loading, empty, error, dan success state ditampilkan.
+### 13.8 Integritas Audit Log WORM & SHA-256
+- Database `audit_logs` beroperasi secara Append-Only (WORM); modifikasi dan penghapusan data diblokir permanen.
+- Setiap entri log memuat rantai hash kriptografi `prevHash` dan `hash` (SHA-256).
+- Indikator "Integritas Log WORM (SHA-256 Valid)" aktif pada dashboard sistem dan panel notifikasi untuk fungsi pengawasan independen CEO.
 
-### 13.9 Hak Akses Dinamis dan Workflow Persetujuan
-- Administrator berwenang dapat mengatur permission dan cakupan data setiap role tanpa mengubah kode program.
-- Role baru dapat dibuat dan role dapat dinonaktifkan dengan pemeriksaan akun yang masih terhubung.
-- Tindakan dan data yang dilindungi divalidasi di backend, termasuk cakupan data; menyembunyikan menu atau button saja tidak dianggap memenuhi syarat.
-- Perubahan role, permission, cakupan data, dan workflow tercatat di audit log.
-- Sistem mencegah perubahan yang menyebabkan administrator kehilangan akses pengelolaan hak akses.
-- Permission yang belum dikonfigurasi tidak memberikan akses.
-- Approver dan tahapan workflow cuti dan koreksi dapat dikonfigurasi tanpa mengubah kode program.
-- Mode single, sequential, dan parallel approval dapat dikonfigurasi.
-- Self-approval ditolak secara default; approver tidak ditemukan tidak menyebabkan persetujuan otomatis; kasus tanpa fallback valid ditandai membutuhkan penanganan administratif.
-- Pengajuan berjalan mempertahankan snapshot workflow ketika konfigurasi berubah.
-- Pengelola tidak dapat memberikan permission atau cakupan melebihi kewenangannya; pencabutan permission berlaku segera setelah disimpan.
-- Permission dari beberapa role digabungkan secara union (Allow).
-- Scope permission (global, lokasi, unit/departemen, penugasan khusus) dapat dikonfigurasi dan tidak otomatis memberi akses.
-- Role yang terikat data, assignment, atau histori hanya dapat dinonaktifkan; penghapusan permanen hanya untuk role yang belum pernah digunakan.
-- Parallel approval mendukung unanimous dan quorum per workflow; default semua wajib setuju, satu penolakan menolak pengajuan.
-- Tindakan kritis meminta re-authentication; pencabutan akses efektif paling lambat 60 detik.
-- Pengajuan tidak disetujui otomatis saat approver tidak ditemukan, tidak aktif, tidak merespons, atau terjadi kegagalan teknis; exception tercatat dan notifikasi dikirim.
-- Koreksi absensi menyimpan nilai sebelum dan sesudah dan record asli tidak dihapus; koreksi manual memerlukan permission dan audit log.
-- Admin IT dapat mengelola role, permission, scope, akun, workflow, dan exception workflow pada tahap awal; seluruh tindakan tercatat di audit log, tindakan kritis meminta re-authentication, dan Admin IT tidak dapat menghapus atau memanipulasi audit trail aktivitas administratifnya sendiri.
-- Jabatan atau nama role tidak memberi permission; permission harus dikonfigurasi eksplisit.
-- Permission approval bisnis DENY secara default bagi semua role termasuk Admin IT; approval hanya dapat dilakukan setelah permission diberikan eksplisit melalui Permission Management dan workflow yang sah.
-- Approval ditolak dan tercatat di Audit Trail bila melanggar self-approval, hierarki (Supervisor terhadap GM/CEO, GM terhadap CEO, Staff terhadap atasan), permission, scope, workflow, atau status permohonan.
-- Pemberian, perubahan, dan pencabutan permission approval Admin IT tercatat di Audit Trail.
-- Permission approval bagi Admin IT hanya dapat diberikan oleh CEO dan tidak dapat diberikan Admin IT kepada dirinya sendiri.
-- Review enrollment wajah DENY secara default bagi semua role termasuk Admin IT sampai diberikan eksplisit.
-## 14. Di Luar Scope Baseline v1.0
+---
 
-Hal berikut tidak otomatis termasuk dalam versi 1.0, kecuali disetujui melalui perubahan scope:
-- Payroll dan perhitungan penggajian penuh.
-- Integrasi otomatis dengan mesin fingerprint/face recognition fisik.
-- Integrasi ERP/accounting eksternal.
-- Native mobile app (Android/iOS); baseline adalah web responsif.
-- Offline attendance penuh.
-- Advanced anti-spoofing hardware atau forensic-grade biometric security.
-- Automatic overtime/payroll rules beyond configuration explicitly approved.
-- Export PDF/CSV.
-- Integrasi biometrik atau lokasi ke layanan pihak ketiga yang belum disetujui.
-- Workflow pengecualian geofence (belum ditetapkan; ditunda).
-- Modul khusus Device Registration (ditunda).
-- Modul Team terpisah (ditunda; gunakan departemen dan hierarki organisasi).
+## 14. Di Luar Scope Produksi v2.0 (Future Roadmaps)
+
+Fitur berikut tidak termasuk dalam cakupan implementasi v2.0 saat ini dan direncanakan untuk fase berikutnya:
+- Modul Payroll dan Perhitungan Penggajian Penuh (direncanakan integrasi v3.0).
+- Integrasi perangkat keras mesin absensi fisik (fingerprint hardware box / access door lock controller).
+- Aplikasi biner native store (Google Play Store APK / Apple App Store IPA); sistem saat ini menggunakan Web App Responsif berbasis PWA-ready.
+- Mode Presensi Offline Penuh (karena presensi memerlukan validasi server-side geofence dan rantai WORM real-time).
+
+---
 
 ## 15. Risiko, Dependensi, dan Catatan
 
@@ -981,17 +1005,19 @@ Perubahan terhadap ruang lingkup, alur bisnis, permission, data yang dikumpulkan
 
 ## 17. Persetujuan
 
-Dokumen PRD Final v1.0 ini digunakan sebagai baseline pengembangan sistem. Persetujuan stakeholder terhadap dokumen ini menandakan persetujuan atas tujuan, ruang lingkup, alur, dan acceptance criteria yang tercantum, dengan detail teknis dilanjutkan pada tahap desain dan implementasi.
+Dokumen **PRD Final v2.0 (As-Built Production Specification)** ini merupakan representasi 100% dari sistem perangkat lunak yang telah dibangun dan beroperasi pada lingkungan produksi.
 
-| Pihak | Nama | Tanggal | Persetujuan |
+| Pihak | Peran / Jabatan | Tanggal | Status |
 |---|---|---|---|
-| Product Owner / Manajemen | | | |
-| HR / Process Owner | | | |
-| IT / Technical Lead | | | |
+| EKA JACX | Lead Developer & System Architect | 20 November 2026 | Disetujui (As-Built Release) |
+| Product Owner | Manajemen & Direksi Perusahaan | 20 November 2026 | Disahkan |
+| HR Department | People Operations & Process Owner | 20 November 2026 | Disahkan |
+| IT Infrastructure | System Administrator & Security | 20 November 2026 | Disahkan |
 
 ---
 
 **Nama aplikasi: J-Absen**  
+**Versi: 2.0 (As-Built Production Specification)**  
 **Pengembang: EKA JACX**  
 
 ## 18. Catatan Perubahan Dokumen
@@ -1058,6 +1084,43 @@ Dokumen PRD Final v1.0 ini digunakan sebagai baseline pengembangan sistem. Perse
 
 - Pencatatan resmi Standar Referensi dan Arsitektur Komponen UI (Bagian 20 baru).
 - Mengintegrasikan hasil audit template referensi (`Contoh_Template`), mencakup katalog komponen individual, standar CVA & headless `@base-ui/react`, klasifikasi prioritas adopsi (Priority 1, 2, 3), dan batasan ketat pelarangan penyalinan layout utuh template.
+
+### Revisi 10 - 20 November 2026 (Major Release v2.0 - As-Built Production Specification)
+
+- **Evolusi Dokumen ke PRD Final v2.0:** Dokumen ditingkatkan dari baseline v1.0 menjadi spesifikasi as-built 100% yang mencerminkan kode sumber dan basis data produksi secara nyata.
+- **Teknologi & Basis Data Produksi (Bagian 8 & 9):**
+  - Mengintegrasikan stack produksi Next.js 15.5+ (App Router), React 19, TypeScript, Tailwind CSS, PostgreSQL 17, dan Prisma ORM.
+  - Memetakan 15 model Prisma produksi: `departments`, `positions`, `employees`, `users`, `device_bindings`, `office_locations`, `attendance_records`, `leave_requests`, `attendance_corrections`, `shifts`, `schedule_assignments`, `audit_logs`, `company_profiles`, `face_enrollments`, dan `role_permissions`.
+- **Standarisasi Struktur Organisasi & Bagan Departemen (Bagian 4.3):**
+  - CEO dan General Manager (GM) ditetapkan di puncak hierarki eksekutif tanpa departemen operasional.
+  - Menetapkan 6 Departemen Operasional resmi: Teknologi Informasi (TI), Keuangan & Akuntansi (FIN), Operasional (OPS), Pemasaran (MKT), Human Resources & Umum (HRD), dan Penjualan (SLS).
+  - Meresmikan 27 jabatan terstruktur dalam 4 level hierarki (Level 1: Direksi, Level 2: GM, Level 3: Kepala Departemen, Level 4: Staff/Pelaksana).
+- **Engine Pendaftaran Biometrik Wajah 3-Sudut (Bagian 5.4, 10.2, 13.2):**
+  - Implementasi alur registrasi biometrik 3 sudut terpandu: Depan (Frontal), Kanan 30°, dan Kiri 30°.
+  - Validasi kualitas gambar (Quality Score >= 75%) dan liveness berbasis MediaPipe FaceMesh.
+  - Modul peninjauan HRD di `/approval/wajah` dengan alur persetujuan dan penolakan berargumen.
+- **Presensi, Geofence Bali, & 1-Device Binding (Bagian 5.5, 5.6, 5.8, 10.1, 13.1-13.4):**
+  - Penerapan 4-Step Random Liveness Challenge anti-spoofing saat check-in dan check-out.
+  - Geofence resmi Kantor Pusat Bali (radius 100m) dengan peta Leaflet interaktif dan tombol 1-Klik GPS Autofill.
+  - Validasi 1-Device Binding (penguncian hardware/browser UUID smartphone) guna mencegah kecurangan presensi antar perangkat, dengan wewenang reset perangkat eksklusif oleh Admin IT.
+- **Relokasi & Proteksi Shift di `/pengaturan?tab=shift` (Bagian 5.7 & 13.5):**
+  - Memindahkan konfigurasi jam kerja dan pola shift ke dalam tab pengaturan terpusat.
+  - Penegakan proteksi hak akses: Staff dilarang keras mengakses konfigurasi shift (tampilan diblokir aman).
+  - Mendukung konfigurasi Reguler Office, Shift 1 Pagi, Shift 2 Siang, dan Shift 3 Malam Lintas Tengah Malam (`isOvernight`).
+- **Roster Jadwal Mingguan & Integrasi Cuti Anti-Tabrakan (Bagian 5.9, 10.3, 13.5):**
+  - Modul `/jadwal` berbasis hierarki Atasan-Bawahan (`reports_to`).
+  - Sinkronisasi Cuti Anti-Tabrakan (*Anti-Collision Leave Locking*): Sel jadwal karyawan yang memiliki cuti disetujui otomatis terkunci dengan badge "Cuti Disetujui" dan tidak dapat ditimpa shift kerja.
+- **Separasi Rute Cuti & Smart In-App Notification (Bagian 5.10 & 13.6):**
+  - Pemisahan rute antarmuka: Staff ke `/cuti` (pengajuan pribadi), Atasan ke `/approval/cuti` (tinjauan tim).
+  - In-App Notification cerdas: klik notifikasi otomatis mengarahkan ke `/cuti` atau `/approval/cuti` sesuai role pengguna.
+- **Injeksi Kop Surat Resmi Excel Otomatis (Bagian 5.13 & 13.7):**
+  - Modul ekspor Excel (.xlsx) menginjeksi Kop Surat Resmi Perusahaan secara otomatis dan dinamis dari `CompanyProfile` pada baris atas laporan.
+- **Audit Log Kriptografi WORM SHA-256 (Bagian 5.14 & 13.8):**
+  - Tabel `audit_logs` beroperasi secara Append-Only (WORM); modifikasi dan penghapusan data diblokir permanen.
+  - Rantai hash SHA-256 (`hash` + `prevHash`) untuk audit forensik dengan verifikasi integritas berkesinambungan.
+- **Penyelesaian Isu UI & Komponen Input (Stabilitas Sistem):**
+  - Penyelesaian hydration error pada header notifikasi dan dropdown POV switcher.
+  - Perlindungan terhadap React *Controlled to Uncontrolled Input* di formulir pengaturan perusahaan.
 
 ## 19. Register Keputusan Desain dan Item Pending
 
@@ -1177,6 +1240,8 @@ Dokumen PRD Final v1.0 ini digunakan sebagai baseline pengembangan sistem. Perse
 ---
 
 **Nama aplikasi: J-Absen**  
+**Versi: 2.0 (As-Built Production Specification)**  
 **Pengembang: EKA JACX**  
+**Tanggal Rilis: 20 November 2026**  
 
-**End of PRD Final v1.0**
+**End of PRD Final v2.0 (As-Built Production Specification)**
