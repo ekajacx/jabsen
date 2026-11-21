@@ -19,10 +19,35 @@ export async function GET(req: NextRequest) {
     }
 
     const empWhere: any = {};
-    if (departmentId && departmentId !== "ALL") {
+    if (departmentId && departmentId !== "ALL" && departmentId !== "Semua") {
+      const lower = departmentId.toLowerCase().trim();
+      const searchTerms = [departmentId];
+      if (lower.includes("it") || lower.includes("engineering") || lower.includes("teknologi")) {
+        searchTerms.push("Teknologi", "ti", "it");
+      }
+      if (lower.includes("operasional") || lower.includes("ops")) {
+        searchTerms.push("Operasional", "ops");
+      }
+      if (lower.includes("hr") || lower.includes("hrd") || lower.includes("ga")) {
+        searchTerms.push("HR", "hrd");
+      }
+      if (lower.includes("fin") || lower.includes("keuangan") || lower.includes("accounting")) {
+        searchTerms.push("Keuangan", "fin", "finance");
+      }
+      if (lower.includes("market") || lower.includes("pemasaran") || lower.includes("sales") || lower.includes("penjualan")) {
+        searchTerms.push("Pemasaran", "Penjualan", "mkt", "sales");
+      }
+      if (lower.includes("direksi") || lower.includes("eksekutif") || lower.includes("exec")) {
+        searchTerms.push("Direksi", "Eksekutif", "exec");
+      }
+
       empWhere.OR = [
-        { departmentId: departmentId },
-        { department: { name: departmentId } },
+        { departmentId: { equals: departmentId } },
+        ...searchTerms.flatMap((term) => [
+          { departmentId: { contains: term, mode: "insensitive" } },
+          { department: { id: { contains: term, mode: "insensitive" } } },
+          { department: { name: { contains: term, mode: "insensitive" } } },
+        ]),
       ];
     }
 

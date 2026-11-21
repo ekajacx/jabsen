@@ -75,6 +75,7 @@ export default function LaporanPage() {
   const [shiftFilter, setShiftFilter] = useState<string>("Semua");
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [departmentList, setDepartmentList] = useState<Array<{ id: string; name: string }>>([]);
 
   // State Feedback Download
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -136,6 +137,28 @@ export default function LaporanPage() {
   const [reportList, setReportList] = useState<AttendanceReportItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Ambil daftar departemen resmi dari database PostgreSQL
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDepartments = async () => {
+      try {
+        const res = await fetch("/api/departemen?includeExecutive=true");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && isMounted && Array.isArray(data.departments)) {
+            setDepartmentList(data.departments.map((d: any) => ({ id: d.id, name: d.name })));
+          }
+        }
+      } catch (err) {
+        console.warn("Gagal mengambil departemen dari API:", err);
+      }
+    };
+    fetchDepartments();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Ambil data laporan agregasi real-time dari PostgreSQL API
   useEffect(() => {
     let isMounted = true;
@@ -161,6 +184,102 @@ export default function LaporanPage() {
     };
   }, []);
 
+  // Daftar opsi departemen dinamis dari database & data laporan aktual
+  const availableDepartments = useMemo(() => {
+    const names = new Set<string>();
+    departmentList.forEach((d) => {
+      if (d.name) names.add(d.name);
+    });
+    reportList.forEach((r) => {
+      if (r.department) names.add(r.department);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [departmentList, reportList]);
+
+  // Daftar opsi lokasi kantor dinamis
+  const availableOffices = useMemo(() => {
+    const offices = new Set<string>();
+    reportList.forEach((r) => {
+      if (r.officeLocation) offices.add(r.officeLocation);
+    });
+    if (offices.size === 0) offices.add("Kantor Pusat Bali");
+    return Array.from(offices).sort((a, b) => a.localeCompare(b));
+  }, [reportList]);
+
+  // Helper pencocokan departemen toleran terhadap alias dan substring
+  const matchDepartment = (itemDept: string, targetFilter: string): boolean => {
+    if (!targetFilter || targetFilter === "Semua") return true;
+    if (!itemDept) return false;
+
+    const itemNorm = itemDept.toLowerCase().trim();
+    const filterNorm = targetFilter.toLowerCase().trim();
+
+    if (itemNorm === filterNorm) return true;
+    if (itemNorm.includes(filterNorm) || filterNorm.includes(itemNorm)) return true;
+
+    // Mapping alias umum
+    const aliasGroups: { keywords: string[]; targets: string[] }[] = [
+      {
+        keywords: ["it", "engineering", "teknologi", "ti", "it & engineering"],
+        targets: ["teknologi", "it", "ti", "engineering"],
+      },
+      {
+        keywords: ["operasional", "ops", "operation"],
+        targets: ["operasional", "ops"],
+      },
+      {
+        keywords: ["hr", "hrd", "ga", "hrd & ga", "human resources"],
+        targets: ["hr", "hrd", "human resources"],
+      },
+      {
+        keywords: ["finance", "accounting", "keuangan", "finance & accounting", "fin"],
+        targets: ["keuangan", "finance", "accounting"],
+      },
+      {
+        keywords: ["marketing", "sales", "pemasaran", "penjualan", "marketing & sales"],
+        targets: ["pemasaran", "penjualan", "marketing", "sales"],
+      },
+      {
+        keywords: ["direksi", "eksekutif", "executive", "board"],
+        targets: ["direksi", "eksekutif", "executive"],
+      },
+    ];
+
+    for (const grp of aliasGroups) {
+      const matchFilter = grp.keywords.some((k) => filterNorm.includes(k));
+      const matchItem = grp.targets.some((t) => itemNorm.includes(t));
+      if (matchFilter && matchItem) return true;
+    }
+
+    return false;
+  };
+
+  // Helper pencocokan shift toleran
+  const matchShift = (itemShift: string, targetShift: string): boolean => {
+    if (!targetShift || targetShift === "Semua") return true;
+    if (!itemShift) return false;
+
+    const itemNorm = itemShift.toLowerCase();
+    const filterNorm = targetShift.toLowerCase();
+
+    if (itemNorm.includes(filterNorm)) return true;
+
+    if (filterNorm.includes("reguler")) {
+      return itemNorm.includes("reguler") || itemNorm.includes("08:00");
+    }
+    if (filterNorm.includes("shift 1") || filterNorm.includes("pagi")) {
+      return itemNorm.includes("shift 1") || itemNorm.includes("pagi") || itemNorm.includes("06:00");
+    }
+    if (filterNorm.includes("shift 2") || filterNorm.includes("siang") || filterNorm.includes("sore")) {
+      return itemNorm.includes("shift 2") || itemNorm.includes("siang") || itemNorm.includes("sore") || itemNorm.includes("14:00");
+    }
+    if (filterNorm.includes("shift 3") || filterNorm.includes("malam")) {
+      return itemNorm.includes("shift 3") || itemNorm.includes("malam") || itemNorm.includes("22:00");
+    }
+
+    return false;
+  };
+
   // Filter Data
   const filteredData = useMemo(() => {
     return reportList.filter((item) => {
@@ -168,14 +287,14 @@ export default function LaporanPage() {
       if (startDate && item.date < startDate) return false;
       if (endDate && item.date > endDate) return false;
 
-      // Filter Departemen
-      if (departmentFilter !== "Semua" && item.department !== departmentFilter) return false;
+      // Filter Departemen (Dinamis & Cerdas)
+      if (!matchDepartment(item.department, departmentFilter)) return false;
 
       // Filter Kantor
       if (officeFilter !== "Semua" && item.officeLocation !== officeFilter) return false;
 
-      // Filter Shift
-      if (shiftFilter !== "Semua" && !item.shift.startsWith(shiftFilter)) return false;
+      // Filter Shift (Dinamis & Cerdas)
+      if (!matchShift(item.shift, shiftFilter)) return false;
 
       // Filter Status
       if (statusFilter !== "Semua" && item.status !== statusFilter) return false;
@@ -450,11 +569,11 @@ export default function LaporanPage() {
                   ) : (
                     <>
                       <option value="Semua">Semua Departemen</option>
-                      <option value="Operasional">Operasional</option>
-                      <option value="IT & Engineering">IT & Engineering</option>
-                      <option value="HRD & GA">HRD & GA</option>
-                      <option value="Finance & Accounting">Finance & Accounting</option>
-                      <option value="Marketing & Sales">Marketing & Sales</option>
+                      {availableDepartments.map((deptName) => (
+                        <option key={deptName} value={deptName}>
+                          {deptName}
+                        </option>
+                      ))}
                     </>
                   )}
                 </select>
@@ -474,7 +593,11 @@ export default function LaporanPage() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 >
                   <option value="Semua">Semua Lokasi Kantor</option>
-                  <option value="Kantor Pusat Bali">Kantor Pusat Bali</option>
+                  {availableOffices.map((office) => (
+                    <option key={office} value={office}>
+                      {office}
+                    </option>
+                  ))}
                 </select>
               </div>
 
