@@ -20,7 +20,10 @@ export async function GET(req: NextRequest) {
 
     const empWhere: any = {};
     if (departmentId && departmentId !== "ALL") {
-      empWhere.departmentId = departmentId;
+      empWhere.OR = [
+        { departmentId: departmentId },
+        { department: { name: departmentId } },
+      ];
     }
 
     // 2. Ambil seluruh Rekaman Presensi Aktual

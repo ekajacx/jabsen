@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
 import { useModal } from "@/context/modal-context";
 import { useSystemBadges } from "@/lib/badge-data";
+import { cn } from "@/lib/utils";
 import {
   History,
   Calendar,
@@ -31,6 +32,11 @@ import {
   CalendarDays,
   Sparkles,
   Loader2,
+  Users,
+  UserCheck,
+  ShieldAlert,
+  XCircle,
+  Briefcase,
 } from "lucide-react";
 
 export interface AttendanceItem {
@@ -56,12 +62,36 @@ export interface AttendanceItem {
   livenessResult: string;
   notes?: string;
   correctionStatus?: "None" | "Pending SPV" | "Pending HRD" | "Approved" | "Rejected";
+  correctionId?: string;
+  correctionReason?: string;
+  proposedClockIn?: string;
+  proposedClockOut?: string;
 }
 
 export default function RiwayatPage() {
   const { user } = useAuth();
   const { showAlert } = useModal();
   const { badges } = useSystemBadges();
+
+  // Mode Tampilan: "personal" (diri sendiri) vs "team" (staf bawahan)
+  const isSupervisorOrManager = user.role !== "Staff";
+  const [viewMode, setViewMode] = useState<"personal" | "team">("personal");
+
+  // State Pilihan Filter Staf & Departemen (untuk Atasan)
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("ALL");
+  const [selectedDeptId, setSelectedDeptId] = useState<string>("ALL");
+  const [staffOptions, setStaffOptions] = useState<
+    Array<{
+      id: string;
+      name: string;
+      departmentId: string;
+      departmentName: string;
+      jobTitle: string;
+      avatar: string;
+    }>
+  >([]);
+  const [deptOptions, setDeptOptions] = useState<Array<{ id: string; name: string }>>([]);
+
   const [records, setRecords] = useState<AttendanceItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,7 +101,7 @@ export default function RiwayatPage() {
   const [selectedRecord, setSelectedRecord] = useState<AttendanceItem | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // State Modal Pengajuan Koreksi (PRD 5.11)
+  // State Modal Pengajuan Koreksi Mandiri (PRD 5.11)
   const [correctionTarget, setCorrectionTarget] = useState<AttendanceItem | null>(null);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionCheckIn, setCorrectionCheckIn] = useState("08:00");
@@ -79,30 +109,80 @@ export default function RiwayatPage() {
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
 
-  // Ambil data riwayat dari PostgreSQL API (dengan fallback localStorage)
+  // State Modal Review & Approval Koreksi Staf (Khusus Atasan)
+  const [reviewTarget, setReviewTarget] = useState<AttendanceItem | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
+  // 1. Fetch Daftar Departemen & Karyawan saat akun atasan login
   useEffect(() => {
-    let isMounted = true;
-    const fetchHistory = async () => {
-      setIsLoading(true);
-      try {
-        const empId = user.id || user.nik || "";
-        const res = await fetch(`/api/riwayat?employeeId=${encodeURIComponent(empId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && isMounted && Array.isArray(data.records) && data.records.length > 0) {
-            setRecords(data.records);
-            setIsLoading(false);
-            return;
-          }
+    if (!isSupervisorOrManager) return;
+
+    fetch("/api/departemen")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.departments)) {
+          setDeptOptions(d.departments);
         }
-      } catch (apiErr) {
-        console.warn("Gagal mengambil riwayat dari API, beralih ke cache:", apiErr);
+      })
+      .catch((e) => console.warn("Gagal load departemen:", e));
+
+    const deptQuery =
+      user.role === "Supervisor" && user.department
+        ? `?departmentId=${encodeURIComponent(user.department)}`
+        : "";
+
+    fetch(`/api/karyawan${deptQuery}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.employees)) {
+          setStaffOptions(d.employees);
+        }
+      })
+      .catch((e) => console.warn("Gagal load karyawan:", e));
+  }, [isSupervisorOrManager, user.role, user.department]);
+
+  // 2. Fetch Data Riwayat (Mendukung mode pribadi vs tim staf)
+  const fetchHistory = async () => {
+    setIsLoading(true);
+    try {
+      let endpoint = `/api/riwayat`;
+      if (viewMode === "personal") {
+        const empId = user.id || user.nik || "";
+        endpoint += `?employeeId=${encodeURIComponent(empId)}`;
+      } else {
+        // Mode Riwayat Tim Staf
+        const params = new URLSearchParams();
+        if (selectedStaffId && selectedStaffId !== "ALL") {
+          params.set("employeeId", selectedStaffId);
+        }
+        if (selectedDeptId && selectedDeptId !== "ALL") {
+          params.set("departmentId", selectedDeptId);
+        } else if (user.role === "Supervisor" && user.department) {
+          params.set("departmentId", user.department);
+        }
+        endpoint += `?${params.toString()}`;
       }
 
-      // Fallback ke cache localStorage jika ada data riil hasil absen di browser
+      const res = await fetch(endpoint);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.records)) {
+          setRecords(data.records);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("Gagal mengambil riwayat dari API, beralih ke cache:", apiErr);
+    }
+
+    // Fallback ke cache localStorage jika mode pribadi dan ada data riil hasil absen di browser
+    if (viewMode === "personal") {
       try {
         const stored = localStorage.getItem("j_absen_records");
-        if (stored && isMounted) {
+        if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
             const userRecords = parsed.filter(
@@ -205,25 +285,24 @@ export default function RiwayatPage() {
       } catch (e) {
         console.error("Gagal membaca riwayat storage:", e);
       }
+    }
 
-      if (isMounted) {
-        setRecords([]);
-        setIsLoading(false);
-      }
-    };
+    setRecords([]);
+    setIsLoading(false);
+  };
 
+  useEffect(() => {
     fetchHistory();
-    return () => {
-      isMounted = false;
-    };
-  }, [user.id, user.nik, user.name, user.avatar]);
+  }, [viewMode, selectedStaffId, selectedDeptId, user.id, user.nik, user.role, user.department]);
 
-  // Filter Data
+  // Filter Data di Tabel
   const filteredRecords = records.filter((r) => {
     const matchesSearch =
       r.dateFormatted.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.office.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.id.toLowerCase().includes(searchTerm.toLowerCase());
+      r.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.employeeName && r.employeeName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.employeeId && r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus =
       filterStatus === "Semua"
@@ -248,6 +327,7 @@ export default function RiwayatPage() {
   const tepatWaktu = records.filter((r) => r.checkInStatus === "Tepat Waktu").length;
   const terlambat = records.filter((r) => r.checkInStatus === "Datang Terlambat").length;
   const cutiIzin = records.filter((r) => r.status === "Cuti" || r.status === "Izin" || r.status.includes("Cuti")).length;
+  const belumAbsenCount = records.filter((r) => r.status.includes("Belum Absen") || r.status.includes("Alpha")).length;
 
   const renderStatusBadges = (item: AttendanceItem) => {
     if (item.status.includes("Belum Absen") || item.status.includes("Alpha")) {
@@ -313,7 +393,7 @@ export default function RiwayatPage() {
     );
   };
 
-  // Submit Pengajuan Koreksi Absensi (PRD 5.11 - 2 Tahap Sequential SPV -> HRD)
+  // Submit Pengajuan Koreksi Absensi Mandiri (PRD 5.11 - 2 Tahap Sequential SPV -> HRD)
   const handleSubmitCorrection = async () => {
     if (!correctionReason.trim()) {
       showAlert({
@@ -348,16 +428,6 @@ export default function RiwayatPage() {
         }
       }
 
-      if (correctionTarget) {
-        setRecords((prev) =>
-          prev.map((r) =>
-            r.id === correctionTarget.id
-              ? { ...r, correctionStatus: "Pending SPV" }
-              : r
-          )
-        );
-      }
-
       setShowCorrectionModal(false);
       showAlert({
         title: "Pengajuan Koreksi Terkirim",
@@ -367,6 +437,8 @@ export default function RiwayatPage() {
           ")\n2. Tahap 2: Finalisasi Admin HRD\n\nStatus pengajuan kini: Pending Review Supervisor.",
         type: "success",
       });
+
+      fetchHistory();
     } catch (e: any) {
       console.error("Gagal mengirim koreksi via API:", e);
       showAlert({
@@ -379,18 +451,129 @@ export default function RiwayatPage() {
     }
   };
 
+  // Proses Persetujuan / Penolakan Koreksi Staf oleh Atasan (PRD P-3)
+  const handleProcessCorrection = async (isApproved: boolean) => {
+    if (!reviewTarget || !reviewTarget.correctionId) {
+      showAlert({
+        title: "Koreksi Tidak Ditemukan",
+        message: "Data permohonan koreksi tidak valid.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!reviewNote.trim()) {
+      showAlert({
+        title: "Catatan Wajib Diisi",
+        message: "Harap isi catatan atau alasan verifikasi keputusan persetujuan koreksi.",
+        type: "warning",
+      });
+      return;
+    }
+
+    setReviewSubmitting(true);
+    try {
+      let action = "SPV_APPROVE";
+      if (user.role === "Supervisor") {
+        action = isApproved ? "SPV_APPROVE" : "SPV_REJECT";
+      } else {
+        // HRD / GM / CEO
+        action = isApproved ? "HRD_APPROVE" : "HRD_REJECT";
+      }
+
+      const res = await fetch("/api/approval/koreksi", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: reviewTarget.correctionId,
+          action,
+          actorName: user.name,
+          actorRole: user.role,
+          notes: reviewNote.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal memproses keputusan approval koreksi.");
+      }
+
+      setShowReviewModal(false);
+      setReviewNote("");
+      showAlert({
+        title: isApproved ? "Koreksi Disetujui" : "Koreksi Ditolak",
+        message: `Permohonan koreksi presensi untuk ${reviewTarget.employeeName || "staf"} berhasil ${
+          isApproved ? "disetujui" : "ditolak"
+        }.`,
+        type: isApproved ? "success" : "info",
+      });
+
+      fetchHistory();
+    } catch (err: any) {
+      console.error("Gagal memproses approval:", err);
+      showAlert({
+        title: "Gagal Memproses Approval",
+        message: err.message || "Terjadi kendala saat memperbarui database.",
+        type: "error",
+      });
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   return (
     <AppLayout pageTitle="Riwayat & Log Kehadiran">
       <div className="space-y-6">
-        {/* Banner Ringkasan Bulan Ini */}
+        {/* Switcher Tab Mode Tampilan (Hanya untuk Atasan: Supervisor, HRD, Direksi, Admin IT) */}
+        {isSupervisorOrManager && (
+          <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl w-fit border border-gray-200/80 dark:border-gray-700 shadow-theme-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode("personal");
+                setSelectedStaffId("ALL");
+              }}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                viewMode === "personal"
+                  ? "bg-white dark:bg-gray-900 text-brand-600 dark:text-white shadow-theme-xs"
+                  : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+              )}
+            >
+              <UserCheck className="size-4" />
+              <span>Riwayat Absensi Saya (Pribadi)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("team")}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                viewMode === "team"
+                  ? "bg-white dark:bg-gray-900 text-brand-600 dark:text-white shadow-theme-xs"
+                  : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+              )}
+            >
+              <Users className="size-4" />
+              <span>Riwayat Absensi Staf & Tim</span>
+            </button>
+          </div>
+        )}
+
+        {/* Banner Ringkasan */}
         <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 p-5 text-white shadow-theme-md sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <History className="size-5" />
-              <h2 className="text-lg font-bold sm:text-xl">Riwayat Presensi: {user.name}</h2>
+              <h2 className="text-lg font-bold sm:text-xl">
+                {viewMode === "personal"
+                  ? `Riwayat Presensi: ${user.name} (Pribadi)`
+                  : `Riwayat & Rekam Jejak Kehadiran Staf Tim`}
+              </h2>
             </div>
             <p className="mt-1 text-xs text-brand-100 sm:text-sm">
-              Rekam jejak kehadiran harian terenkripsi hash WORM dan terverifikasi biometrik.
+              {viewMode === "personal"
+                ? "Rekam jejak kehadiran harian terenkripsi hash WORM dan terverifikasi biometrik."
+                : "Pantau kedatangan, kepulangan, keterlambatan, serta persetujuan koreksi staf bawahan Anda."}
             </p>
           </div>
 
@@ -404,11 +587,11 @@ export default function RiwayatPage() {
                   filteredRecords.map((r) => ({
                     date: r.date,
                     day: r.dateFormatted.split(",")[0],
-                    shift: "Reguler Office (08:00 - 17:00)",
+                    shift: r.shiftTime || "Reguler Office (08:00 - 17:00)",
                     clockIn: r.checkIn,
                     clockOut: r.checkOut,
-                    workHours: r.checkIn && r.checkOut && r.checkOut !== "--:--" ? "8 Jam" : "-",
-                    lateMinutes: r.status === "Terlambat" ? 15 : 0,
+                    workHours: r.checkIn && r.checkOut && r.checkOut !== "--:-- WITA" ? "8 Jam" : "-",
+                    lateMinutes: r.checkInStatus === "Datang Terlambat" ? 15 : 0,
                     status: r.status,
                     location: `${r.office} (${r.distanceMeters}m)`,
                     inGeofence: r.distanceMeters <= 100,
@@ -416,10 +599,10 @@ export default function RiwayatPage() {
                     notes: r.notes || "-",
                   })),
                   {
-                    employeeName: user.name,
-                    employeeNik: user.nik || user.id || "NIK-EMP",
+                    employeeName: viewMode === "personal" ? user.name : "Rekap Staf Tim",
+                    employeeNik: viewMode === "personal" ? user.nik || user.id || "NIK-EMP" : "TIM",
                     department: user.department,
-                    periodText: "30 Hari Terakhir",
+                    periodText: "Periode Berjalan",
                     currentUser: { name: user.name, role: user.role },
                   }
                 );
@@ -432,15 +615,77 @@ export default function RiwayatPage() {
           </div>
         </div>
 
+        {/* Panel Kontrol Pemilih Staf & Departemen (Khusus Mode Tim Staf) */}
+        {viewMode === "team" && isSupervisorOrManager && (
+          <Card className="border-brand-200 bg-brand-50/40 dark:border-brand-900/40 dark:bg-brand-950/20">
+            <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Briefcase className="size-5 text-brand-600 dark:text-brand-400 shrink-0" />
+                <div>
+                  <h3 className="text-xs font-bold text-gray-900 dark:text-white">
+                    Pilih Target Staf Bawahan:
+                  </h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {user.role === "Supervisor"
+                      ? `Menampilkan staf di bawah divisi ${user.department || "Anda"}`
+                      : "Menampilkan staf lintas departemen dalam organisasi"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Filter Departemen (Jika bukan Supervisor) */}
+                {user.role !== "Supervisor" && (
+                  <div className="min-w-[180px]">
+                    <select
+                      value={selectedDeptId}
+                      onChange={(e) => {
+                        setSelectedDeptId(e.target.value);
+                        setSelectedStaffId("ALL");
+                      }}
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    >
+                      <option value="ALL">Semua Departemen</option>
+                      {deptOptions.map((d) => (
+                        <option key={d.id} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Filter Pilih Karyawan */}
+                <div className="min-w-[220px]">
+                  <select
+                    value={selectedStaffId}
+                    onChange={(e) => setSelectedStaffId(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  >
+                    <option value="ALL">Seluruh Staf Tim ({staffOptions.length} Orang)</option>
+                    {staffOptions
+                      .filter((s) => selectedDeptId === "ALL" || s.departmentName === selectedDeptId || s.departmentId === selectedDeptId)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.id}) - {s.jobTitle}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 4 Stat Cards Ringkasan */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Hari Masuk</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Hadir</span>
               <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
                 {totalHadir} <span className="text-xs font-normal text-gray-500">Hari</span>
               </p>
-              <span className="text-[10px] text-emerald-600 font-medium">Bulan Ini (November 2026)</span>
+              <span className="text-[10px] text-emerald-600 font-medium">Presensi Berhasil</span>
             </CardContent>
           </Card>
 
@@ -458,7 +703,7 @@ export default function RiwayatPage() {
 
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Terlambat</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Datang Terlambat</span>
               <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {terlambat} <span className="text-xs font-normal text-amber-600/70">Hari</span>
               </p>
@@ -468,13 +713,27 @@ export default function RiwayatPage() {
 
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Cuti / Izin</span>
-              <p className="mt-1 text-2xl font-bold text-brand-600 dark:text-brand-400">
-                {cutiIzin} <span className="text-xs font-normal text-brand-600/70">Hari</span>
-              </p>
-              <span className="text-[10px] text-gray-400 font-medium">
-                Tersisa {badges.userLeaveBalance} hari saldo
-              </span>
+              {viewMode === "personal" ? (
+                <>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Cuti / Izin</span>
+                  <p className="mt-1 text-2xl font-bold text-brand-600 dark:text-brand-400">
+                    {cutiIzin} <span className="text-xs font-normal text-brand-600/70">Hari</span>
+                  </p>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    Tersisa {badges.userLeaveBalance} hari saldo
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Alpha / Belum Hadir</span>
+                  <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
+                    {belumAbsenCount} <span className="text-xs font-normal text-red-600/70">Hari</span>
+                  </p>
+                  <span className="text-[10px] text-red-600 font-medium">
+                    Tanpa rekaman kehadiran
+                  </span>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -486,7 +745,11 @@ export default function RiwayatPage() {
               <Search className="absolute left-3 top-2.5 size-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Cari tanggal, ID log, atau lokasi..."
+                placeholder={
+                  viewMode === "team"
+                    ? "Cari nama staf, tanggal, ID, atau lokasi..."
+                    : "Cari tanggal, ID log, atau lokasi..."
+                }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
@@ -513,25 +776,47 @@ export default function RiwayatPage() {
           </CardContent>
         </Card>
 
-        {/* Tabel Riwayat Kehadiran (Desktop View - Fixed Columns & Zero Layout Shift) */}
+        {/* Tabel Riwayat Kehadiran (Desktop View) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup><col className="w-[18%]" /><col className="w-[14%]" /><col className="w-[14%]" /><col className="w-[18%]" /><col className="w-[18%]" /><col className="w-[9%]" /><col className="w-[9%]" /></colgroup>
+            {viewMode === "team" ? (
+              <colgroup>
+                <col className="w-[20%]" />
+                <col className="w-[14%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[16%]" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+              </colgroup>
+            ) : (
+              <colgroup>
+                <col className="w-[18%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+              </colgroup>
+            )}
+
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
+                {viewMode === "team" && <th className="px-5 py-3.5">Karyawan Staf</th>}
                 <th className="px-5 py-3.5">Tanggal</th>
                 <th className="px-5 py-3.5">Jam Masuk</th>
                 <th className="px-5 py-3.5">Jam Pulang</th>
-                <th className="px-5 py-3.5">Lokasi / Geofence</th>
+                {viewMode === "personal" && <th className="px-5 py-3.5">Lokasi / Geofence</th>}
                 <th className="px-5 py-3.5">Status Kehadiran</th>
-                <th className="px-5 py-3.5">Koreksi</th>
+                <th className="px-5 py-3.5">Status Koreksi</th>
                 <th className="px-5 py-3.5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-800 dark:text-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-gray-400">
+                  <td colSpan={viewMode === "team" ? 7 : 7} className="px-5 py-12 text-center text-gray-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Loader2 className="size-6 animate-spin text-brand-500" />
                       <span className="text-xs font-medium">Memuat riwayat presensi...</span>
@@ -540,51 +825,99 @@ export default function RiwayatPage() {
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-gray-400">
-                    Tidak ada catatan riwayat absensi yang cocok dengan filter.
+                  <td colSpan={viewMode === "team" ? 7 : 7} className="px-5 py-12 text-center text-gray-400">
+                    Tidak ada catatan riwayat absensi yang cocok dengan kriteria.
                   </td>
                 </tr>
               ) : (
                 filteredRecords.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
+                    {/* Kolom Karyawan Staf (Hanya Mode Tim Staf) */}
+                    {viewMode === "team" && (
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={item.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"}
+                            alt={item.employeeName || "Karyawan"}
+                            className="size-8 rounded-full object-cover shrink-0 ring-1 ring-gray-200 dark:ring-gray-700"
+                          />
+                          <div className="min-w-0 flex flex-col truncate">
+                            <span className="font-bold text-gray-900 dark:text-white truncate">
+                              {item.employeeName || "Karyawan"}
+                            </span>
+                            <span className="text-[10px] text-gray-400 truncate">
+                              {item.employeeId} &bull; {item.positionTitle || "Staff"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    )}
+
+                    {/* Kolom Tanggal */}
                     <td className="px-5 py-4">
                       <div className="flex flex-col truncate">
                         <span className="font-bold text-gray-900 dark:text-white truncate">{item.dateFormatted}</span>
-                        <span className="font-mono text-[10px] text-gray-400 truncate">{item.id}</span>
+                        <span className="text-[10px] text-brand-600 dark:text-brand-400 font-medium truncate">
+                          {item.shiftTime || "08:00 - 17:00"}
+                        </span>
                       </div>
                     </td>
+
+                    {/* Kolom Jam Masuk */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
                         <Clock className="size-3.5 shrink-0" />
                         <span className="truncate">{item.checkIn}</span>
                       </div>
                     </td>
+
+                    {/* Kolom Jam Pulang */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400">
                         <Clock className="size-3.5 shrink-0" />
                         <span className="truncate">{item.checkOut}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-col truncate">
-                        <span className="text-gray-900 dark:text-white truncate">{item.office}</span>
-                        <span className="text-[10px] text-gray-400 truncate">Jarak: {item.distanceMeters}m dari kantor</span>
-                      </div>
-                    </td>
+
+                    {/* Kolom Lokasi (Hanya Mode Pribadi) */}
+                    {viewMode === "personal" && (
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col truncate">
+                          <span className="text-gray-900 dark:text-white truncate">{item.office}</span>
+                          <span className="text-[10px] text-gray-400 truncate">
+                            Jarak: {item.distanceMeters}m dari kantor
+                          </span>
+                        </div>
+                      </td>
+                    )}
+
+                    {/* Kolom Status Kehadiran */}
                     <td className="px-5 py-4">{renderStatusBadges(item)}</td>
+
+                    {/* Kolom Status Koreksi */}
                     <td className="px-5 py-4">
                       {item.correctionStatus === "Pending SPV" ? (
-                        <Badge variant="warning" size="sm" className="gap-1 animate-pulse">
-                          Pending SPV
+                        <Badge variant="warning" size="sm" className="gap-1 animate-pulse font-semibold">
+                          Menunggu SPV
+                        </Badge>
+                      ) : item.correctionStatus === "Pending HRD" ? (
+                        <Badge variant="info" size="sm" className="gap-1 font-semibold">
+                          Menunggu HRD
                         </Badge>
                       ) : item.correctionStatus === "Approved" ? (
-                        <Badge variant="success" size="sm">
+                        <Badge variant="success" size="sm" className="font-semibold">
                           Terkoreksi
+                        </Badge>
+                      ) : item.correctionStatus === "Rejected" ? (
+                        <Badge variant="destructive" size="sm" className="font-semibold">
+                          Ditolak
                         </Badge>
                       ) : (
                         <span className="text-gray-400 text-[11px]">-</span>
                       )}
                     </td>
+
+                    {/* Kolom Aksi */}
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
@@ -602,21 +935,42 @@ export default function RiwayatPage() {
                           Detail
                         </Button>
 
-                        {/* Tombol Ajukan Koreksi (PRD 5.11) */}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setCorrectionTarget(item);
-                            setShowCorrectionModal(true);
-                          }}
-                          className="h-8 text-xs gap-1 text-amber-700 border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
-                          title="Ajukan Koreksi Kehadiran"
-                        >
-                          <FileEdit className="size-3.5 text-amber-600" />
-                          Koreksi
-                        </Button>
+                        {/* Jika Mode Pribadi: Ajukan Koreksi */}
+                        {viewMode === "personal" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCorrectionTarget(item);
+                              setShowCorrectionModal(true);
+                            }}
+                            className="h-8 text-xs gap-1 text-amber-700 border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
+                            title="Ajukan Koreksi Kehadiran"
+                          >
+                            <FileEdit className="size-3.5 text-amber-600" />
+                            Koreksi
+                          </Button>
+                        ) : (
+                          /* Jika Mode Tim Staf: Tombol Approval Koreksi Langsung */
+                          (item.correctionStatus === "Pending SPV" || item.correctionStatus === "Pending HRD") && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setReviewTarget(item);
+                                setReviewNote("Disetujui sesuai hasil verifikasi absensi aktual.");
+                                setShowReviewModal(true);
+                              }}
+                              className="h-8 text-xs gap-1 bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 font-bold"
+                              title="Pemeriksaan dan Persetujuan Koreksi Absensi Staf"
+                            >
+                              <ShieldCheck className="size-3.5 text-amber-600" />
+                              Review
+                            </Button>
+                          )
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -639,56 +993,93 @@ export default function RiwayatPage() {
             </div>
           ) : (
             filteredRecords.map((item) => (
-            <Card key={item.id} className="border-gray-200 dark:border-gray-800">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-bold text-sm text-gray-900 dark:text-white">{item.dateFormatted}</span>
-                  {renderStatusBadges(item)}
-                </div>
+              <Card key={item.id} className="border-gray-200 dark:border-gray-800">
+                <CardContent className="p-4 space-y-3">
+                  {viewMode === "team" && (
+                    <div className="flex items-center gap-2 border-b border-gray-100 pb-2 dark:border-gray-800">
+                      <img
+                        src={item.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"}
+                        alt={item.employeeName || "Karyawan"}
+                        className="size-7 rounded-full object-cover ring-1 ring-gray-200"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs text-gray-900 dark:text-white block truncate">
+                          {item.employeeName}
+                        </span>
+                        <span className="text-[10px] text-gray-400 block truncate">
+                          {item.employeeId} &bull; {item.positionTitle}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 rounded-xl p-2.5 dark:bg-gray-800/60">
-                  <div>
-                    <span className="text-[10px] text-gray-400 block">Masuk</span>
-                    <span className="font-bold text-emerald-600">{item.checkIn}</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold text-sm text-gray-900 dark:text-white">{item.dateFormatted}</span>
+                    {renderStatusBadges(item)}
                   </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 block">Pulang</span>
-                    <span className="font-bold text-indigo-600">{item.checkOut}</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
-                  <span>{item.office}</span>
-                  <div className="flex gap-1.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedRecord(item);
-                        setShowDetailModal(true);
-                      }}
-                      className="h-7 text-[11px] px-2.5"
-                    >
-                      Detail
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setCorrectionTarget(item);
-                        setShowCorrectionModal(true);
-                      }}
-                      className="h-7 text-[11px] px-2.5 border-amber-300 text-amber-700"
-                    >
-                      Koreksi
-                    </Button>
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 rounded-xl p-2.5 dark:bg-gray-800/60">
+                    <div>
+                      <span className="text-[10px] text-gray-400 block">Masuk</span>
+                      <span className="font-bold text-emerald-600">{item.checkIn}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 block">Pulang</span>
+                      <span className="font-bold text-indigo-600">{item.checkOut}</span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )))}
+
+                  <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+                    <span>{item.office}</span>
+                    <div className="flex gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedRecord(item);
+                          setShowDetailModal(true);
+                        }}
+                        className="h-7 text-[11px] px-2.5"
+                      >
+                        Detail
+                      </Button>
+                      {viewMode === "personal" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCorrectionTarget(item);
+                            setShowCorrectionModal(true);
+                          }}
+                          className="h-7 text-[11px] px-2.5 border-amber-300 text-amber-700"
+                        >
+                          Koreksi
+                        </Button>
+                      ) : (
+                        (item.correctionStatus === "Pending SPV" || item.correctionStatus === "Pending HRD") && (
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setReviewTarget(item);
+                              setReviewNote("Disetujui sesuai hasil verifikasi absensi aktual.");
+                              setShowReviewModal(true);
+                            }}
+                            className="h-7 text-[11px] px-2.5 bg-amber-600 text-white font-bold"
+                          >
+                            Review
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
 
@@ -722,7 +1113,7 @@ export default function RiwayatPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
-                  {selectedRecord.dateFormatted}
+                  {selectedRecord.employeeName ? `${selectedRecord.employeeName} (${selectedRecord.employeeId})` : selectedRecord.dateFormatted}
                 </p>
                 <div className="mt-2 flex flex-col gap-1.5">
                   {renderStatusBadges(selectedRecord)}
@@ -748,7 +1139,9 @@ export default function RiwayatPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Koordinat:</span>
-                <span className="font-mono text-[11px]">{selectedRecord.latitude}, {selectedRecord.longitude}</span>
+                <span className="font-mono text-[11px]">
+                  {selectedRecord.latitude}, {selectedRecord.longitude}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Hash Integritas (WORM):</span>
@@ -775,7 +1168,7 @@ export default function RiwayatPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. MODAL FORM PENGAJUAN KOREKSI ABSENSI (PRD SECTION 5.11)               */}
+      {/* 2. MODAL FORM PENGAJUAN KOREKSI ABSENSI MANDIRI (PRD SECTION 5.11)        */}
       {/* ========================================================================= */}
       {correctionTarget && (
         <Dialog
@@ -785,7 +1178,6 @@ export default function RiwayatPage() {
           description={`Ajukan permohonan koreksi jam kehadiran untuk tanggal ${correctionTarget.dateFormatted}`}
         >
           <div className="space-y-4 pt-2">
-            {/* Banner Penjelasan Alur 2-Tahap PRD P-3 */}
             <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300">
               <div className="flex items-center gap-1.5 font-bold mb-1">
                 <ShieldCheck className="size-4 text-blue-600" />
@@ -797,7 +1189,6 @@ export default function RiwayatPage() {
               </p>
             </div>
 
-            {/* Input Jam Masuk & Jam Pulang Koreksi */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
@@ -823,7 +1214,6 @@ export default function RiwayatPage() {
               </div>
             </div>
 
-            {/* Alasan Koreksi */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 Alasan Permintaan Koreksi (Wajib)
@@ -837,17 +1227,6 @@ export default function RiwayatPage() {
               />
             </div>
 
-            {/* Lampiran Bukti (Opsional) */}
-            <div className="rounded-xl border border-dashed border-gray-300 p-3 text-center dark:border-gray-700">
-              <span className="text-[11px] text-gray-500 block">
-                Lampiran Bukti / Surat Tugas (Opsional)
-              </span>
-              <Button type="button" variant="outline" size="xs" className="mt-2 text-[10px]">
-                Pilih Berkas Bukti
-              </Button>
-            </div>
-
-            {/* Actions */}
             <div className="mt-4 flex gap-2.5 pt-2">
               <Button
                 type="button"
@@ -866,6 +1245,87 @@ export default function RiwayatPage() {
               >
                 <Send className="size-3.5" />
                 {correctionSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. MODAL REVIEW & APPROVAL KOREKSI STAF (KHUSUS ATASAN / HRD)             */}
+      {/* ========================================================================= */}
+      {reviewTarget && (
+        <Dialog
+          open={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          title="Pemeriksaan & Keputusan Koreksi Absensi Staf"
+          description={`Verifikasi pengajuan koreksi kehadiran oleh ${reviewTarget.employeeName || "Karyawan"} (${reviewTarget.employeeId})`}
+        >
+          <div className="space-y-4 pt-2">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/30">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                  {reviewTarget.employeeName} &bull; {reviewTarget.positionTitle}
+                </span>
+                <Badge variant="warning" size="sm">
+                  {reviewTarget.correctionStatus === "Pending SPV" ? "Tahap 1: Supervisor" : "Tahap 2: HRD"}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+                <div>
+                  <span className="text-gray-500 block text-[10px]">Tanggal Presensi:</span>
+                  <strong>{reviewTarget.dateFormatted}</strong>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px]">Perubahan Jam:</span>
+                  <span>
+                    Masuk: <strong>{reviewTarget.proposedClockIn || "08:00"}</strong> (Sebelum: {reviewTarget.checkIn})
+                    <br />
+                    Pulang: <strong>{reviewTarget.proposedClockOut || "17:00"}</strong> (Sebelum: {reviewTarget.checkOut})
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs border-t border-amber-200/60 pt-2 dark:border-amber-900/60">
+                <span className="text-gray-500 text-[10px] block">Alasan Staf:</span>
+                <p className="italic text-gray-800 dark:text-gray-200">
+                  "{reviewTarget.correctionReason || reviewTarget.notes || "Pengajuan koreksi presensi karena kendala sistem"}"
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                Catatan Verifikasi & Alasan Keputusan Atasan (Wajib)
+              </label>
+              <textarea
+                rows={3}
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                placeholder="Tuliskan catatan verifikasi (misal: Disetujui setelah diverifikasi dinas luar)..."
+                className="w-full rounded-xl border border-gray-300 bg-white p-3 text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div className="mt-4 flex gap-2.5 pt-2">
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={reviewSubmitting}
+                className="flex-1 gap-1.5"
+                onClick={() => handleProcessCorrection(false)}
+              >
+                <XCircle className="size-4" />
+                Tolak Pengajuan
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                disabled={reviewSubmitting}
+                className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => handleProcessCorrection(true)}
+              >
+                <CheckCircle2 className="size-4" />
+                {reviewSubmitting ? "Memproses..." : "Setujui Koreksi"}
               </Button>
             </div>
           </div>

@@ -16,10 +16,15 @@ export async function GET(req: NextRequest) {
       whereClause.employeeId = employeeId;
     }
 
-    if (departmentId && departmentId !== "ALL") {
-      whereClause.employee = {
-        departmentId: departmentId,
-      };
+    const deptFilter =
+      departmentId && departmentId !== "ALL"
+        ? {
+            OR: [{ departmentId: departmentId }, { department: { name: departmentId } }],
+          }
+        : null;
+
+    if (deptFilter) {
+      whereClause.employee = deptFilter;
     }
 
     if (startDate || endDate) {
@@ -47,11 +52,13 @@ export async function GET(req: NextRequest) {
     });
 
     // Ambil penugasan jadwal shift untuk menentukan jam masuk & pulang shift resmi
+    const scheduleWhere: any = {};
+    if (employeeId) scheduleWhere.employeeId = employeeId;
+    if (deptFilter) scheduleWhere.employee = deptFilter;
+    if (startDate || endDate) scheduleWhere.date = whereClause.date;
+
     const scheduleAssignments = await prisma.scheduleAssignment.findMany({
-      where: {
-        employeeId: employeeId || undefined,
-        ...(startDate || endDate ? { date: whereClause.date } : {}),
-      },
+      where: scheduleWhere,
       include: {
         employee: {
           include: {
@@ -65,11 +72,22 @@ export async function GET(req: NextRequest) {
     });
 
     // Ambil izin/cuti resmi yang disetujui
+    const leaveWhere: any = { status: "Disetujui" };
+    if (employeeId) leaveWhere.employeeId = employeeId;
+    if (deptFilter) leaveWhere.employee = deptFilter;
+
     const approvedLeaves = await prisma.leaveRequest.findMany({
-      where: {
-        employeeId: employeeId || undefined,
-        status: "Disetujui",
-      },
+      where: leaveWhere,
+    });
+
+    // Ambil permohonan koreksi absensi
+    const correctionWhere: any = {};
+    if (employeeId) correctionWhere.employeeId = employeeId;
+    if (deptFilter) correctionWhere.employee = deptFilter;
+
+    const corrections = await prisma.attendanceCorrection.findMany({
+      where: correctionWhere,
+      orderBy: { createdAt: "desc" },
     });
 
     // Kantor default untuk data geofence fallback
@@ -144,7 +162,10 @@ export async function GET(req: NextRequest) {
     const todayStr = now.toISOString().split("T")[0];
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-    const sortedEntries = Array.from(groupedMap.values()).sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+    const sortedEntries = Array.from(groupedMap.values()).sort((a, b) => {
+      if (b.dateStr !== a.dateStr) return b.dateStr.localeCompare(a.dateStr);
+      return (a.employee?.name || "").localeCompare(b.employee?.name || "");
+    });
 
     const formatted = sortedEntries.map((item) => {
       const d = item.date;
@@ -177,6 +198,21 @@ export async function GET(req: NextRequest) {
           l.startDate.toISOString().split("T")[0] <= dateStr &&
           l.endDate.toISOString().split("T")[0] >= dateStr
       );
+
+      // Cek apakah ada pengajuan koreksi untuk tanggal ini
+      const matchingCorrection = corrections.find(
+        (c) =>
+          c.employeeId === item.employeeId &&
+          c.targetDate.toISOString().split("T")[0] === dateStr
+      );
+
+      let correctionStatus: "None" | "Pending SPV" | "Pending HRD" | "Approved" | "Rejected" = "None";
+      if (matchingCorrection) {
+        if (matchingCorrection.status === "Menunggu SPV") correctionStatus = "Pending SPV";
+        else if (matchingCorrection.status === "Menunggu HRD") correctionStatus = "Pending HRD";
+        else if (matchingCorrection.status === "Disetujui Final") correctionStatus = "Approved";
+        else if (matchingCorrection.status === "Ditolak") correctionStatus = "Rejected";
+      }
 
       // 1. STATUS CHECK IN
       let checkIn = "--:-- WITA";
@@ -276,7 +312,11 @@ export async function GET(req: NextRequest) {
         verificationHash: primaryRec?.verificationHash || "SHA256-UNRECORDED-WORM",
         livenessResult: primaryRec ? "4/4 Gerakan Acak Lolos (MediaPipe)" : "Tanpa Presensi",
         notes: customNotes,
-        correctionStatus: "None" as const,
+        correctionStatus,
+        correctionId: matchingCorrection?.id,
+        correctionReason: matchingCorrection?.reason,
+        proposedClockIn: matchingCorrection?.proposedClockIn,
+        proposedClockOut: matchingCorrection?.proposedClockOut,
       };
     });
 
