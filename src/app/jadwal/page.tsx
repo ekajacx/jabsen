@@ -860,11 +860,7 @@ export default function JadwalPage() {
                   const isTodayCuti =
                     todayDay?.isLeaveApproved || todayDay?.shiftId === "CUTI" || Boolean(liveTodayLeave);
                   const isTodayLibur =
-                    todayDay?.isOff ||
-                    todayDay?.shiftId === "OFF" ||
-                    todayDay?.status === "Hari Libur" ||
-                    todayDay?.dayName === "Sabtu" ||
-                    todayDay?.dayName === "Minggu";
+                    !isTodayCuti && Boolean(todayDay?.isOff || todayDay?.shiftId === "OFF");
                   const dayDate = todayDay?.dateFormatted || "";
                   const cutiDays = schedule.days.filter((d) => d.isLeaveApproved || d.shiftId === "CUTI");
 

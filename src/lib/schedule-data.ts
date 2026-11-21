@@ -373,7 +373,7 @@ export function getStoredWeeklySchedules(): WeeklyScheduleRecord[] {
         const isToday = day.isoDate === todayIso;
         if (day.isLeaveApproved || day.shiftId === "CUTI") {
           day.status = isToday ? "Hari Ini" : "Cuti Disetujui";
-        } else if (day.isOff || day.dayName === "Sabtu" || day.dayName === "Minggu") {
+        } else if (day.isOff || day.shiftId === "OFF") {
           day.status = isToday ? "Hari Ini" : "Hari Libur";
         } else {
           day.status = isToday ? "Hari Ini" : "Hari Kerja";
