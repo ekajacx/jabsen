@@ -759,10 +759,7 @@ async function main() {
             date: wd.date,
           },
         },
-        update: {
-          shiftId: assignedShift,
-          isOffDay: wd.isOffDay,
-        },
+        update: {},
         create: {
           employeeId: emp.id,
           shiftId: assignedShift,
