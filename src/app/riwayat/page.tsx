@@ -35,11 +35,18 @@ import {
 
 export interface AttendanceItem {
   id: string;
+  employeeId?: string;
+  employeeName?: string;
+  departmentName?: string;
+  positionTitle?: string;
   date: string;
   dateFormatted: string;
   checkIn: string;
   checkOut: string;
-  status: "Tepat Waktu" | "Terlambat" | "Luar Radius" | "Izin" | "Cuti";
+  checkInStatus: "Tepat Waktu" | "Datang Terlambat" | "--";
+  checkOutStatus: "Pulang Tepat Waktu" | "Pulang Cepat" | "Check Out Belum Dilakukan" | "Sedang Bekerja" | "--";
+  shiftTime?: string;
+  status: string;
   office: string;
   distanceMeters: number;
   latitude: number;
@@ -106,23 +113,88 @@ export default function RiwayatPage() {
             );
 
             if (userRecords.length > 0) {
-              const formattedStored: AttendanceItem[] = userRecords.map((item: any) => ({
-                id: item.id,
-                date: item.timestamp ? item.timestamp.split("T")[0] : new Date().toISOString().split("T")[0],
-                dateFormatted: item.dateFormatted || "Hari Ini",
-                checkIn: item.type === "masuk" ? item.timeFormatted : "--:-- WITA",
-                checkOut: item.type === "pulang" ? item.timeFormatted : "--:-- WITA",
-                status: item.status || "Tepat Waktu",
-                office: item.officeName || "Kantor Pusat Bali",
-                distanceMeters: item.distanceMeters || 18,
-                latitude: item.latitude || -8.7234,
-                longitude: item.longitude || 115.1768,
-                photoUrl: item.photoUrl || user.avatar || "",
-                verificationHash: item.verificationHash || "SHA256-VERIFIED-WORM",
-                livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
-                notes: item.notes || "Absensi Live Selfie",
-                correctionStatus: "None",
-              }));
+              const groupedLocal = new Map<string, any>();
+              userRecords.forEach((item: any) => {
+                const dKey = item.dateFormatted || (item.timestamp ? item.timestamp.split("T")[0] : "today");
+                if (!groupedLocal.has(dKey)) {
+                  groupedLocal.set(dKey, {
+                    id: item.id,
+                    date: item.timestamp ? item.timestamp.split("T")[0] : new Date().toISOString().split("T")[0],
+                    dateFormatted: item.dateFormatted || "Hari Ini",
+                    inItem: item.type === "masuk" ? item : null,
+                    outItem: item.type === "pulang" ? item : null,
+                    office: item.officeName || "Kantor Pusat Bali",
+                    distanceMeters: item.distanceMeters || 18,
+                    latitude: item.latitude || -8.7234,
+                    longitude: item.longitude || 115.1768,
+                    photoUrl: item.photoUrl || user.avatar || "",
+                    verificationHash: item.verificationHash || "SHA256-VERIFIED-WORM",
+                    notes: item.notes || "Absensi Live Selfie",
+                  });
+                } else {
+                  const existing = groupedLocal.get(dKey)!;
+                  if (item.type === "masuk" && !existing.inItem) {
+                    existing.inItem = item;
+                    existing.id = item.id;
+                  } else if (item.type === "pulang" && !existing.outItem) {
+                    existing.outItem = item;
+                  }
+                }
+              });
+
+              const todayIso = new Date().toISOString().split("T")[0];
+
+              const formattedStored: AttendanceItem[] = Array.from(groupedLocal.values()).map((g: any) => {
+                const inRec = g.inItem;
+                const outRec = g.outItem;
+
+                let checkIn = inRec ? inRec.timeFormatted : "--:-- WITA";
+                let checkOut = outRec ? outRec.timeFormatted : "--:-- WITA";
+
+                let checkInStatus: AttendanceItem["checkInStatus"] = "--";
+                if (inRec) {
+                  const inStatusLower = (inRec.status || "").toLowerCase();
+                  checkInStatus = inStatusLower.includes("lambat") ? "Datang Terlambat" : "Tepat Waktu";
+                }
+
+                let checkOutStatus: AttendanceItem["checkOutStatus"] = "--";
+                if (outRec) {
+                  const outStatusLower = (outRec.status || "").toLowerCase();
+                  checkOutStatus = outStatusLower.includes("cepat") ? "Pulang Cepat" : "Pulang Tepat Waktu";
+                } else if (inRec) {
+                  const isPast = g.date < todayIso;
+                  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+                  const isPastShift = g.date === todayIso && nowMinutes > 17 * 60;
+                  checkOutStatus = isPast || isPastShift ? "Check Out Belum Dilakukan" : "Sedang Bekerja";
+                }
+
+                let status = "Tepat Waktu";
+                if (checkOutStatus === "Check Out Belum Dilakukan") status = "Check Out Belum Dilakukan";
+                else if (checkInStatus === "Datang Terlambat" && checkOutStatus === "Pulang Cepat") status = "Terlambat & Pulang Cepat";
+                else if (checkInStatus === "Datang Terlambat") status = "Terlambat";
+                else if (checkOutStatus === "Pulang Cepat") status = "Pulang Cepat";
+                else if (checkOutStatus === "Sedang Bekerja") status = "Sedang Bekerja";
+
+                return {
+                  id: g.id,
+                  date: g.date,
+                  dateFormatted: g.dateFormatted,
+                  checkIn,
+                  checkOut,
+                  checkInStatus,
+                  checkOutStatus,
+                  status,
+                  office: g.office,
+                  distanceMeters: g.distanceMeters,
+                  latitude: g.latitude,
+                  longitude: g.longitude,
+                  photoUrl: g.photoUrl,
+                  verificationHash: g.verificationHash,
+                  livenessResult: "4/4 Gerakan Acak Lolos (MediaPipe)",
+                  notes: g.notes,
+                  correctionStatus: "None",
+                };
+              });
 
               setRecords(formattedStored);
               setIsLoading(false);
@@ -154,31 +226,65 @@ export default function RiwayatPage() {
       r.id.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      filterStatus === "Semua" ? true : r.status === filterStatus;
+      filterStatus === "Semua"
+        ? true
+        : filterStatus === "Tepat Waktu"
+        ? r.checkInStatus === "Tepat Waktu" || r.checkOutStatus === "Pulang Tepat Waktu"
+        : filterStatus === "Terlambat"
+        ? r.checkInStatus === "Datang Terlambat" || r.status.includes("Terlambat")
+        : filterStatus === "Pulang Cepat"
+        ? r.checkOutStatus === "Pulang Cepat" || r.status.includes("Cepat")
+        : filterStatus === "Belum Check Out"
+        ? r.checkOutStatus === "Check Out Belum Dilakukan"
+        : r.status === filterStatus;
 
     return matchesSearch && matchesStatus;
   });
 
-  // Statistik Ringkas
-  const totalHadir = records.filter((r) => r.status === "Tepat Waktu" || r.status === "Terlambat").length;
-  const tepatWaktu = records.filter((r) => r.status === "Tepat Waktu").length;
-  const terlambat = records.filter((r) => r.status === "Terlambat").length;
+  // Statistik Ringkas Harian
+  const totalHadir = records.filter((r) => r.checkIn !== "--:-- WITA").length;
+  const tepatWaktu = records.filter((r) => r.checkInStatus === "Tepat Waktu").length;
+  const terlambat = records.filter((r) => r.checkInStatus === "Datang Terlambat").length;
   const cutiIzin = records.filter((r) => r.status === "Cuti" || r.status === "Izin").length;
 
-  const getStatusBadge = (status: AttendanceItem["status"]) => {
-    switch (status) {
-      case "Tepat Waktu":
-        return <Badge variant="success">{status}</Badge>;
-      case "Terlambat":
-        return <Badge variant="warning">{status}</Badge>;
-      case "Luar Radius":
-        return <Badge variant="destructive">{status}</Badge>;
-      case "Cuti":
-      case "Izin":
-        return <Badge variant="info">{status}</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
+  const renderStatusBadges = (item: AttendanceItem) => {
+    return (
+      <div className="flex flex-col gap-1 items-start">
+        {/* Status Check In */}
+        {item.checkInStatus === "Tepat Waktu" ? (
+          <Badge variant="success" size="sm" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold whitespace-nowrap">
+            Masuk: Tepat Waktu
+          </Badge>
+        ) : item.checkInStatus === "Datang Terlambat" ? (
+          <Badge variant="warning" size="sm" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 font-semibold whitespace-nowrap">
+            Masuk: Datang Terlambat
+          </Badge>
+        ) : (
+          <span className="text-[10px] text-gray-400 italic">Masuk: -</span>
+        )}
+
+        {/* Status Check Out */}
+        {item.checkOutStatus === "Pulang Tepat Waktu" ? (
+          <Badge variant="success" size="sm" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold whitespace-nowrap">
+            Pulang: Pulang Tepat Waktu
+          </Badge>
+        ) : item.checkOutStatus === "Pulang Cepat" ? (
+          <Badge variant="warning" size="sm" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 font-semibold whitespace-nowrap">
+            Pulang: Pulang Cepat
+          </Badge>
+        ) : item.checkOutStatus === "Check Out Belum Dilakukan" ? (
+          <Badge variant="destructive" size="sm" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 font-semibold whitespace-nowrap">
+            Check Out Belum Dilakukan
+          </Badge>
+        ) : item.checkOutStatus === "Sedang Bekerja" ? (
+          <Badge variant="info" size="sm" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 font-semibold whitespace-nowrap">
+            Sedang Bekerja
+          </Badge>
+        ) : (
+          <span className="text-[10px] text-gray-400 italic">Pulang: -</span>
+        )}
+      </div>
+    );
   };
 
   // Submit Pengajuan Koreksi Absensi (PRD 5.11 - 2 Tahap Sequential SPV -> HRD)
@@ -363,7 +469,7 @@ export default function RiwayatPage() {
 
             {/* Filter Status Tabs */}
             <div className="flex flex-wrap items-center gap-1.5">
-              {["Semua", "Tepat Waktu", "Terlambat", "Cuti"].map((st) => (
+              {["Semua", "Tepat Waktu", "Terlambat", "Pulang Cepat", "Belum Check Out"].map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -384,14 +490,14 @@ export default function RiwayatPage() {
         {/* Tabel Riwayat Kehadiran (Desktop View - Fixed Columns & Zero Layout Shift) */}
         <div className="hidden lg:block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-sm dark:border-gray-800 dark:bg-gray-900">
           <table className="w-full table-fixed text-left text-xs">
-            <colgroup><col className="w-[20%]" /><col className="w-[13%]" /><col className="w-[13%]" /><col className="w-[22%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[10%]" /></colgroup>
+            <colgroup><col className="w-[18%]" /><col className="w-[14%]" /><col className="w-[14%]" /><col className="w-[18%]" /><col className="w-[18%]" /><col className="w-[9%]" /><col className="w-[9%]" /></colgroup>
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100 uppercase tracking-wider text-[11px] font-semibold dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-5 py-3.5">Tanggal</th>
                 <th className="px-5 py-3.5">Jam Masuk</th>
                 <th className="px-5 py-3.5">Jam Pulang</th>
                 <th className="px-5 py-3.5">Lokasi / Geofence</th>
-                <th className="px-5 py-3.5">Status</th>
+                <th className="px-5 py-3.5">Status Kehadiran</th>
                 <th className="px-5 py-3.5">Koreksi</th>
                 <th className="px-5 py-3.5 text-right">Aksi</th>
               </tr>
@@ -439,7 +545,7 @@ export default function RiwayatPage() {
                         <span className="text-[10px] text-gray-400 truncate">Jarak: {item.distanceMeters}m dari kantor</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4">{getStatusBadge(item.status)}</td>
+                    <td className="px-5 py-4">{renderStatusBadges(item)}</td>
                     <td className="px-5 py-4">
                       {item.correctionStatus === "Pending SPV" ? (
                         <Badge variant="warning" size="sm" className="gap-1 animate-pulse">
@@ -509,9 +615,9 @@ export default function RiwayatPage() {
             filteredRecords.map((item) => (
             <Card key={item.id} className="border-gray-200 dark:border-gray-800">
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <span className="font-bold text-sm text-gray-900 dark:text-white">{item.dateFormatted}</span>
-                  {getStatusBadge(item.status)}
+                  {renderStatusBadges(item)}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 rounded-xl p-2.5 dark:bg-gray-800/60">
@@ -592,9 +698,9 @@ export default function RiwayatPage() {
                 <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
                   {selectedRecord.dateFormatted}
                 </p>
-                <div className="mt-1 flex items-center gap-2">
-                  {getStatusBadge(selectedRecord.status)}
-                  <span className="text-xs text-gray-500">
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {renderStatusBadges(selectedRecord)}
+                  <span className="text-xs text-gray-500 mt-1">
                     Masuk: <strong>{selectedRecord.checkIn}</strong> &bull; Pulang: <strong>{selectedRecord.checkOut}</strong>
                   </span>
                 </div>

@@ -112,7 +112,7 @@ interface AttendanceRecord {
   isWithinRadius: boolean;
   photoUrl: string;
   verificationHash: string;
-  status: "Tepat Waktu" | "Terlambat" | "Pulang Cepat" | "Luar Radius";
+  status: "Tepat Waktu" | "Terlambat" | "Datang Terlambat" | "Pulang Cepat" | "Pulang Tepat Waktu" | "Luar Radius" | string;
 }
 
 export default function AbsenPage() {
@@ -655,12 +655,16 @@ export default function AbsenPage() {
 
     let calculatedStatus: AttendanceRecord["status"] = "Tepat Waktu";
     if (attendanceType === "masuk") {
-      if (hours > 8 || (hours === 8 && minutes > 30)) {
-        calculatedStatus = "Terlambat";
+      if (hours > 8 || (hours === 8 && minutes > 0)) {
+        calculatedStatus = "Datang Terlambat";
+      } else {
+        calculatedStatus = "Tepat Waktu";
       }
     } else {
       if (hours < 17) {
         calculatedStatus = "Pulang Cepat";
+      } else {
+        calculatedStatus = "Pulang Tepat Waktu";
       }
     }
 

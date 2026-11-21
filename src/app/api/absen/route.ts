@@ -138,22 +138,43 @@ export async function POST(req: NextRequest) {
     const maxRadius = targetOffice?.radiusMeters || 100;
     const isWithinRadius = distanceMeters !== undefined ? distanceMeters <= maxRadius : true;
 
-    // 4. Tentukan Status Kehadiran (Tepat Waktu / Terlambat / Pulang Cepat)
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    let status: "Tepat Waktu" | "Terlambat" | "Pulang Cepat" | "Luar Radius" = "Tepat Waktu";
+    // 4. Tentukan Status Kehadiran (Tepat Waktu / Datang Terlambat / Pulang Cepat / Pulang Tepat Waktu) berdasarkan shift
+    const assignment = await prisma.scheduleAssignment.findUnique({
+      where: {
+        employeeId_date: {
+          employeeId,
+          date: startOfDay,
+        },
+      },
+      include: { shift: true },
+    });
+
+    const shiftStartTime = assignment && !assignment.isOffDay ? assignment.shift.startTime : "08:00";
+    const shiftEndTime = assignment && !assignment.isOffDay ? assignment.shift.endTime : "17:00";
+
+    const [shiftStartH, shiftStartM] = shiftStartTime.split(":").map(Number);
+    const shiftStartMinutes = shiftStartH * 60 + shiftStartM;
+
+    const [shiftEndH, shiftEndM] = shiftEndTime.split(":").map(Number);
+    const shiftEndMinutes = shiftEndH * 60 + shiftEndM;
+
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    let status = "Tepat Waktu";
 
     if (!isWithinRadius) {
       status = "Luar Radius";
     } else if (type === "masuk") {
-      // Masuk setelah jam 08:30 dianggap Terlambat
-      if (hours > 8 || (hours === 8 && minutes > 30)) {
-        status = "Terlambat";
+      if (nowMinutes <= shiftStartMinutes) {
+        status = "Tepat Waktu";
+      } else {
+        status = "Datang Terlambat";
       }
     } else if (type === "pulang") {
-      // Pulang sebelum jam 17:00 dianggap Pulang Cepat
-      if (hours < 17) {
+      if (nowMinutes < shiftEndMinutes) {
         status = "Pulang Cepat";
+      } else {
+        status = "Pulang Tepat Waktu";
       }
     }
 
