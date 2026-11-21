@@ -85,6 +85,12 @@ export async function PUT(req: NextRequest) {
     const { type, profileData, officeData, shiftData, actorName, actorRole } = body;
 
     if (type === "profile" && profileData) {
+      if (actorRole && !["Admin IT", "CEO"].includes(actorRole)) {
+        return NextResponse.json(
+          { success: false, message: "Akses ditolak: Hanya Direktur Utama (CEO) dan Admin IT yang berwenang mengubah profil instansi resmi." },
+          { status: 403 }
+        );
+      }
       const updated = await prisma.companyProfile.upsert({
         where: { id: "default-company" },
         update: {
@@ -130,6 +136,12 @@ export async function PUT(req: NextRequest) {
     }
 
     if (type === "office" && officeData) {
+      if (actorRole && !["Admin IT", "CEO"].includes(actorRole)) {
+        return NextResponse.json(
+          { success: false, message: "Akses ditolak: Hanya Admin IT dan CEO yang berwenang mengubah koordinat lokasi Geofence kantor." },
+          { status: 403 }
+        );
+      }
       const officeId = officeData.id || "office-pusat-bali";
       const updatedOffice = await prisma.officeLocation.upsert({
         where: { id: officeId },
@@ -172,6 +184,12 @@ export async function PUT(req: NextRequest) {
     }
 
     if (type === "shift" && shiftData) {
+      if (actorRole && !["Admin IT", "CEO", "HRD", "GM"].includes(actorRole)) {
+        return NextResponse.json(
+          { success: false, message: "Akses ditolak: Hanya Manajemen/Admin yang berwenang mengubah pengaturan shift." },
+          { status: 403 }
+        );
+      }
       const shiftId = shiftData.id || `shift-${Date.now()}`;
       const updatedShift = await prisma.shift.upsert({
         where: { id: shiftId },
@@ -210,6 +228,12 @@ export async function PUT(req: NextRequest) {
     }
 
     if (type === "delete-shift" && shiftData?.id) {
+      if (actorRole && !["Admin IT", "CEO", "HRD", "GM"].includes(actorRole)) {
+        return NextResponse.json(
+          { success: false, message: "Akses ditolak: Hanya Manajemen/Admin yang berwenang menghapus shift." },
+          { status: 403 }
+        );
+      }
       // Periksa apakah shift dipakai di ScheduleAssignment
       await prisma.scheduleAssignment.deleteMany({
         where: { shiftId: shiftData.id },

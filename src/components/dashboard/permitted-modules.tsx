@@ -208,7 +208,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Parameter radius GPS kantor, toleransi keterlambatan, dan tantangan acak wajah.",
     permissionNote: "Konfigurasi Inti Absensi",
-    allowedRoles: ["Admin IT", "CEO", "HRD"],
+    allowedRoles: ["Admin IT", "CEO", "HRD", "GM"],
   },
   {
     id: "mod-audit-log",

@@ -1,5 +1,7 @@
 "use client";
 
+import { INITIAL_PERMISSIONS } from "./rbac-baseline";
+
 export type DataScope = "Own" | "Subord" | "Dept" | "Org" | "None";
 
 export interface PermissionRule {
@@ -75,8 +77,7 @@ export function checkPermission(
 ): boolean {
   if (typeof window === "undefined") return fallbackAllowed;
   try {
-    const matrix = getStoredRbacMatrix();
-    if (!matrix) return fallbackAllowed;
+    const matrix = getStoredRbacMatrix() || INITIAL_PERMISSIONS;
     const rule = matrix.find((r) => r.code === permissionCode);
     if (!rule || !rule.roles) return fallbackAllowed;
     const roleConfig = (rule.roles as Record<string, { allowed: boolean; scope?: string }>)[role];

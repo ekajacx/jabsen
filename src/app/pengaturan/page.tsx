@@ -60,6 +60,9 @@ function PengaturanContent() {
   const initialTab = searchParams.get("tab") || "perusahaan";
 
   const isAuthorized = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
+  const canManageGeofence = ["Admin IT", "CEO"].includes(user?.role || "");
+  const canManageCompany = ["Admin IT", "CEO"].includes(user?.role || "");
+  const canManageShift = ["Admin IT", "CEO", "HRD", "GM"].includes(user?.role || "");
 
   // Tab Utama: "perusahaan" | "lokasi" | "shift"
   const [activeTab, setActiveTab] = useState<string>(
@@ -222,6 +225,10 @@ function PengaturanContent() {
 
   const handleSaveCompany = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageCompany) {
+      showToast("error", "Akses ditolak: Hanya Direktur Utama (CEO) dan Admin IT yang berwenang mengubah profil instansi.");
+      return;
+    }
     setIsSavingCompany(true);
     try {
       const res = await fetch("/api/pengaturan", {
@@ -280,6 +287,10 @@ function PengaturanContent() {
   };
 
   const handleSaveGeofence = async () => {
+    if (!canManageGeofence) {
+      showToast("error", "Akses ditolak: Hanya Admin IT dan CEO yang berwenang mengubah parameter Geofence GPS kantor.");
+      return;
+    }
     setIsSavingOffice(true);
     try {
       const res = await fetch("/api/pengaturan", {
@@ -800,15 +811,21 @@ function PengaturanContent() {
                     </div>
 
                     <div className="pt-2 flex justify-end">
-                      <Button
-                        type="submit"
-                        disabled={isSavingCompany}
-                        size="sm"
-                        className="rounded-full px-5 text-xs font-semibold"
-                      >
-                        <Save className="size-3.5 mr-1.5" />
-                        {isSavingCompany ? "Menyimpan..." : "Simpan Data Perusahaan"}
-                      </Button>
+                      {canManageCompany ? (
+                        <Button
+                          type="submit"
+                          disabled={isSavingCompany}
+                          size="sm"
+                          className="rounded-full px-5 text-xs font-semibold"
+                        >
+                          <Save className="size-3.5 mr-1.5" />
+                          {isSavingCompany ? "Menyimpan..." : "Simpan Data Perusahaan"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-900/60 font-medium">
+                          Modus Lihat Saja: Pengubahan profil instansi resmi hanya dapat dilakukan oleh Direktur Utama (CEO) dan Admin IT.
+                        </span>
+                      )}
                     </div>
                   </form>
                 </CardContent>
@@ -1000,14 +1017,20 @@ function PengaturanContent() {
                   </div>
 
                   <div className="pt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleSaveGeofence}
-                      className="flex items-center gap-2 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 text-xs font-semibold shadow-sm transition-all"
-                    >
-                      <Save className="size-3.5" />
-                      Simpan Pengaturan Lokasi
-                    </button>
+                    {canManageGeofence ? (
+                      <button
+                        type="button"
+                        onClick={handleSaveGeofence}
+                        className="flex items-center gap-2 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 text-xs font-semibold shadow-sm transition-all"
+                      >
+                        <Save className="size-3.5" />
+                        Simpan Pengaturan Lokasi
+                      </button>
+                    ) : (
+                      <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-900/60 font-medium">
+                        Parameter Geofence Terkunci: Koordinat GPS dan radius absensi kantor hanya dapat diubah oleh Admin IT dan CEO.
+                      </span>
+                    )}
                   </div>
                 </CardContent>
               </Card>

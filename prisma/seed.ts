@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { INITIAL_PERMISSIONS } from "../src/lib/rbac-baseline";
 
 const prisma = new PrismaClient();
 
@@ -765,6 +766,22 @@ async function main() {
           shiftId: assignedShift,
           date: wd.date,
           isOffDay: wd.isOffDay,
+        },
+      });
+    }
+  }
+
+  // 10. Matriks Hak Akses & Otorisasi (RBAC)
+  console.log("🛡️ Menyimpan 372 baseline hak akses peran (RBAC)...");
+  for (const item of INITIAL_PERMISSIONS) {
+    for (const [role, conf] of Object.entries(item.roles)) {
+      await prisma.rolePermission.upsert({
+        where: { role_permission: { role, permission: item.code } },
+        update: {},
+        create: {
+          role,
+          permission: item.code,
+          isAllowed: conf.allowed,
         },
       });
     }

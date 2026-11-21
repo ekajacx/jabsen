@@ -74,6 +74,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { id, title, departmentId, parentId, level, actor } = body;
 
+    const actorRole = actor?.role;
+    if (actorRole && !["Admin IT", "CEO", "HRD", "GM"].includes(actorRole)) {
+      return NextResponse.json(
+        { success: false, message: "Akses ditolak: Hanya Manajemen/Admin yang memiliki wewenang membuat jabatan" },
+        { status: 403 }
+      );
+    }
+
     if (!title || !departmentId) {
       return NextResponse.json(
         { success: false, message: "Judul jabatan dan departemen wajib diisi" },
@@ -130,6 +138,14 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, title, departmentId, parentId, level, holderNik, holderName, actor } = body;
+
+    const actorRole = actor?.role;
+    if (actorRole && !["Admin IT", "CEO", "HRD", "GM"].includes(actorRole)) {
+      return NextResponse.json(
+        { success: false, message: "Akses ditolak: Hanya Manajemen/Admin yang memiliki wewenang memperbarui jabatan" },
+        { status: 403 }
+      );
+    }
 
     if (!id) {
       return NextResponse.json(
@@ -209,6 +225,14 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const actorRole = req.headers.get("x-actor-role") || searchParams.get("actorRole");
+
+    if (actorRole && !["Admin IT", "CEO", "HRD", "GM"].includes(actorRole)) {
+      return NextResponse.json(
+        { success: false, message: "Akses ditolak: Hanya Manajemen/Admin yang memiliki wewenang menghapus jabatan" },
+        { status: 403 }
+      );
+    }
 
     if (!id) {
       return NextResponse.json(

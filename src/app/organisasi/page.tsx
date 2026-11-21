@@ -180,6 +180,14 @@ export default function OrganisasiPage() {
 
   // Buka Modal Edit
   const handleOpenEditModal = (pos: PositionNode) => {
+    if (!canManageOrg) {
+      showAlert({
+        title: "Akses Dibatasi",
+        message: "Hanya Manajemen (Admin IT, CEO, HRD, GM) yang memiliki wewenang mengedit posisi dan struktur organisasi.",
+        type: "error",
+      });
+      return;
+    }
     setEditingPosition(pos);
     setFormTitle(pos.title);
     setFormDeptId(pos.departmentId);
@@ -219,6 +227,14 @@ export default function OrganisasiPage() {
 
   // Buka Modal Tambah Karyawan Baru pada Kotak Biru Departemen
   const handleOpenAddEmployeeModal = (dept: Department) => {
+    if (!canManageOrg) {
+      showAlert({
+        title: "Akses Dibatasi",
+        message: "Hanya Manajemen (Admin IT, CEO, HRD, GM) yang memiliki wewenang menambahkan karyawan ke struktur organisasi.",
+        type: "error",
+      });
+      return;
+    }
     setSelectedDeptForAdd(dept);
     setEmpLevel("Kepala");
     setEmpTargetPositionId("");
@@ -1307,7 +1323,7 @@ function NodeCard({
             </div>
 
             {/* Tombol Hapus jika lebih dari 1 karyawan dalam kotak */}
-            {holders.length > 1 && onRemoveHolder && (
+            {canEdit && holders.length > 1 && onRemoveHolder && (
               <button
                 type="button"
                 onClick={(e) => {
