@@ -316,7 +316,7 @@ export function Header({ onMenuClick, pageTitle = "Dashboard" }: HeaderProps) {
             type="button"
             onClick={() => setIsPovModalOpen(true)}
             className="group flex items-center gap-2 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/80 via-blue-50/70 to-indigo-50/80 px-2.5 py-1.5 text-xs font-medium text-indigo-950 shadow-sm hover:border-indigo-300 hover:from-indigo-100 hover:to-blue-100 transition-all dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-200"
-            title="Buka Selector POV (27 Karyawan)"
+            title={`Buka Selector POV (${allProfiles.length} Karyawan)`}
           >
             <div suppressHydrationWarning className="relative">
               <img

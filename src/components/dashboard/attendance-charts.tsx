@@ -78,8 +78,8 @@ export function WeeklyTrendChart({ role, period, departmentName = "Operasional",
             {isStaff 
               ? `Pencatatan waktu check-in ${userName} dibandingkan batas jam masuk 08:00 WITA.`
               : isSpv 
-              ? `Monitoring tingkat kepatuhan dan presensi 5 anggota tim ${departmentName}.`
-              : "Ringkasan rasio kehadiran 27 karyawan seluruh departemen sepekan ini."}
+              ? `Monitoring tingkat kepatuhan dan presensi ${spvData[0]?.total ?? 5} anggota tim ${departmentName}.`
+              : `Ringkasan rasio kehadiran ${companyData[0]?.total ?? 27} karyawan seluruh departemen sepekan ini.`}
           </CardDescription>
         </div>
 
@@ -422,11 +422,14 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
   // Tentukan dataset aktif berdasarkan tab
   const activeDataset = useMemo(() => {
     if (donutTab === "department") {
+      const dirCount = departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length;
+      const deptCount = departmentSegments.length - dirCount;
+      const totalStaff = departmentSegments.reduce((acc, d) => acc + d.count, 0);
       return {
         segments: departmentSegments,
-        headlineRate: "7 Unit",
-        headlineDesc: "6 Dept + 1 Dir",
-        totalScope: 27,
+        headlineRate: `${departmentSegments.length} Unit`,
+        headlineDesc: `${deptCount} Dept${dirCount > 0 ? ` + ${dirCount} Dir` : ""}`,
+        totalScope: totalStaff,
       };
     }
     return statusSegments;
@@ -469,7 +472,9 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
               <Sparkles className="size-4" />
             </div>
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
-              {donutTab === "department" ? "Komposisi Departemen (6+1)" : "Distribusi Presensi Hari Ini"}
+              {donutTab === "department"
+                ? `Komposisi Departemen (${departmentSegments.length - departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length}+${departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length})`
+                : "Distribusi Presensi Hari Ini"}
             </CardTitle>
           </div>
 
@@ -487,7 +492,7 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
             >
-              Departemen (6+1)
+              Departemen ({departmentSegments.length - departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length}+{departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length})
             </button>
             <button
               type="button"
@@ -508,7 +513,7 @@ export function DonutStatusChart({ role, departmentName = "Operasional" }: Donut
 
         <CardDescription className="text-xs text-gray-500 mt-1">
           {donutTab === "department"
-            ? "Proporsi 27 personel aktif pada 6 departemen operasional & 1 jajaran direksi."
+            ? `Proporsi ${activeDataset.totalScope} personel aktif pada ${departmentSegments.length - departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length} departemen operasional & ${departmentSegments.filter((d) => d.label.toLowerCase().includes("direksi")).length} jajaran direksi.`
             : role === "Staff"
             ? "Perbandingan proporsi kehadiran dan hak cuti tahunan."
             : role === "Supervisor"
@@ -701,7 +706,7 @@ export function DepartmentComparisonChart({ role }: DepartmentComparisonChartPro
           </CardDescription>
         </div>
         <Badge variant="info" size="sm" className="hidden sm:inline-flex">
-          6 Departemen + 1 Direksi (7 Unit)
+          {departments.length - departments.filter((d) => d.name.toLowerCase().includes("direksi")).length} Departemen + {departments.filter((d) => d.name.toLowerCase().includes("direksi")).length} Direksi ({departments.length} Unit)
         </Badge>
       </CardHeader>
 

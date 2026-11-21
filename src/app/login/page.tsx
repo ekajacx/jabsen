@@ -589,7 +589,7 @@ export default function LoginPage() {
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 p-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300"
               >
                 <Users className="size-3.5" />
-                <span>Pilih dari 27 Profil Karyawan Lengkap (POV)</span>
+                <span>Pilih dari {allProfiles.length} Profil Karyawan Lengkap (POV)</span>
                 <ChevronRight className="size-3.5 ml-auto" />
               </button>
             </div>

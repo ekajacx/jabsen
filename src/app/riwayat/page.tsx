@@ -9,6 +9,7 @@ import { exportAttendanceHistoryToExcel } from "@/lib/excel-export";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
 import { useModal } from "@/context/modal-context";
+import { useSystemBadges } from "@/lib/badge-data";
 import {
   History,
   Calendar,
@@ -53,6 +54,7 @@ export interface AttendanceItem {
 export default function RiwayatPage() {
   const { user } = useAuth();
   const { showAlert } = useModal();
+  const { badges } = useSystemBadges();
   const [records, setRecords] = useState<AttendanceItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -316,7 +318,9 @@ export default function RiwayatPage() {
               <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {tepatWaktu} <span className="text-xs font-normal text-emerald-600/70">Hari</span>
               </p>
-              <span className="text-[10px] text-emerald-600 font-medium">95% Rasio Kedisiplinan</span>
+              <span className="text-[10px] text-emerald-600 font-medium">
+                {totalHadir > 0 ? Math.round((tepatWaktu / totalHadir) * 100) : 100}% Rasio Kedisiplinan
+              </span>
             </CardContent>
           </Card>
 
@@ -336,7 +340,9 @@ export default function RiwayatPage() {
               <p className="mt-1 text-2xl font-bold text-brand-600 dark:text-brand-400">
                 {cutiIzin} <span className="text-xs font-normal text-brand-600/70">Hari</span>
               </p>
-              <span className="text-[10px] text-gray-400 font-medium">Tersisa 10 hari saldo</span>
+              <span className="text-[10px] text-gray-400 font-medium">
+                Tersisa {badges.userLeaveBalance} hari saldo
+              </span>
             </CardContent>
           </Card>
         </div>

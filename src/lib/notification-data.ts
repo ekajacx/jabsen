@@ -246,7 +246,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   {
     id: "notif-ceo-001",
     title: "Laporan Eksekutif Presensi Harian",
-    message: "Tingkat kehadiran perusahaan hari ini mencapai 92.6% (25 dari 27 total karyawan tercatat hadir).",
+    message: "Tingkat kehadiran perusahaan hari ini tercatat optimal pada ringkasan eksekutif.",
     category: "presensi",
     targetUrl: "/laporan",
     createdAt: "20 menit yang lalu",
@@ -278,7 +278,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   },
   {
     id: "notif-ceo-004",
-    title: "Direktori Personalia 27 Karyawan",
+    title: "Direktori Personalia Karyawan",
     message: "Seluruh struktur hirarki dari CEO hingga staf operasional telah tersinkronisasi lengkap.",
     category: "sistem",
     targetUrl: "/karyawan",

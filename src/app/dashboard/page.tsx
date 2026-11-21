@@ -112,7 +112,7 @@ export default function DashboardPage() {
         {
           title: "Status Jam Kerja",
           value: "Reguler",
-          change: "08:00 - 17:00 WITA",
+          change: `${dbStats?.activeShift ?? "08:00 - 17:00"} WITA`,
           icon: Users,
           color: "text-indigo-500",
           bgColor: "bg-indigo-50 dark:bg-indigo-950/40",
@@ -157,7 +157,7 @@ export default function DashboardPage() {
         {
           title: "Kepatuhan Geofence",
           value: "100%",
-          change: "Radius kantor 100m",
+          change: `Radius kantor ${dbStats?.geofenceRadius ?? 100}m`,
           icon: ShieldCheck,
           color: "text-teal-500",
           bgColor: "bg-teal-50 dark:bg-teal-950/40",
@@ -193,7 +193,7 @@ export default function DashboardPage() {
         },
         {
           title: "Radar GPS Geofence",
-          value: "Aktif 100m",
+          value: `Aktif ${dbStats?.geofenceRadius ?? 100}m`,
           change: "Kantor Pusat Bali",
           icon: MapPin,
           color: "text-sky-500",
@@ -330,17 +330,17 @@ export default function DashboardPage() {
                 {isStaff && " Seluruh data di bawah ini mencerminkan catatan presensi dan saldo cuti Anda."}
                 {isSpv && " Dashboard menampilkan metrik kepatuhan tim dan antrean permohonan yang memerlukan persetujuan Anda."}
                 {isAdmin && " Panel kendali menampilkan pengawasan integritas WORM SHA-256 dan device binding 1 HP = 1 Akun."}
-                {(isHRD || isExecutive) && " Dashboard menyajikan ringkasan strategis 27 personel seluruh divisi dan tren kedisiplinan organisasi."}
+                {(isHRD || isExecutive) && ` Dashboard menyajikan ringkasan strategis ${dbStats?.totalEmployees ?? 27} personel seluruh divisi dan tren kedisiplinan organisasi.`}
               </p>
               <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-brand-100">
                 <span className="flex items-center gap-1.5">
                   <MapPin className="size-3.5 text-emerald-300" />
-                  {user.officeLocation} (Radius 100m)
+                  {user.officeLocation} (Radius {dbStats?.geofenceRadius ?? 100}m)
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="size-3.5 text-amber-300" />
-                  Shift Normal: 08:00 - 17:00 WITA
+                  Shift Normal: {dbStats?.activeShift ?? "08:00 - 17:00"} WITA
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1.5">
@@ -370,7 +370,7 @@ export default function DashboardPage() {
                   onClick={() => router.push("/approval/cuti")}
                 >
                   <FileCheck2 className="size-5" />
-                  Review Approval Tim (2)
+                  Review Approval Tim ({(dbStats?.pendingLeaves ?? 0) + (dbStats?.pendingCorrections ?? 0)})
                 </Button>
               ) : isHRD ? (
                 <Button
@@ -380,7 +380,7 @@ export default function DashboardPage() {
                   onClick={() => router.push("/enrollment-review")}
                 >
                   <Eye className="size-5" />
-                  Verifikasi Wajah Baru (2)
+                  Verifikasi Wajah Baru ({dbStats?.pendingEnrollments ?? 0})
                 </Button>
               ) : isAdmin ? (
                 <Button
@@ -479,7 +479,9 @@ export default function DashboardPage() {
                 className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 space-y-1 cursor-pointer hover:border-brand-400 transition-all"
               >
                 <span className="text-gray-500">Sisa Hak Cuti Tahunan:</span>
-                <div className="text-lg font-bold text-brand-600 dark:text-brand-400">9 Hari Tersisa</div>
+                <div className="text-lg font-bold text-brand-600 dark:text-brand-400">
+                  {dbStats?.userLeaveBalance ?? 12} Hari Tersisa
+                </div>
                 <span className="text-[11px] text-gray-400">Dari total kuota 12 hari/tahun &bull; Klik untuk ajukan</span>
               </div>
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 space-y-1">
@@ -646,7 +648,9 @@ export default function DashboardPage() {
               <CardContent className="space-y-2.5 pt-2 text-xs">
                 <div className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800">
                   <span className="text-gray-500">Radius Geofence:</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">100 Meter (Wajib)</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {dbStats?.geofenceRadius ?? 100} Meter (Wajib)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800">
                   <span className="text-gray-500">Tantangan Wajah:</span>
