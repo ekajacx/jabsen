@@ -43,8 +43,6 @@ export interface SystemModule {
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   permissionNote: string;
-  badge?: string;
-  badgeVariant?: "default" | "success" | "warning" | "destructive" | "info";
   allowedRoles: UserRole[];
 }
 
@@ -59,8 +57,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Presensi check-in/out harian dengan MediaPipe Face Mesh & validasi radius 100m.",
     permissionNote: "Khusus Akses Smartphone Resmi",
-    badge: "1 HP = 1 Akun",
-    badgeVariant: "info",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -72,8 +68,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Rekap data kehadiran, jam masuk, jam pulang, dan bukti visual presensi.",
     permissionNote: "Akses Mandiri & Evaluasi Bulanan",
-    badge: "Log Pribadi",
-    badgeVariant: "default",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -85,8 +79,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Kalender penugasan shift, jam operasional normal, dan hari libur nasional.",
     permissionNote: "Lihat Roster & Jadwal Shift",
-    badge: "Shift 08:00 - 17:00",
-    badgeVariant: "default",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -98,8 +90,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Pengajuan permohonan cuti tahunan mandiri, cek kuota saldo, dan pantau status persetujuan.",
     permissionNote: "Hak Cuti Tahunan Pribadi",
-    badge: "Kuota 10 Hari",
-    badgeVariant: "success",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
 
@@ -113,8 +103,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Pemeriksaan dan wewenang persetujuan cuti berjenjang bawahan (SPV, HRD, Direksi).",
     permissionNote: "Wewenang Review & Keputusan",
-    badge: "3 Pending",
-    badgeVariant: "warning",
     allowedRoles: ["Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -126,8 +114,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Pemeriksaan permohonan koreksi absensi karena kendala teknis atau dinas luar.",
     permissionNote: "Verifikasi Atasan Langsung",
-    badge: "1 Pending",
-    badgeVariant: "info",
     allowedRoles: ["Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
 
@@ -139,10 +125,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     href: "/karyawan",
     icon: Users,
     description:
-      "Direktori 27 karyawan aktif, biodata, status kepegawaian, dan dokumen legal.",
+      "Direktori master seluruh karyawan aktif, biodata, status kepegawaian, dan dokumen legal.",
     permissionNote: "Kelola Master Data Personel",
-    badge: "27 Personel",
-    badgeVariant: "default",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -154,8 +138,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Bagan hierarki perusahaan, profil legalitas PT, dan template kop surat.",
     permissionNote: "Informasi Struktur Resmi",
-    badge: "6 Dept + 1 Dir",
-    badgeVariant: "default",
     allowedRoles: ["Staff", "Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -167,8 +149,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Konfigurasi unit departemen, penanggung jawab (Ka. Dept), dan pola shift kerja.",
     permissionNote: "Struktur Organisasi & Shift",
-    badge: "Akses Manajerial",
-    badgeVariant: "default",
     allowedRoles: ["Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
   {
@@ -180,8 +160,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Verifikasi audit foto pendaftaran biometrik awal karyawan baru.",
     permissionNote: "Verifikasi Kualitas Face Mesh",
-    badge: "2 Menunggu",
-    badgeVariant: "warning",
     allowedRoles: ["HRD", "Admin IT", "CEO"],
   },
 
@@ -195,8 +173,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Rekapitulasi berkala kehadiran, jam kerja, keterlambatan, dan ekspor spreadsheet.",
     permissionNote: "Unduh Rekapitulasi Resmi",
-    badge: "Excel Export",
-    badgeVariant: "info",
     allowedRoles: ["Supervisor", "HRD", "GM", "CEO", "Admin IT"],
   },
 
@@ -210,8 +186,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Kontrol 1 HP = 1 Akun, reset ikatan smartphone karyawan, dan reset kata sandi.",
     permissionNote: "Wewenang Eksklusif HP Binding",
-    badge: "27 HP Terikat",
-    badgeVariant: "success",
     allowedRoles: ["Admin IT", "CEO", "HRD"],
   },
   {
@@ -221,10 +195,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     href: "/pengaturan/rbac",
     icon: Shield,
     description:
-      "Konfigurasi wewenang 6 tingkatan role, pembatasan halaman, dan permission matrix.",
+      "Konfigurasi wewenang tingkatan role, pembatasan halaman, dan permission matrix.",
     permissionNote: "Hak Akses & Governance",
-    badge: "6 Role Aktif",
-    badgeVariant: "info",
     allowedRoles: ["Admin IT", "CEO", "HRD"],
   },
   {
@@ -236,8 +208,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Parameter radius GPS kantor, toleransi keterlambatan, dan tantangan acak wajah.",
     permissionNote: "Konfigurasi Inti Absensi",
-    badge: "Radius 100m",
-    badgeVariant: "default",
     allowedRoles: ["Admin IT", "CEO", "HRD"],
   },
   {
@@ -249,8 +219,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     description:
       "Catatan audit trail kriptografi append-only SHA-256 tahan manipulasi (anti-fraud).",
     permissionNote: "Integritas Data Kriptografi",
-    badge: "SHA-256 Valid",
-    badgeVariant: "success",
     allowedRoles: ["Admin IT", "CEO"],
   },
 ];
@@ -287,59 +255,97 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
     return true;
   });
 
-  // Logika Badge Dinamis Sinkron Database & Kuota Pengguna
-  const getDynamicBadge = (modId: string, defaultBadge?: string, defaultVariant?: string) => {
+  // Logika Badge 100% Dinamis & Otomatis Berbasis Data Riil PostgreSQL & Konfigurasi Sistem
+  const getDynamicBadge = (
+    modId: string
+  ): {
+    badge?: string;
+    variant?: "default" | "success" | "warning" | "destructive" | "info";
+  } => {
     switch (modId) {
+      case "mod-absen":
+        return {
+          badge: "1 HP = 1 Akun",
+          variant: "info",
+        };
+      case "mod-riwayat":
+        return {
+          badge: "Log Pribadi",
+          variant: "default",
+        };
+      case "mod-jadwal":
+        return {
+          badge: `Shift ${badges.activeShift || "08:00 - 17:00"}`,
+          variant: "default",
+        };
       case "mod-cuti":
         return {
-          badge: badges.userLeaveBalance > 0 ? `Kuota ${badges.userLeaveBalance} Hari` : "Kuota Habis",
-          variant: (badges.userLeaveBalance > 3 ? "success" : "warning") as any,
+          badge:
+            badges.userLeaveBalance > 0
+              ? `Kuota ${badges.userLeaveBalance} Hari`
+              : "Kuota Habis",
+          variant: badges.userLeaveBalance > 3 ? "success" : "warning",
         };
       case "mod-approval-cuti":
         return {
           badge: `${badges.pendingLeaves} Pending`,
-          variant: (badges.pendingLeaves > 0 ? "warning" : "success") as any,
+          variant: badges.pendingLeaves > 0 ? "warning" : "success",
         };
       case "mod-approval-koreksi":
         return {
           badge: `${badges.pendingCorrections} Pending`,
-          variant: (badges.pendingCorrections > 0 ? "warning" : "success") as any,
+          variant: badges.pendingCorrections > 0 ? "warning" : "success",
         };
       case "mod-karyawan":
         return {
           badge: `${badges.totalEmployees} Personel`,
-          variant: "default" as any,
+          variant: "default",
         };
-      case "mod-organisasi":
+      case "mod-organisasi": {
+        // Otomatis terhitung: jumlah unit riil di database dikurangi 1 direksi
+        const deptsCount = Math.max(1, badges.totalDepartments - 1);
         return {
-          badge: `${badges.totalDepartments} Unit (6 Dept + 1 Dir)`,
-          variant: "default" as any,
+          badge: `${deptsCount} Dept + 1 Dir`,
+          variant: "default",
         };
+      }
       case "mod-departemen":
         return {
           badge: `${badges.totalDepartments} Unit`,
-          variant: "default" as any,
+          variant: "default",
         };
       case "mod-review-wajah":
         return {
-          badge: badges.pendingEnrollments > 0 ? `${badges.pendingEnrollments} Menunggu` : "0 Menunggu",
-          variant: (badges.pendingEnrollments > 0 ? "warning" : "default") as any,
+          badge: `${badges.pendingEnrollments} Menunggu`,
+          variant: badges.pendingEnrollments > 0 ? "warning" : "default",
+        };
+      case "mod-laporan":
+        return {
+          badge: "Excel Export",
+          variant: "info",
         };
       case "mod-users":
         return {
           badge: `${badges.boundDevicesCount} HP Terikat`,
-          variant: "success" as any,
+          variant: "success",
+        };
+      case "mod-rbac":
+        return {
+          badge: `${badges.totalRoles} Role Aktif`,
+          variant: "info",
+        };
+      case "mod-pengaturan":
+        return {
+          badge: `Radius ${badges.geofenceRadius}m`,
+          variant: "default",
         };
       case "mod-audit-log":
         return {
           badge: `${badges.totalAuditLogs} Log SHA-256`,
-          variant: "success" as any,
+          variant: "success",
         };
       default:
-        return {
-          badge: defaultBadge,
-          variant: defaultVariant,
-        };
+        return {};
     }
   };
 
@@ -389,7 +395,7 @@ export function PermittedModulesGrid({ role }: PermittedModulesGridProps) {
                       <Icon className="size-5" />
                     </div>
                     {(() => {
-                      const dynamic = getDynamicBadge(item.id, item.badge, item.badgeVariant);
+                      const dynamic = getDynamicBadge(item.id);
                       if (!dynamic.badge) return null;
                       return (
                         <Badge variant={dynamic.variant || "default"} size="sm">

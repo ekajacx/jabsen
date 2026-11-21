@@ -12,17 +12,23 @@ export interface SystemBadgeCounts {
   pendingEnrollments: number;
   totalAuditLogs: number;
   userLeaveBalance: number;
+  geofenceRadius: number;
+  activeShift: string;
+  totalRoles: number;
 }
 
 export const DEFAULT_BADGE_COUNTS: SystemBadgeCounts = {
   totalEmployees: 27,
   totalDepartments: 7,
   boundDevicesCount: 27,
-  pendingLeaves: 2,
-  pendingCorrections: 2,
-  pendingEnrollments: 1,
-  totalAuditLogs: 30,
+  pendingLeaves: 0,
+  pendingCorrections: 0,
+  pendingEnrollments: 0,
+  totalAuditLogs: 31,
   userLeaveBalance: 12,
+  geofenceRadius: 100,
+  activeShift: "08:00 - 17:00",
+  totalRoles: 6,
 };
 
 export const BADGE_STORAGE_KEY = "j_absen_system_badge_counts";
@@ -74,8 +80,11 @@ export function useSystemBadges() {
             pendingLeaves: data.stats.pendingLeaves ?? 0,
             pendingCorrections: data.stats.pendingCorrections ?? 0,
             pendingEnrollments: data.stats.pendingEnrollments ?? 0,
-            totalAuditLogs: data.stats.totalAuditLogs ?? 30,
+            totalAuditLogs: data.stats.totalAuditLogs ?? 31,
             userLeaveBalance: data.stats.userLeaveBalance ?? 12,
+            geofenceRadius: data.stats.geofenceRadius ?? 100,
+            activeShift: data.stats.activeShift ?? "08:00 - 17:00",
+            totalRoles: data.stats.totalRoles ?? 6,
           };
           setBadges(updated);
           if (typeof window !== "undefined") {

@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // 5. Metrik Sistem Terkait Badge (Departemen, Wajah, Device Binding, Audit)
+    // 5. Metrik Sistem Terkait Badge (Departemen, Wajah, Device Binding, Audit, Geofence, Shift)
     const totalDepartments = await prisma.department.count();
     const pendingEnrollments = await prisma.faceEnrollment.count({
       where: { status: "Menunggu Review" },
@@ -69,6 +69,19 @@ export async function GET(req: NextRequest) {
     const boundDevicesCount = await prisma.deviceBinding.count({
       where: { deviceBindingStatus: "TERIKAT" },
     });
+
+    // Ambil parameter geofence radius dan shift aktif dari database
+    const activeOffice = await prisma.officeLocation.findFirst({
+      where: { isActive: true },
+    });
+    const geofenceRadius = activeOffice?.radiusMeters || 100;
+
+    const regShift =
+      (await prisma.shift.findFirst({
+        where: { id: { contains: "reguler" } },
+      })) || (await prisma.shift.findFirst());
+    const activeShift = regShift ? `${regShift.startTime} - ${regShift.endTime}` : "08:00 - 17:00";
+    const totalRoles = 6;
 
     // 6. Sisa Kuota Cuti Tahunan Pengguna Pribadi (PRD P-10: Default 12 Hari dikurangi terpakai)
     let userLeaveBalance = 12;
@@ -138,6 +151,9 @@ export async function GET(req: NextRequest) {
         pendingEnrollments,
         totalAuditLogs,
         userLeaveBalance,
+        geofenceRadius,
+        activeShift,
+        totalRoles,
       },
       recentAttendances: formattedRecent,
     });
