@@ -162,7 +162,22 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, name, email, phone, departmentId, positionId, employmentStatus, status, role, avatarUrl, avatar, actor } = body;
+    const {
+      id,
+      name,
+      email,
+      phone,
+      departmentId,
+      positionId,
+      jobTitle,
+      title,
+      employmentStatus,
+      status,
+      role,
+      avatarUrl,
+      avatar,
+      actor,
+    } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -189,6 +204,18 @@ export async function PUT(req: NextRequest) {
           user: true,
         },
       });
+
+      // Sinkronisasi judul jabatan di tabel Position jika ada perubahan
+      const effectivePosId = positionId || emp.positionId;
+      if (effectivePosId && (jobTitle || title)) {
+        await tx.position.update({
+          where: { id: effectivePosId },
+          data: {
+            title: (jobTitle || title).trim(),
+            ...(departmentId && { departmentId }),
+          },
+        });
+      }
 
       if (status || role) {
         await tx.user.updateMany({

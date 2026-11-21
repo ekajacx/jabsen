@@ -270,7 +270,7 @@ export const INITIAL_POSITIONS: PositionNode[] = [
     description: "Penyusunan jurnal keuangan dan laporan neraca bulanan",
   },
   {
-    id: "pos-fin-keuangan",
+    id: "pos-fin-kasir",
     code: "KEU-03",
     title: "Staf Keuangan",
     departmentId: "dept-fin",
@@ -287,7 +287,7 @@ export const INITIAL_POSITIONS: PositionNode[] = [
     description: "Pengelolaan kas kecil kantor dan pembayaran tagihan",
   },
   {
-    id: "pos-fin-pajak",
+    id: "pos-fin-payroll",
     code: "KEU-04",
     title: "Staf Pajak",
     departmentId: "dept-fin",
@@ -533,7 +533,7 @@ export const INITIAL_POSITIONS: PositionNode[] = [
     description: "Pemimpin target penjualan divisi dan perjanjian kontrak klien",
   },
   {
-    id: "pos-sales-staff",
+    id: "pos-sales-sales",
     code: "SLS-02",
     title: "Staf Sales",
     departmentId: "dept-sales",
@@ -626,25 +626,47 @@ export function getStoredPositions(): PositionNode[] {
     }
     const parsed: PositionNode[] = JSON.parse(raw);
     let modified = false;
-    parsed.forEach((p) => {
+
+    // Bersihkan seluruh data dummy / "Posisi Kosong" yang tertinggal di browser
+    const cleanPositions = parsed.filter((p) => {
+      if (!p || !p.holder) return false;
+      const hName = p.holder.name?.trim() || "";
+      const hNik = p.holder.nik?.trim() || "";
+      if (hName === "Posisi Kosong" || hNik.startsWith("VACANT-")) return false;
+      if (p.holders && p.holders.some((h) => h.name?.trim() === "Posisi Kosong" || h.nik?.startsWith("VACANT-"))) {
+        p.holders = p.holders.filter((h) => h.name?.trim() !== "Posisi Kosong" && !h.nik?.startsWith("VACANT-"));
+        if (p.holders.length === 0) return false;
+        p.holder = p.holders[0];
+        modified = true;
+      }
+      return true;
+    });
+
+    if (cleanPositions.length !== parsed.length) {
+      modified = true;
+    }
+
+    cleanPositions.forEach((p) => {
       if (p.id === "pos-dirut" && p.holder && p.holder.name.includes("Bambang Sutrisno")) {
         p.holder.name = "Eka Jacx";
         p.holder.email = "ceo.ekajacx@perusahaan.co.id";
         modified = true;
       }
     });
+
     // Ensure pos-ti-admin exists for 27 employees completeness
-    if (!parsed.some((p) => p.id === "pos-ti-admin")) {
+    if (!cleanPositions.some((p) => p.id === "pos-ti-admin")) {
       const adminPos = INITIAL_POSITIONS.find((p) => p.id === "pos-ti-admin");
       if (adminPos) {
-        parsed.push(adminPos);
+        cleanPositions.push(adminPos);
         modified = true;
       }
     }
+
     if (modified) {
-      localStorage.setItem(STORAGE_POSITIONS_KEY, JSON.stringify(parsed));
+      localStorage.setItem(STORAGE_POSITIONS_KEY, JSON.stringify(cleanPositions));
     }
-    return parsed;
+    return cleanPositions;
   } catch {
     return INITIAL_POSITIONS;
   }
@@ -702,8 +724,14 @@ export function useOrgData() {
       if (resPositions.ok) {
         const pJson = await resPositions.json();
         if (pJson.success && Array.isArray(pJson.positions) && pJson.positions.length > 0) {
-          setPositions(pJson.positions);
-          saveStoredPositions(pJson.positions);
+          const cleanApiPositions = pJson.positions.filter(
+            (p: PositionNode) =>
+              p.holder &&
+              p.holder.name !== "Posisi Kosong" &&
+              !p.holder.nik?.startsWith("VACANT-")
+          );
+          setPositions(cleanApiPositions);
+          saveStoredPositions(cleanApiPositions);
         }
       }
     } catch (e) {
@@ -938,12 +966,71 @@ export function useOrgData() {
     saveStoredPositions(updatedPositions);
   };
 
-  // Update Detail Jabatan
-  const updatePosition = (positionId: string, updatedData: Partial<PositionNode>) => {
-    const updatedPositions = getStoredPositions().map((p) =>
-      p.id === positionId ? { ...p, ...updatedData } : p
-    );
+  // Update Detail Jabatan (Dua Arah: Hirarki Organisasi -> PostgreSQL & Direktori Karyawan)
+  const updatePosition = (
+    positionId: string,
+    updatedData: Partial<PositionNode>,
+    holderNik?: string,
+    holderName?: string
+  ) => {
+    const currentPositions = getStoredPositions();
+    const effectiveHolderNik = holderNik || updatedData.holder?.nik;
+    const effectiveHolderName = holderName || updatedData.holder?.name;
+
+    const updatedPositions = currentPositions.map((p) => {
+      if (p.id !== positionId) return p;
+
+      const currentHolders = getNodeHolders(p);
+      let updatedHolders = currentHolders;
+      if (effectiveHolderName) {
+        updatedHolders = currentHolders.map((h, i) =>
+          i === 0 ? { ...h, name: effectiveHolderName.trim() } : h
+        );
+      }
+
+      return {
+        ...p,
+        ...updatedData,
+        title: updatedData.title ? updatedData.title.trim() : p.title,
+        departmentId: updatedData.departmentId || p.departmentId,
+        parentId: updatedData.parentId !== undefined ? updatedData.parentId : p.parentId,
+        holder: {
+          ...(updatedData.holder || p.holder),
+          name: effectiveHolderName ? effectiveHolderName.trim() : p.holder.name,
+        },
+        holders: updatedHolders,
+      };
+    });
+
     saveStoredPositions(updatedPositions);
+
+    // Kirim sinkronisasi ke PostgreSQL via PUT /api/positions
+    fetch("/api/positions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: positionId,
+        title: updatedData.title,
+        departmentId: updatedData.departmentId,
+        parentId: updatedData.parentId,
+        holderNik: effectiveHolderNik,
+        holderName: effectiveHolderName,
+      }),
+    }).catch((err) => console.error("Error updating position in DB:", err));
+
+    // Sinkronisasi data karyawan di tabel employees
+    if (effectiveHolderNik && effectiveHolderName) {
+      fetch("/api/karyawan", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: effectiveHolderNik,
+          name: effectiveHolderName.trim(),
+          jobTitle: updatedData.title ? updatedData.title.trim() : undefined,
+          departmentId: updatedData.departmentId,
+        }),
+      }).catch((err) => console.error("Error syncing employee in DB:", err));
+    }
   };
 
   // Ambil daftar seluruh karyawan terdaftar di organisasi (termasuk CEO, GM, Kepala Dept, & Staf)
@@ -1035,13 +1122,17 @@ export function useOrgData() {
 
     saveStoredPositions(updatedPositions);
 
-    if (targetNik || updatedData.nik) {
+    const empId = targetNik || updatedData.nik;
+    if (empId) {
+      // 1. Perbarui data karyawan di PostgreSQL via /api/karyawan
       fetch("/api/karyawan", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: targetNik || updatedData.nik,
+          id: empId,
           name: updatedData.name,
+          jobTitle: newTitle ? newTitle.trim() : undefined,
+          positionId: positionId || undefined,
           email: updatedData.email,
           phone: updatedData.phone,
           departmentId: newDeptId,
@@ -1050,6 +1141,21 @@ export function useOrgData() {
           avatarUrl: updatedData.avatar,
         }),
       }).catch(console.error);
+
+      // 2. Perbarui judul posisi jabatan di PostgreSQL via /api/positions jika ada perubahan jabatan/nama
+      if (positionId) {
+        fetch("/api/positions", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: positionId,
+            title: newTitle ? newTitle.trim() : undefined,
+            departmentId: newDeptId,
+            holderNik: empId,
+            holderName: updatedData.name,
+          }),
+        }).catch(console.error);
+      }
     }
   };
 

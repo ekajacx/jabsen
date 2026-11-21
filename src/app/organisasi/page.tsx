@@ -193,18 +193,27 @@ export default function OrganisasiPage() {
     e.preventDefault();
     if (!formTitle.trim() || !editingPosition) return;
 
-    updatePosition(editingPosition.id, {
-      title: formTitle,
-      departmentId: formDeptId,
-      parentId: formParentId || null,
-      isConnected: true,
-      holder: {
-        ...editingPosition.holder,
-        name: formHolderName,
+    const holderNik = editingPosition.holder?.nik;
+    updatePosition(
+      editingPosition.id,
+      {
+        title: formTitle.trim(),
+        departmentId: formDeptId,
+        parentId: formParentId || null,
+        isConnected: true,
+        holder: {
+          ...editingPosition.holder,
+          name: formHolderName.trim(),
+        },
       },
-    });
+      holderNik,
+      formHolderName.trim()
+    );
 
-    showToast("success", `Data jabatan '${formTitle}' berhasil disimpan.`);
+    showToast(
+      "success",
+      `Data jabatan '${formTitle}' dan nama pemegang '${formHolderName}' berhasil disimpan dan disinkronkan secara dua arah!`
+    );
     setIsModalOpen(false);
   };
 
