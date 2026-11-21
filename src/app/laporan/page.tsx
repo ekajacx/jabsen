@@ -59,10 +59,15 @@ export default function LaporanPage() {
   const { user, isAuthReady } = useAuth();
   const { showAlert } = useModal();
 
+  // Tanggal default dinamis berdasarkan hari ini
+  const today = new Date();
+  const todayIso = today.toISOString().split("T")[0];
+  const firstDayOfMonthIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+
   // State Filter Periode
   const [periodPreset, setPeriodPreset] = useState<string>("bulan-ini");
-  const [startDate, setStartDate] = useState<string>("2026-11-01");
-  const [endDate, setEndDate] = useState<string>("2026-11-18");
+  const [startDate, setStartDate] = useState<string>(firstDayOfMonthIso);
+  const [endDate, setEndDate] = useState<string>(todayIso);
 
   // State Filter Dimensi
   const [departmentFilter, setDepartmentFilter] = useState<string>("Semua");
@@ -82,27 +87,38 @@ export default function LaporanPage() {
   // Handler Preset Periode
   const handlePresetChange = (preset: string) => {
     setPeriodPreset(preset);
+    const now = new Date();
+    const nowIso = now.toISOString().split("T")[0];
+    const monthStartIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
     if (preset === "hari-ini") {
-      setStartDate("2026-11-18");
-      setEndDate("2026-11-18");
+      setStartDate(nowIso);
+      setEndDate(nowIso);
     } else if (preset === "7-hari") {
-      setStartDate("2026-11-12");
-      setEndDate("2026-11-18");
+      const d7 = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+      setStartDate(d7.toISOString().split("T")[0]);
+      setEndDate(nowIso);
     } else if (preset === "bulan-ini") {
-      setStartDate("2026-11-01");
-      setEndDate("2026-11-18");
+      setStartDate(monthStartIso);
+      setEndDate(nowIso);
     } else if (preset === "bulan-lalu") {
-      setStartDate("2026-10-01");
-      setEndDate("2026-10-31");
+      const prevMonthLast = new Date(now.getFullYear(), now.getMonth(), 0);
+      const prevMonthFirst = new Date(prevMonthLast.getFullYear(), prevMonthLast.getMonth(), 1);
+      setStartDate(prevMonthFirst.toISOString().split("T")[0]);
+      setEndDate(prevMonthLast.toISOString().split("T")[0]);
     }
     setCurrentPage(1);
   };
 
   // Reset Semua Filter
   const handleResetFilter = () => {
+    const now = new Date();
+    const nowIso = now.toISOString().split("T")[0];
+    const monthStartIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
     setPeriodPreset("bulan-ini");
-    setStartDate("2026-11-01");
-    setEndDate("2026-11-18");
+    setStartDate(monthStartIso);
+    setEndDate(nowIso);
     setDepartmentFilter(user?.role === "Supervisor" && user?.department ? user.department : "Semua");
     setOfficeFilter("Semua");
     setShiftFilter("Semua");
@@ -521,11 +537,11 @@ export default function LaporanPage() {
         </Card>
 
         {/* STATISTIK AGREGASI HASIL FILTER */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Absensi</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Jadwal/Rekap</span>
                 <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
                 <span className="text-[10px] text-gray-400 font-medium">Record terfilter</span>
               </div>
@@ -574,7 +590,20 @@ export default function LaporanPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-gray-200 dark:border-gray-800 col-span-2 sm:col-span-1">
+          <Card className="border-gray-200 dark:border-gray-800">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Alpha / Belum Hadir</span>
+                <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">{stats.absent}</p>
+                <span className="text-[10px] text-red-600 font-medium">Tanpa presensi</span>
+              </div>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                <ShieldAlert className="size-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200 dark:border-gray-800">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Tingkat Kehadiran</span>
@@ -696,21 +725,32 @@ export default function LaporanPage() {
                         ) : item.status === "Izin / Cuti" ? (
                           <Badge variant="info" size="sm">Izin / Cuti</Badge>
                         ) : (
-                          <Badge variant="destructive" size="sm">Alpha</Badge>
+                          <Badge variant="destructive" size="sm">Alpha (Belum Absen)</Badge>
                         )}
-                        {item.inGeofence && (
+                        {item.status === "Alpha" ? (
+                          <div className="text-[9px] text-red-500 mt-0.5 font-medium">
+                            Tanpa Presensi
+                          </div>
+                        ) : item.inGeofence ? (
                           <div className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-0.5">
                             Geofence Valid
                           </div>
-                        )}
+                        ) : null}
                       </td>
 
                       {/* Audit WORM */}
                       <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                          <ShieldCheck className="size-3.5" />
-                          <span>WORM OK</span>
-                        </div>
+                        {item.status === "Alpha" ? (
+                          <div className="flex items-center justify-end gap-1 text-[11px] font-medium text-red-600 dark:text-red-400">
+                            <ShieldAlert className="size-3.5" />
+                            <span>Alpha Terdeteksi</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                            <ShieldCheck className="size-3.5" />
+                            <span>WORM OK</span>
+                          </div>
+                        )}
                         <div className="text-[9px] text-gray-400 font-mono">
                           {item.id}
                         </div>

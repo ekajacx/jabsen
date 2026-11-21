@@ -236,6 +236,8 @@ export default function RiwayatPage() {
         ? r.checkOutStatus === "Pulang Cepat" || r.status.includes("Cepat")
         : filterStatus === "Belum Check Out"
         ? r.checkOutStatus === "Check Out Belum Dilakukan"
+        : filterStatus === "Belum Absen"
+        ? r.status.includes("Belum Absen") || r.status.includes("Alpha")
         : r.status === filterStatus;
 
     return matchesSearch && matchesStatus;
@@ -245,9 +247,33 @@ export default function RiwayatPage() {
   const totalHadir = records.filter((r) => r.checkIn !== "--:-- WITA").length;
   const tepatWaktu = records.filter((r) => r.checkInStatus === "Tepat Waktu").length;
   const terlambat = records.filter((r) => r.checkInStatus === "Datang Terlambat").length;
-  const cutiIzin = records.filter((r) => r.status === "Cuti" || r.status === "Izin").length;
+  const cutiIzin = records.filter((r) => r.status === "Cuti" || r.status === "Izin" || r.status.includes("Cuti")).length;
 
   const renderStatusBadges = (item: AttendanceItem) => {
+    if (item.status.includes("Belum Absen") || item.status.includes("Alpha")) {
+      return (
+        <Badge variant="destructive" size="sm" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 font-semibold whitespace-nowrap">
+          Belum Absen Hari Ini
+        </Badge>
+      );
+    }
+
+    if (item.status === "Sedang Berlangsung") {
+      return (
+        <Badge variant="warning" size="sm" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 font-semibold whitespace-nowrap">
+          Menunggu Presensi
+        </Badge>
+      );
+    }
+
+    if (item.status === "Izin / Cuti") {
+      return (
+        <Badge variant="info" size="sm" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 font-semibold whitespace-nowrap">
+          Izin / Cuti Resmi
+        </Badge>
+      );
+    }
+
     return (
       <div className="flex flex-col gap-1 items-start">
         {/* Status Check In */}
@@ -469,7 +495,7 @@ export default function RiwayatPage() {
 
             {/* Filter Status Tabs */}
             <div className="flex flex-wrap items-center gap-1.5">
-              {["Semua", "Tepat Waktu", "Terlambat", "Pulang Cepat", "Belum Check Out"].map((st) => (
+              {["Semua", "Tepat Waktu", "Terlambat", "Pulang Cepat", "Belum Check Out", "Belum Absen"].map((st) => (
                 <button
                   key={st}
                   type="button"
