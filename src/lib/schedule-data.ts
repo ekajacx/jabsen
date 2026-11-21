@@ -131,6 +131,14 @@ export interface WeekOption {
   }[];
 }
 
+export function getTodayIso(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export const WEEK_OPTIONS: WeekOption[] = [
   {
     value: "2026-11-16",
@@ -139,7 +147,7 @@ export const WEEK_OPTIONS: WeekOption[] = [
     days: [
       { dayName: "Senin", dateFormatted: "16 Nov 2026", fullDate: "Senin, 16 November 2026", isoDate: "2026-11-16", status: "Hari Kerja" },
       { dayName: "Selasa", dateFormatted: "17 Nov 2026", fullDate: "Selasa, 17 November 2026", isoDate: "2026-11-17", status: "Hari Kerja" },
-      { dayName: "Rabu", dateFormatted: "18 Nov 2026", fullDate: "Rabu, 18 November 2026", isoDate: "2026-11-18", status: "Hari Ini" },
+      { dayName: "Rabu", dateFormatted: "18 Nov 2026", fullDate: "Rabu, 18 November 2026", isoDate: "2026-11-18", status: "Hari Kerja" },
       { dayName: "Kamis", dateFormatted: "19 Nov 2026", fullDate: "Kamis, 19 November 2026", isoDate: "2026-11-19", status: "Hari Kerja" },
       { dayName: "Jumat", dateFormatted: "20 Nov 2026", fullDate: "Jumat, 20 November 2026", isoDate: "2026-11-20", status: "Hari Kerja" },
       { dayName: "Sabtu", dateFormatted: "21 Nov 2026", fullDate: "Sabtu, 21 November 2026", isoDate: "2026-11-21", status: "Hari Libur" },
@@ -262,7 +270,10 @@ export function generateScheduleForEmployee(
   const creator = getScheduleCreator(emp);
   const defaultShift = getDefaultShiftForEmployee(emp.nik);
 
+  const todayIso = getTodayIso();
   const days: DaySchedule[] = weekOption.days.map((day) => {
+    const isToday = day.isoDate === todayIso;
+
     // 1. Cek Cuti Disetujui (Anti-Tabrakan)
     const approvedLeave = checkEmployeeLeaveOnDate(emp.nik, day.isoDate, emp.name);
 
@@ -277,7 +288,7 @@ export function generateScheduleForEmployee(
         startTime: "-",
         endTime: "-",
         isOff: true,
-        status: "Cuti Disetujui",
+        status: isToday ? "Hari Ini" : "Cuti Disetujui",
         isLeaveApproved: true,
         leaveType: approvedLeave.leaveType,
         leaveReason: approvedLeave.reason,
@@ -296,12 +307,11 @@ export function generateScheduleForEmployee(
         startTime: "-",
         endTime: "-",
         isOff: true,
-        status: "Hari Libur",
+        status: isToday ? "Hari Ini" : "Hari Libur",
       };
     }
 
     // 3. Hari Kerja Normal
-    const isToday = day.isoDate === "2026-11-18";
     return {
       dayName: day.dayName,
       dateFormatted: day.dateFormatted,
@@ -355,6 +365,21 @@ export function getStoredWeeklySchedules(): WeeklyScheduleRecord[] {
 
     const parsed: WeeklyScheduleRecord[] = JSON.parse(raw);
     let modified = false;
+
+    // Sinkronkan status "Hari Ini" dengan tanggal sistem terkini
+    const todayIso = getTodayIso();
+    parsed.forEach((rec) => {
+      rec.days.forEach((day) => {
+        const isToday = day.isoDate === todayIso;
+        if (day.isLeaveApproved || day.shiftId === "CUTI") {
+          day.status = isToday ? "Hari Ini" : "Cuti Disetujui";
+        } else if (day.isOff || day.dayName === "Sabtu" || day.dayName === "Minggu") {
+          day.status = isToday ? "Hari Ini" : "Hari Libur";
+        } else {
+          day.status = isToday ? "Hari Ini" : "Hari Kerja";
+        }
+      });
+    });
 
     // Periksa apakah ke-27 karyawan sudah punya jadwal di minggu aktif
     INITIAL_WEEKLY_SCHEDULES.forEach((initRec) => {

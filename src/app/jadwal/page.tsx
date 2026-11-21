@@ -56,6 +56,7 @@ import {
   getStoredWeeklySchedules,
   saveStoredWeeklySchedules,
   getStoredShifts,
+  getTodayIso,
 } from "@/lib/schedule-data";
 
 const STORAGE_SCHEDULES_KEY = "jabsen_weekly_schedules_v1";
@@ -64,6 +65,9 @@ export default function JadwalPage() {
   const { user } = useAuth();
   const { showConfirm } = useModal();
   const { departments, allEmployees } = useOrgData();
+
+  // Tanggal Hari Ini & Opsi Minggu
+  const todayIso = useMemo(() => getTodayIso(), []);
 
   // Master Shift State (untuk opsi penugasan shift di modal roster)
   const [shifts, setShifts] = useState<ShiftPattern[]>(INITIAL_SHIFTS);
@@ -74,6 +78,11 @@ export default function JadwalPage() {
   const [selectedDayFilter, setSelectedDayFilter] = useState("ALL");
   const [selectedWeek, setSelectedWeek] = useState<string>("2026-11-16");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const currentWeekOption = useMemo(
+    () => WEEK_OPTIONS.find((w) => w.value === selectedWeek) || WEEK_OPTIONS[0],
+    [selectedWeek]
+  );
 
   // State Expand / Collapse Card Jadwal (Default: Tertutup/Collapsed agar irit ruang)
   const [expandedScheduleIds, setExpandedScheduleIds] = useState<Record<string, boolean>>({});
@@ -127,7 +136,10 @@ export default function JadwalPage() {
             createdByName: user?.name || "Admin",
             createdAt: new Date().toISOString(),
             status: "Aktif",
-            days: ws.days,
+            days: ws.days.map((d: any) => ({
+              ...d,
+              status: d.isoDate === todayIso ? "Hari Ini" : d.isOff ? "Hari Libur" : "Hari Kerja",
+            })),
           }));
           setWeeklySchedules(mapped);
           saveStoredWeeklySchedules(mapped);
@@ -255,6 +267,8 @@ export default function JadwalPage() {
       const isWeekend = d.dayName === "Sabtu" || d.dayName === "Minggu";
       const approvedLeave = checkEmployeeLeaveOnDate(empId, empObj?.name || "", d.isoDate, leaveRequests);
 
+      const isToday = d.isoDate === todayIso;
+
       // KONDISI KHUSUS: Jika ada cuti resmi yang DISETUJUI pada tanggal ini
       if (approvedLeave) {
         return {
@@ -267,7 +281,7 @@ export default function JadwalPage() {
           startTime: "-",
           endTime: "-",
           isOff: true,
-          status: "Cuti Disetujui",
+          status: isToday ? "Hari Ini" : "Cuti Disetujui",
           isLeaveApproved: true,
           leaveType: approvedLeave.leaveType,
           leaveReason: approvedLeave.reason,
@@ -287,7 +301,7 @@ export default function JadwalPage() {
         breakStart: isWeekend ? undefined : "12:00",
         breakEnd: isWeekend ? undefined : "13:00",
         isOff: isWeekend,
-        status: isWeekend ? "Hari Libur" : d.status,
+        status: isToday ? "Hari Ini" : isWeekend ? "Hari Libur" : "Hari Kerja",
         isLeaveApproved: false,
       };
     });
@@ -357,7 +371,7 @@ export default function JadwalPage() {
         target.breakStart = undefined;
         target.breakEnd = undefined;
         target.isOff = true;
-        target.status = "Hari Libur";
+        target.status = target.isoDate === todayIso ? "Hari Ini" : "Hari Libur";
       } else {
         const foundShift = shifts.find((s) => s.id === newShiftId) || shifts[0];
         target.shiftId = foundShift.id;
@@ -367,7 +381,7 @@ export default function JadwalPage() {
         target.breakStart = foundShift.breakStart;
         target.breakEnd = foundShift.breakEnd;
         target.isOff = false;
-        target.status = target.dayName === "Rabu" ? "Hari Ini" : "Hari Kerja";
+        target.status = target.isoDate === todayIso ? "Hari Ini" : "Hari Kerja";
       }
 
       updated[dayIdx] = target;
@@ -395,7 +409,7 @@ export default function JadwalPage() {
             startTime: "-",
             endTime: "-",
             isOff: true,
-            status: "Hari Libur",
+            status: day.isoDate === todayIso ? "Hari Ini" : "Hari Libur",
           };
         }
         if (shiftId === "OFF") {
@@ -406,7 +420,7 @@ export default function JadwalPage() {
             startTime: "-",
             endTime: "-",
             isOff: true,
-            status: "Hari Libur",
+            status: day.isoDate === todayIso ? "Hari Ini" : "Hari Libur",
           };
         }
         const found = shifts.find((s) => s.id === shiftId) || shifts[0];
@@ -419,7 +433,7 @@ export default function JadwalPage() {
           breakStart: found.breakStart,
           breakEnd: found.breakEnd,
           isOff: false,
-          status: day.dayName === "Rabu" ? "Hari Ini" : "Hari Kerja",
+          status: day.isoDate === todayIso ? "Hari Ini" : "Hari Kerja",
         };
       })
     );
@@ -742,13 +756,16 @@ export default function JadwalPage() {
                   className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                 >
                   <option value="ALL">Semua Hari (Senin - Minggu)</option>
-                  <option value="Senin">Senin (16 Nov 2026)</option>
-                  <option value="Selasa">Selasa (17 Nov 2026)</option>
-                  <option value="Rabu">Rabu (18 Nov 2026 - Hari Ini)</option>
-                  <option value="Kamis">Kamis (19 Nov 2026)</option>
-                  <option value="Jumat">Jumat (20 Nov 2026)</option>
-                  <option value="Sabtu">Sabtu (21 Nov 2026 - Libur)</option>
-                  <option value="Minggu">Minggu (22 Nov 2026 - Libur)</option>
+                  {currentWeekOption.days.map((d) => {
+                    const isToday = d.isoDate === todayIso;
+                    const isOff = d.dayName === "Sabtu" || d.dayName === "Minggu";
+                    return (
+                      <option key={d.dayName} value={d.dayName}>
+                        {d.dayName} ({d.dateFormatted}
+                        {isToday ? (isOff ? " - Hari Ini Libur" : " - Hari Ini") : isOff ? " - Libur" : ""})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -802,7 +819,7 @@ export default function JadwalPage() {
               {filteredSchedules.length > 0 && (
                 <div className="hidden lg:grid grid-cols-12 gap-3 px-5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
                   <div className="col-span-5">Karyawan &amp; Departemen</div>
-                  <div className="col-span-4">Pola Shift Hari Ini &amp; Status Cuti</div>
+                  <div className="col-span-4">Jadwal &amp; Status Hari Ini</div>
                   <div className="col-span-3 text-right pr-2">Pembuat Jadwal &amp; Rincian</div>
                 </div>
               )}
@@ -831,8 +848,9 @@ export default function JadwalPage() {
                 filteredSchedules.map((schedule) => {
                   const isExpanded = Boolean(expandedScheduleIds[schedule.id]);
                   const todayDay =
-                    schedule.days.find((d) => d.status === "Hari Ini" || d.isoDate === "2026-11-18") ||
-                    schedule.days[2];
+                    schedule.days.find((d) => d.isoDate === todayIso) ||
+                    schedule.days.find((d) => d.status === "Hari Ini") ||
+                    schedule.days[0];
                   const liveTodayLeave = checkEmployeeLeaveOnDate(
                     schedule.employeeId,
                     schedule.employeeName,
@@ -841,6 +859,13 @@ export default function JadwalPage() {
                   );
                   const isTodayCuti =
                     todayDay?.isLeaveApproved || todayDay?.shiftId === "CUTI" || Boolean(liveTodayLeave);
+                  const isTodayLibur =
+                    todayDay?.isOff ||
+                    todayDay?.shiftId === "OFF" ||
+                    todayDay?.status === "Hari Libur" ||
+                    todayDay?.dayName === "Sabtu" ||
+                    todayDay?.dayName === "Minggu";
+                  const dayDate = todayDay?.dateFormatted || "";
                   const cutiDays = schedule.days.filter((d) => d.isLeaveApproved || d.shiftId === "CUTI");
 
                   const visibleDays =
@@ -886,11 +911,15 @@ export default function JadwalPage() {
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5 lg:hidden">
                               {isTodayCuti ? (
                                 <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                  🏖️ Cuti Disetujui Hari Ini
+                                  🏖️ Hari Ini ({dayDate}): Cuti Disetujui
+                                </span>
+                              ) : isTodayLibur ? (
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                  Hari Ini ({dayDate}): Libur / Off
                                 </span>
                               ) : (
                                 <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                  Hari Ini: {todayDay?.shiftName.split("-")[0]} ({todayDay?.startTime} - {todayDay?.endTime})
+                                  Hari Ini ({dayDate}): {todayDay?.shiftName.split("-")[0]} ({todayDay?.startTime} - {todayDay?.endTime})
                                 </span>
                               )}
                               {cutiDays.length > 0 && !isTodayCuti && (
@@ -906,12 +935,17 @@ export default function JadwalPage() {
                         <div className="hidden lg:flex lg:col-span-4 items-center gap-2 min-w-0 justify-start">
                           {isTodayCuti ? (
                             <Badge variant="warning" size="sm" className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-200 whitespace-nowrap shrink-0">
-                              🏖️ Hari Ini: Cuti Disetujui
+                              🏖️ Hari Ini ({dayDate}): Cuti Disetujui
+                            </Badge>
+                          ) : isTodayLibur ? (
+                            <Badge variant="secondary" size="sm" className="bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap shrink-0">
+                              <Calendar className="size-3 mr-1 text-gray-500 shrink-0" />
+                              <span>Hari Ini ({dayDate}): Libur / Off</span>
                             </Badge>
                           ) : (
                             <Badge variant="info" size="sm" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 whitespace-nowrap max-w-full">
                               <Clock className="size-3 mr-1 text-blue-600 shrink-0" />
-                              <span className="truncate">Hari Ini: {todayDay?.shiftName} ({todayDay?.startTime} - {todayDay?.endTime})</span>
+                              <span className="truncate">Hari Ini ({dayDate}): {todayDay?.shiftName} ({todayDay?.startTime} - {todayDay?.endTime})</span>
                             </Badge>
                           )}
                           {cutiDays.length > 0 && !isTodayCuti && (
@@ -1002,6 +1036,7 @@ export default function JadwalPage() {
                                   const isCuti = day.isLeaveApproved || day.shiftId === "CUTI" || Boolean(liveLeave);
                                   const cutiType = day.leaveType || liveLeave?.leaveType || "Cuti Resmi";
                                   const cutiReason = day.leaveReason || liveLeave?.reason || "Disetujui Atasan";
+                                  const isRowToday = day.isoDate === todayIso || day.status === "Hari Ini";
 
                                   return (
                                     <tr
@@ -1009,8 +1044,10 @@ export default function JadwalPage() {
                                       className={`hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors ${
                                         isCuti
                                           ? "bg-amber-50/50 dark:bg-amber-950/20"
-                                          : day.status === "Hari Ini"
-                                          ? "bg-brand-50/40 dark:bg-brand-950/20 font-medium"
+                                          : isRowToday
+                                          ? day.isOff
+                                            ? "bg-gray-100/60 dark:bg-gray-800/60 font-medium"
+                                            : "bg-brand-50/40 dark:bg-brand-950/20 font-medium"
                                           : ""
                                       }`}
                                     >
@@ -1070,10 +1107,14 @@ export default function JadwalPage() {
                                       <td className="px-4 py-3 text-right">
                                         {isCuti ? (
                                           <Badge variant="warning" size="sm" className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/50 dark:text-amber-200">
-                                            Cuti Disetujui
+                                            {isRowToday ? "Hari Ini (Cuti)" : "Cuti Disetujui"}
                                           </Badge>
-                                        ) : day.status === "Hari Ini" ? (
-                                          <Badge variant="success" size="sm">Hari Ini (Aktif)</Badge>
+                                        ) : isRowToday ? (
+                                          day.isOff ? (
+                                            <Badge variant="secondary" size="sm">Hari Ini (Libur)</Badge>
+                                          ) : (
+                                            <Badge variant="success" size="sm">Hari Ini (Aktif)</Badge>
+                                          )
                                         ) : day.isOff ? (
                                           <Badge variant="secondary" size="sm">Hari Libur</Badge>
                                         ) : (
