@@ -23,8 +23,8 @@ export interface ShiftPattern {
 
 export const INITIAL_SHIFTS: ShiftPattern[] = [
   {
-    id: "SHIFT-REG",
-    name: "Reguler Office (Pusat Bali)",
+    id: "shift-reguler",
+    name: "Shift Reguler",
     type: "Office Reguler",
     startTime: "08:00",
     endTime: "17:00",
@@ -37,7 +37,7 @@ export const INITIAL_SHIFTS: ShiftPattern[] = [
     color: "bg-blue-500",
   },
   {
-    id: "SHIFT-PAGI",
+    id: "shift-pagi",
     name: "Shift 1 - Pagi Operasional",
     type: "Operasional Shift",
     startTime: "06:00",
@@ -51,7 +51,7 @@ export const INITIAL_SHIFTS: ShiftPattern[] = [
     color: "bg-emerald-500",
   },
   {
-    id: "SHIFT-SIANG",
+    id: "shift-siang",
     name: "Shift 2 - Siang Operasional",
     type: "Operasional Shift",
     startTime: "14:00",
@@ -65,8 +65,8 @@ export const INITIAL_SHIFTS: ShiftPattern[] = [
     color: "bg-amber-500",
   },
   {
-    id: "SHIFT-MALAM",
-    name: "Shift 3 - Malam (Lintas Tengah Malam)",
+    id: "shift-malam",
+    name: "Shift 3 - Malam Operasional",
     type: "Operasional Shift",
     startTime: "22:00",
     endTime: "06:00",
@@ -79,6 +79,27 @@ export const INITIAL_SHIFTS: ShiftPattern[] = [
     color: "bg-purple-500",
   },
 ];
+
+export function normalizeShiftId(shiftId?: string): string {
+  if (!shiftId) return "shift-reguler";
+  const trimmed = shiftId.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "shift-reg" || lower === "shift_reg" || lower === "reguler" || lower === "shift-reguler" || lower === "shift reguler") {
+    return "shift-reguler";
+  }
+  if (lower === "shift-pagi" || lower === "shift_pagi" || lower === "pagi" || lower === "shift 1" || lower === "shift 1 (pagi)" || lower === "shift 1 - pagi operasional") {
+    return "shift-pagi";
+  }
+  if (lower === "shift-siang" || lower === "shift_siang" || lower === "siang" || lower === "shift 2" || lower === "shift 2 (siang)" || lower === "shift 2 - siang operasional") {
+    return "shift-siang";
+  }
+  if (lower === "shift-malam" || lower === "shift_malam" || lower === "malam" || lower === "shift 3" || lower === "shift 3 (malam)" || lower === "shift 3 - malam operasional") {
+    return "shift-malam";
+  }
+  if (lower === "off") return "OFF";
+  if (lower === "cuti") return "CUTI";
+  return shiftId;
+}
 
 // =========================================================================
 // TIPE DATA ROSTER & JADWAL KERJA MINGGUAN KARYAWAN
@@ -238,27 +259,27 @@ function getScheduleCreator(emp: UserProfile): { id: string; name: string; role:
 function getDefaultShiftForEmployee(nik: string): ShiftPattern {
   // Staf Produksi Operasional (Budi Santoso) -> Shift 1 Pagi
   if (nik === "OPS-302") {
-    return INITIAL_SHIFTS.find((s) => s.id === "SHIFT-PAGI")!;
+    return INITIAL_SHIFTS.find((s) => s.id === "shift-pagi")!;
   }
   // Staf Logistik Operasional (Agus Setiawan) -> Shift 2 Siang
   if (nik === "OPS-303") {
-    return INITIAL_SHIFTS.find((s) => s.id === "SHIFT-SIANG")!;
+    return INITIAL_SHIFTS.find((s) => s.id === "shift-siang")!;
   }
   // Staf Infrastruktur TI (Rian Hidayat) -> Shift 2 Siang (Monitoring Server Sore/Malam)
   if (nik === "TI-102") {
-    return INITIAL_SHIFTS.find((s) => s.id === "SHIFT-SIANG")!;
+    return INITIAL_SHIFTS.find((s) => s.id === "shift-siang")!;
   }
   // Staf Helpdesk TI (Dimas Anggara) -> Shift 1 Pagi (Standby Jam Buka)
   if (nik === "TI-104") {
-    return INITIAL_SHIFTS.find((s) => s.id === "SHIFT-PAGI")!;
+    return INITIAL_SHIFTS.find((s) => s.id === "shift-pagi")!;
   }
   // Staf Customer Service Penjualan (Putri Ayu) -> Shift 1 Pagi
   if (nik === "SLS-603") {
-    return INITIAL_SHIFTS.find((s) => s.id === "SHIFT-PAGI")!;
+    return INITIAL_SHIFTS.find((s) => s.id === "shift-pagi")!;
   }
 
   // Mayoritas Reguler Office (08:00 - 17:00)
-  return INITIAL_SHIFTS.find((s) => s.id === "SHIFT-REG")!;
+  return INITIAL_SHIFTS.find((s) => s.id === "shift-reguler")!;
 }
 
 // Generator Roster 1 Karyawan untuk Minggu Tertentu
@@ -366,11 +387,33 @@ export function getStoredWeeklySchedules(): WeeklyScheduleRecord[] {
     const parsed: WeeklyScheduleRecord[] = JSON.parse(raw);
     let modified = false;
 
-    // Sinkronkan status "Hari Ini" dengan tanggal sistem terkini
+    // Sinkronkan status "Hari Ini" dengan tanggal sistem terkini & normalkan shiftId
     const todayIso = getTodayIso();
     parsed.forEach((rec) => {
       rec.days.forEach((day) => {
         const isToday = day.isoDate === todayIso;
+        const normId = normalizeShiftId(day.shiftId);
+        if (normId !== day.shiftId) {
+          day.shiftId = normId;
+          modified = true;
+        }
+
+        // Sinkronkan nama dan jam kerja shift dari data terstandarisasi
+        if (normId !== "OFF" && normId !== "CUTI") {
+          const matchedShift = INITIAL_SHIFTS.find((s) => s.id === normId);
+          if (matchedShift) {
+            if (day.shiftName !== matchedShift.name) {
+              day.shiftName = matchedShift.name;
+              modified = true;
+            }
+            if (day.startTime !== matchedShift.startTime || day.endTime !== matchedShift.endTime) {
+              day.startTime = matchedShift.startTime;
+              day.endTime = matchedShift.endTime;
+              modified = true;
+            }
+          }
+        }
+
         if (day.isLeaveApproved || day.shiftId === "CUTI") {
           day.status = isToday ? "Hari Ini" : "Cuti Disetujui";
         } else if (day.isOff || day.shiftId === "OFF") {
@@ -425,7 +468,16 @@ export function getStoredShifts(): ShiftPattern[] {
       return INITIAL_SHIFTS;
     }
     const parsed: ShiftPattern[] = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_SHIFTS;
+    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_SHIFTS;
+
+    // Bersihkan jika ada sisa shift dengan ID lama (misal: "SHIFT-REG")
+    const hasLegacy = parsed.some((s) => s.id.startsWith("SHIFT-"));
+    if (hasLegacy) {
+      localStorage.setItem(STORAGE_SHIFTS_KEY, JSON.stringify(INITIAL_SHIFTS));
+      return INITIAL_SHIFTS;
+    }
+
+    return parsed;
   } catch {
     return INITIAL_SHIFTS;
   }

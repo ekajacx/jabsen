@@ -56,7 +56,9 @@ import {
   getStoredWeeklySchedules,
   saveStoredWeeklySchedules,
   getStoredShifts,
+  saveStoredShifts,
   getTodayIso,
+  normalizeShiftId,
 } from "@/lib/schedule-data";
 
 const STORAGE_SCHEDULES_KEY = "jabsen_weekly_schedules_v1";
@@ -121,6 +123,26 @@ export default function JadwalPage() {
       const res = await fetch(`/api/jadwal?startDate=${selectedWeek}`);
       if (res.ok) {
         const data = await res.json();
+        // 1. Sinkronkan Master Shift dari PostgreSQL DB sebagai SSOT
+        if (data.success && Array.isArray(data.shifts) && data.shifts.length > 0) {
+          const dbShifts: ShiftPattern[] = data.shifts.map((s: any) => ({
+            id: normalizeShiftId(s.id),
+            name: s.name,
+            type: s.id === "shift-reguler" ? ("Office Reguler" as const) : ("Operasional Shift" as const),
+            startTime: s.startTime,
+            endTime: s.endTime,
+            breakStart: "12:00",
+            breakEnd: "13:00",
+            toleranceMinutes: 15,
+            assignedDepartments: [],
+            daysActive: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
+            crossMidnight: s.startTime > s.endTime,
+            color: s.color || (s.startTime > s.endTime ? "bg-purple-500" : "bg-blue-500"),
+          }));
+          setShifts(dbShifts);
+          saveStoredShifts(dbShifts);
+        }
+
         if (data.success && Array.isArray(data.weeklySchedules) && data.weeklySchedules.length > 0) {
           const mapped: WeeklyScheduleRecord[] = data.weeklySchedules.map((ws: any) => ({
             id: `sch-${ws.employeeId}-${selectedWeek}`,
@@ -138,6 +160,7 @@ export default function JadwalPage() {
             status: "Aktif",
             days: ws.days.map((d: any) => ({
               ...d,
+              shiftId: normalizeShiftId(d.shiftId),
               status: d.isoDate === todayIso ? "Hari Ini" : d.isOff ? "Hari Libur" : "Hari Kerja",
             })),
           }));
@@ -169,17 +192,12 @@ export default function JadwalPage() {
     records.forEach((r) => {
       r.days.forEach((d) => {
         if (d.isoDate) {
-          let sId = d.shiftId;
-          if (sId === "SHIFT-REG") sId = "shift-reguler";
-          else if (sId === "SHIFT-PAGI") sId = "shift-pagi";
-          else if (sId === "SHIFT-SIANG") sId = "shift-siang";
-          else if (sId === "SHIFT-MALAM") sId = "shift-malam";
-
+          const sId = normalizeShiftId(d.shiftId);
           assignments.push({
             employeeId: r.employeeId,
             date: d.isoDate,
             shiftId: sId && sId !== "OFF" && sId !== "CUTI" ? sId : "shift-reguler",
-            isOffDay: d.isOff || d.shiftId === "OFF",
+            isOffDay: d.isOff || sId === "OFF",
           });
         }
       });
@@ -294,8 +312,8 @@ export default function JadwalPage() {
         dateFormatted: d.dateFormatted,
         fullDate: d.fullDate,
         isoDate: d.isoDate,
-        shiftId: isWeekend ? "OFF" : "SHIFT-REG",
-        shiftName: isWeekend ? "Libur Akhir Pekan" : "Reguler Office (Pusat Bali)",
+        shiftId: isWeekend ? "OFF" : "shift-reguler",
+        shiftName: isWeekend ? "Libur Akhir Pekan" : "Shift Reguler",
         startTime: isWeekend ? "-" : "08:00",
         endTime: isWeekend ? "-" : "17:00",
         breakStart: isWeekend ? undefined : "12:00",
@@ -327,7 +345,7 @@ export default function JadwalPage() {
 
     const empObj = allEmployees.find((e) => e.id === record.employeeId);
 
-    // Sinkronisasi hari dengan status cuti terkini
+    // Sinkronisasi hari dengan status cuti terkini & normalkan shiftId
     const syncedDays = record.days.map((day) => {
       const approvedLeave = checkEmployeeLeaveOnDate(record.employeeId, empObj?.name || record.employeeName, day.isoDate, leaveRequests);
       if (approvedLeave) {
@@ -344,7 +362,10 @@ export default function JadwalPage() {
           leaveReason: approvedLeave.reason,
         };
       }
-      return day;
+      return {
+        ...day,
+        shiftId: normalizeShiftId(day.shiftId),
+      };
     });
 
     setFormDays(syncedDays);
@@ -373,7 +394,8 @@ export default function JadwalPage() {
         target.isOff = true;
         target.status = target.isoDate === todayIso ? "Hari Ini" : "Hari Libur";
       } else {
-        const foundShift = shifts.find((s) => s.id === newShiftId) || shifts[0];
+        const normId = normalizeShiftId(newShiftId);
+        const foundShift = shifts.find((s) => normalizeShiftId(s.id) === normId) || shifts[0];
         target.shiftId = foundShift.id;
         target.shiftName = foundShift.name;
         target.startTime = foundShift.startTime;
@@ -392,6 +414,7 @@ export default function JadwalPage() {
   // Aksi Cepat Terapkan Pola ke Hari Kerja (Senin-Jumat) dengan Perlindungan Hari Cuti
   const handleApplyQuickPattern = (shiftId: string) => {
     let skippedLeaveCount = 0;
+    const normPatternId = normalizeShiftId(shiftId);
 
     setFormDays((prev) =>
       prev.map((day) => {
@@ -412,7 +435,7 @@ export default function JadwalPage() {
             status: day.isoDate === todayIso ? "Hari Ini" : "Hari Libur",
           };
         }
-        if (shiftId === "OFF") {
+        if (normPatternId === "OFF") {
           return {
             ...day,
             shiftId: "OFF",
@@ -423,7 +446,7 @@ export default function JadwalPage() {
             status: day.isoDate === todayIso ? "Hari Ini" : "Hari Libur",
           };
         }
-        const found = shifts.find((s) => s.id === shiftId) || shifts[0];
+        const found = shifts.find((s) => normalizeShiftId(s.id) === normPatternId) || shifts[0];
         return {
           ...day,
           shiftId: found.id,
@@ -607,7 +630,7 @@ export default function JadwalPage() {
                     employeeId: rec.employeeId,
                     employeeName: rec.employeeName,
                     department: rec.departmentName,
-                    defaultShiftName: rec.days[0]?.shiftName || "Reguler Office",
+                    defaultShiftName: rec.days[0]?.shiftName || "Shift Reguler",
                     senin: getDayShift("Senin"),
                     selasa: getDayShift("Selasa"),
                     rabu: getDayShift("Rabu"),
@@ -1258,7 +1281,7 @@ export default function JadwalPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleApplyQuickPattern("SHIFT-REG")}
+                onClick={() => handleApplyQuickPattern("shift-reguler")}
                 className="h-7 text-[10px] px-2.5 font-semibold"
               >
                 Reguler (08:00 - 17:00)
@@ -1267,7 +1290,7 @@ export default function JadwalPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleApplyQuickPattern("SHIFT-PAGI")}
+                onClick={() => handleApplyQuickPattern("shift-pagi")}
                 className="h-7 text-[10px] px-2.5 font-semibold text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
               >
                 Shift 1 Pagi (06:00 - 14:00)
@@ -1276,7 +1299,7 @@ export default function JadwalPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleApplyQuickPattern("SHIFT-SIANG")}
+                onClick={() => handleApplyQuickPattern("shift-siang")}
                 className="h-7 text-[10px] px-2.5 font-semibold text-purple-700 border-purple-200 bg-purple-50 hover:bg-purple-100"
               >
                 Shift 2 Siang (14:00 - 22:00)
@@ -1285,7 +1308,7 @@ export default function JadwalPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleApplyQuickPattern("SHIFT-MALAM")}
+                onClick={() => handleApplyQuickPattern("shift-malam")}
                 className="h-7 text-[10px] px-2.5 font-semibold text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
               >
                 Shift 3 Malam (22:00 - 06:00)
@@ -1338,12 +1361,12 @@ export default function JadwalPage() {
                         </div>
                       ) : (
                         <select
-                          value={day.shiftId}
+                          value={normalizeShiftId(day.shiftId)}
                           onChange={(e) => handleDayShiftChange(idx, e.target.value)}
                           className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                         >
                           {shifts.map((s) => (
-                            <option key={s.id} value={s.id}>
+                            <option key={s.id} value={normalizeShiftId(s.id)}>
                               {s.name} ({s.startTime} - {s.endTime})
                             </option>
                           ))}

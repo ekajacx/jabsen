@@ -43,14 +43,19 @@ async function main() {
   console.log("⏰ Menyimpan master jadwal shift...");
   const shifts = [
     { id: "shift-reguler", name: "Shift Reguler", startTime: "08:00", endTime: "17:00", color: "#2563EB" },
-    { id: "shift-pagi", name: "Shift 1 (Pagi)", startTime: "06:00", endTime: "14:00", color: "#16A34A" },
-    { id: "shift-siang", name: "Shift 2 (Siang)", startTime: "14:00", endTime: "22:00", color: "#EA580C" },
-    { id: "shift-malam", name: "Shift 3 (Malam)", startTime: "22:00", endTime: "06:00", color: "#9333EA" },
+    { id: "shift-pagi", name: "Shift 1 - Pagi Operasional", startTime: "06:00", endTime: "14:00", color: "#16A34A" },
+    { id: "shift-siang", name: "Shift 2 - Siang Operasional", startTime: "14:00", endTime: "22:00", color: "#EA580C" },
+    { id: "shift-malam", name: "Shift 3 - Malam Operasional", startTime: "22:00", endTime: "06:00", color: "#9333EA" },
   ];
   for (const s of shifts) {
     await prisma.shift.upsert({
       where: { id: s.id },
-      update: {},
+      update: {
+        name: s.name,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        color: s.color,
+      },
       create: s,
     });
   }

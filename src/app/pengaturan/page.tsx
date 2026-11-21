@@ -49,6 +49,7 @@ import {
   INITIAL_SHIFTS,
   getStoredShifts,
   saveStoredShifts,
+  normalizeShiftId,
 } from "@/lib/schedule-data";
 
 function PengaturanContent() {
@@ -187,17 +188,22 @@ function PengaturanContent() {
             }
             if (data.shifts && Array.isArray(data.shifts) && data.shifts.length > 0) {
               const localShifts = getStoredShifts();
-              const merged = localShifts.map((ls) => {
-                const dbMatch = data.shifts.find((ds: any) => ds.id === ls.id);
-                if (dbMatch) {
-                  return {
-                    ...ls,
-                    name: dbMatch.name || ls.name,
-                    startTime: dbMatch.startTime || ls.startTime,
-                    endTime: dbMatch.endTime || ls.endTime,
-                  };
-                }
-                return ls;
+              const merged: ShiftPattern[] = data.shifts.map((ds: any) => {
+                const localMatch = localShifts.find((ls) => ls.id === ds.id || normalizeShiftId(ls.id) === ds.id);
+                return {
+                  id: ds.id,
+                  name: ds.name,
+                  type: ds.id === "shift-reguler" ? ("Office Reguler" as const) : ("Operasional Shift" as const),
+                  startTime: ds.startTime,
+                  endTime: ds.endTime,
+                  breakStart: localMatch?.breakStart || "12:00",
+                  breakEnd: localMatch?.breakEnd || "13:00",
+                  toleranceMinutes: localMatch?.toleranceMinutes || 15,
+                  assignedDepartments: localMatch?.assignedDepartments || ["Operasional"],
+                  daysActive: localMatch?.daysActive || ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"],
+                  crossMidnight: ds.startTime > ds.endTime,
+                  color: ds.color || (ds.startTime > ds.endTime ? "bg-purple-500" : "bg-blue-500"),
+                };
               });
               setShifts(merged);
               saveStoredShifts(merged);
