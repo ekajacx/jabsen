@@ -21,34 +21,26 @@ export async function GET(req: NextRequest) {
     const empWhere: any = {};
     if (departmentId && departmentId !== "ALL" && departmentId !== "Semua") {
       const lower = departmentId.toLowerCase().trim();
-      const searchTerms = [departmentId];
-      if (lower.includes("it") || lower.includes("engineering") || lower.includes("teknologi")) {
-        searchTerms.push("Teknologi", "ti", "it");
+      if (lower.includes("direksi") || lower.includes("eksekutif") || lower === "dept-exec") {
+        empWhere.departmentId = "dept-exec";
+      } else if (lower.includes("teknologi") || lower.includes("informasi") || /\b(ti|it)\b/i.test(lower) || lower === "dept-ti") {
+        empWhere.departmentId = "dept-ti";
+      } else if (lower.includes("keuangan") || lower.includes("fin") || lower.includes("accounting") || lower === "dept-fin") {
+        empWhere.departmentId = "dept-fin";
+      } else if (lower.includes("operasional") || /\bops\b/i.test(lower) || lower === "dept-ops") {
+        empWhere.departmentId = "dept-ops";
+      } else if (lower.includes("pemasaran") || lower.includes("marketing") || lower === "dept-mkt") {
+        empWhere.departmentId = "dept-mkt";
+      } else if (lower.includes("penjualan") || lower.includes("sales") || lower === "dept-sales") {
+        empWhere.departmentId = "dept-sales";
+      } else if (/\b(hr|hrd|ga)\b/i.test(lower) || lower.includes("human resource") || lower === "dept-hrd") {
+        empWhere.departmentId = "dept-hrd";
+      } else {
+        empWhere.OR = [
+          { departmentId: { equals: departmentId } },
+          { department: { name: { contains: departmentId, mode: "insensitive" } } },
+        ];
       }
-      if (lower.includes("operasional") || lower.includes("ops")) {
-        searchTerms.push("Operasional", "ops");
-      }
-      if (lower.includes("hr") || lower.includes("hrd") || lower.includes("ga")) {
-        searchTerms.push("HR", "hrd");
-      }
-      if (lower.includes("fin") || lower.includes("keuangan") || lower.includes("accounting")) {
-        searchTerms.push("Keuangan", "fin", "finance");
-      }
-      if (lower.includes("market") || lower.includes("pemasaran") || lower.includes("sales") || lower.includes("penjualan")) {
-        searchTerms.push("Pemasaran", "Penjualan", "mkt", "sales");
-      }
-      if (lower.includes("direksi") || lower.includes("eksekutif") || lower.includes("exec")) {
-        searchTerms.push("Direksi", "Eksekutif", "exec");
-      }
-
-      empWhere.OR = [
-        { departmentId: { equals: departmentId } },
-        ...searchTerms.flatMap((term) => [
-          { departmentId: { contains: term, mode: "insensitive" } },
-          { department: { id: { contains: term, mode: "insensitive" } } },
-          { department: { name: { contains: term, mode: "insensitive" } } },
-        ]),
-      ];
     }
 
     // 2. Ambil seluruh Rekaman Presensi Aktual

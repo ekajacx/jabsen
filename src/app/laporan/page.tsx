@@ -206,7 +206,7 @@ export default function LaporanPage() {
     return Array.from(offices).sort((a, b) => a.localeCompare(b));
   }, [reportList]);
 
-  // Helper pencocokan departemen toleran terhadap alias dan substring
+  // Helper pencocokan departemen toleran dan terisolasi ketat (Direksi & Eksekutif terpisah total dari TI/IT)
   const matchDepartment = (itemDept: string, targetFilter: string): boolean => {
     if (!targetFilter || targetFilter === "Semua") return true;
     if (!itemDept) return false;
@@ -214,44 +214,71 @@ export default function LaporanPage() {
     const itemNorm = itemDept.toLowerCase().trim();
     const filterNorm = targetFilter.toLowerCase().trim();
 
+    // 1. Exact match
     if (itemNorm === filterNorm) return true;
-    if (itemNorm.includes(filterNorm) || filterNorm.includes(itemNorm)) return true;
 
-    // Mapping alias umum
-    const aliasGroups: { keywords: string[]; targets: string[] }[] = [
-      {
-        keywords: ["it", "engineering", "teknologi", "ti", "it & engineering"],
-        targets: ["teknologi", "it", "ti", "engineering"],
-      },
-      {
-        keywords: ["operasional", "ops", "operation"],
-        targets: ["operasional", "ops"],
-      },
-      {
-        keywords: ["hr", "hrd", "ga", "hrd & ga", "human resources"],
-        targets: ["hr", "hrd", "human resources"],
-      },
-      {
-        keywords: ["finance", "accounting", "keuangan", "finance & accounting", "fin"],
-        targets: ["keuangan", "finance", "accounting"],
-      },
-      {
-        keywords: ["marketing", "sales", "pemasaran", "penjualan", "marketing & sales"],
-        targets: ["pemasaran", "penjualan", "marketing", "sales"],
-      },
-      {
-        keywords: ["direksi", "eksekutif", "executive", "board"],
-        targets: ["direksi", "eksekutif", "executive"],
-      },
-    ];
-
-    for (const grp of aliasGroups) {
-      const matchFilter = grp.keywords.some((k) => filterNorm.includes(k));
-      const matchItem = grp.targets.some((t) => itemNorm.includes(t));
-      if (matchFilter && matchItem) return true;
+    // 2. Direksi & Eksekutif (Terisolasi Eksklusif)
+    const isDireksi = (str: string) =>
+      str.includes("direksi") || str.includes("eksekutif") || str === "dept-exec";
+    if (isDireksi(filterNorm)) {
+      return isDireksi(itemNorm);
+    }
+    if (isDireksi(itemNorm)) {
+      // Jika data adalah Direksi & Eksekutif, tetapi filter BUKAN Direksi, jangan cocokkan!
+      return false;
     }
 
-    return false;
+    // 3. Departemen Teknologi Informasi (TI / IT)
+    const isTI = (str: string) =>
+      str.includes("teknologi") ||
+      str.includes("informasi") ||
+      /\b(ti|it)\b/i.test(str) ||
+      str === "dept-ti";
+    if (isTI(filterNorm)) {
+      return isTI(itemNorm);
+    }
+
+    // 4. Departemen Operasional
+    const isOps = (str: string) =>
+      str.includes("operasional") || /\bops\b/i.test(str) || str === "dept-ops";
+    if (isOps(filterNorm)) {
+      return isOps(itemNorm);
+    }
+
+    // 5. Departemen Keuangan
+    const isFin = (str: string) =>
+      str.includes("keuangan") ||
+      str.includes("finance") ||
+      str.includes("accounting") ||
+      str === "dept-fin";
+    if (isFin(filterNorm)) {
+      return isFin(itemNorm);
+    }
+
+    // 6. Departemen HR
+    const isHR = (str: string) =>
+      /\b(hr|hrd|ga)\b/i.test(str) ||
+      str.includes("human resource") ||
+      str === "dept-hrd";
+    if (isHR(filterNorm)) {
+      return isHR(itemNorm);
+    }
+
+    // 7. Departemen Pemasaran
+    const isMkt = (str: string) =>
+      str.includes("pemasaran") || str.includes("marketing") || str === "dept-mkt";
+    if (isMkt(filterNorm)) {
+      return isMkt(itemNorm);
+    }
+
+    // 8. Departemen Penjualan
+    const isSales = (str: string) =>
+      str.includes("penjualan") || str.includes("sales") || str === "dept-sales";
+    if (isSales(filterNorm)) {
+      return isSales(itemNorm);
+    }
+
+    return itemNorm.includes(filterNorm) || filterNorm.includes(itemNorm);
   };
 
   // Helper pencocokan shift toleran

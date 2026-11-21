@@ -16,12 +16,32 @@ export async function GET(req: NextRequest) {
       whereClause.employeeId = employeeId;
     }
 
-    const deptFilter =
-      departmentId && departmentId !== "ALL"
-        ? {
-            OR: [{ departmentId: departmentId }, { department: { name: departmentId } }],
-          }
-        : null;
+    let deptFilter: any = null;
+    if (departmentId && departmentId !== "ALL" && departmentId !== "Semua") {
+      const lower = departmentId.toLowerCase().trim();
+      if (lower.includes("direksi") || lower.includes("eksekutif") || lower === "dept-exec") {
+        deptFilter = { departmentId: "dept-exec" };
+      } else if (lower.includes("teknologi") || lower.includes("informasi") || /\b(ti|it)\b/i.test(lower) || lower === "dept-ti") {
+        deptFilter = { departmentId: "dept-ti" };
+      } else if (lower.includes("keuangan") || lower.includes("fin") || lower.includes("accounting") || lower === "dept-fin") {
+        deptFilter = { departmentId: "dept-fin" };
+      } else if (lower.includes("operasional") || /\bops\b/i.test(lower) || lower === "dept-ops") {
+        deptFilter = { departmentId: "dept-ops" };
+      } else if (lower.includes("pemasaran") || lower.includes("marketing") || lower === "dept-mkt") {
+        deptFilter = { departmentId: "dept-mkt" };
+      } else if (lower.includes("penjualan") || lower.includes("sales") || lower === "dept-sales") {
+        deptFilter = { departmentId: "dept-sales" };
+      } else if (/\b(hr|hrd|ga)\b/i.test(lower) || lower.includes("human resource") || lower === "dept-hrd") {
+        deptFilter = { departmentId: "dept-hrd" };
+      } else {
+        deptFilter = {
+          OR: [
+            { departmentId: departmentId },
+            { department: { name: { contains: departmentId, mode: "insensitive" } } },
+          ],
+        };
+      }
+    }
 
     if (deptFilter) {
       whereClause.employee = deptFilter;
